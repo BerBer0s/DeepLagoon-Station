@@ -29,6 +29,7 @@ public sealed partial class ChannelFilterPopup : Popup
     };
 
     private readonly Dictionary<ChatChannel, ChannelFilterCheckbox> _filterStates = new();
+    private ChatChannel _selectedChannels = (ChatChannel) uint.MaxValue;
 
     public event Action<ChatChannel, bool>? OnChannelFilter;
     public event Action<string>? OnNewHighlights;
@@ -42,7 +43,16 @@ public sealed partial class ChannelFilterPopup : Popup
 
     public bool IsActive(ChatChannel channel)
     {
-        return _filterStates.TryGetValue(channel, out var checkbox) && checkbox.Pressed;
+        return _filterStates.TryGetValue(channel, out var checkbox) && !checkbox.IsHidden && checkbox.Pressed;
+    }
+
+    public ChatChannel SelectedChannels => _selectedChannels;
+
+    public void SetSelectedChannels(ChatChannel channels)
+    {
+        _selectedChannels = channels;
+        foreach (var (channel, checkbox) in _filterStates)
+            checkbox.Pressed = (channels & channel) != 0;
     }
 
     public ChatChannel GetActive()
@@ -71,7 +81,7 @@ public sealed partial class ChannelFilterPopup : Popup
                 checkbox = new ChannelFilterCheckbox(channel);
                 _filterStates.Add(channel, checkbox);
                 checkbox.OnPressed += CheckboxPressed;
-                checkbox.Pressed = true;
+                checkbox.Pressed = (_selectedChannels & channel) != 0;
             }
 
             if ((channels & channel) == 0)
@@ -90,7 +100,11 @@ public sealed partial class ChannelFilterPopup : Popup
 
     private void CheckboxPressed(ButtonEventArgs args)
     {
-        var checkbox = (ChannelFilterCheckbox) args.Button;
+        var checkbox = (ChannelFilterCheckbox)args.Button;
+        if (checkbox.Pressed)
+            _selectedChannels |= checkbox.Channel;
+        else
+            _selectedChannels &= ~checkbox.Channel;
         OnChannelFilter?.Invoke(checkbox.Channel, checkbox.Pressed);
     }
 

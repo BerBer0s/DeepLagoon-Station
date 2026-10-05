@@ -1,0 +1,11 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+# When adding new food also add to random spawner located in Resources\Prototypes\Entities\Markers\Spawners\Random\Food_Drinks\food_produce.yml
+# For produce that can't be immediately eaten
+
+- type: entity
+  name: hairflower
+  id: FoodPoppyWhite
+  parent: FoodPoppy
+  components:
+  - type: Sprite
+    sprite: Objects/Specific/Hydroponics/poppywhite.rsi

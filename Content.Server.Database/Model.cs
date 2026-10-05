@@ -57,7 +57,7 @@ namespace Content.Server.Database
                 .IsUnique();
 
             modelBuilder.Entity<Profile>()
-                .HasIndex(p => new {p.Slot, PrefsId = p.PreferenceId})
+                .HasIndex(p => new { p.Slot, PrefsId = p.PreferenceId })
                 .IsUnique();
 
             // Mono start
@@ -75,11 +75,11 @@ namespace Content.Server.Database
             // Mono end
 
             modelBuilder.Entity<Antag>()
-                .HasIndex(p => new {HumanoidProfileId = p.ProfileId, p.AntagName})
+                .HasIndex(p => new { HumanoidProfileId = p.ProfileId, p.AntagName })
                 .IsUnique();
 
             modelBuilder.Entity<Trait>()
-                .HasIndex(p => new {HumanoidProfileId = p.ProfileId, p.TraitName})
+                .HasIndex(p => new { HumanoidProfileId = p.ProfileId, p.TraitName })
                 .IsUnique();
 
             modelBuilder.Entity<ProfileRoleLoadout>()
@@ -127,15 +127,15 @@ namespace Content.Server.Database
                 .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<AdminFlag>()
-                .HasIndex(f => new {f.Flag, f.AdminId})
+                .HasIndex(f => new { f.Flag, f.AdminId })
                 .IsUnique();
 
             modelBuilder.Entity<AdminRankFlag>()
-                .HasIndex(f => new {f.Flag, f.AdminRankId})
+                .HasIndex(f => new { f.Flag, f.AdminRankId })
                 .IsUnique();
 
             modelBuilder.Entity<AdminLog>()
-                .HasKey(log => new {log.RoundId, log.Id});
+                .HasKey(log => new { log.RoundId, log.Id });
 
             modelBuilder.Entity<AdminLog>()
                 .Property(log => log.Id);
@@ -160,7 +160,7 @@ namespace Content.Server.Database
                 .HasIndex(round => round.StartDate);
 
             modelBuilder.Entity<AdminLogPlayer>()
-                .HasKey(logPlayer => new {logPlayer.RoundId, logPlayer.LogId, logPlayer.PlayerUserId});
+                .HasKey(logPlayer => new { logPlayer.RoundId, logPlayer.LogId, logPlayer.PlayerUserId });
 
             modelBuilder.Entity<ServerBan>()
                 .HasIndex(p => p.PlayerUserId);
@@ -423,7 +423,7 @@ namespace Content.Server.Database
         public abstract int CountAdminLogs();
     }
 
-    public class Preference
+    public partial class Preference
     {
         // NOTE: on postgres there SHOULD be an FK ensuring that the selected character slot always exists.
         // I had to use a migration to implement it and as a result its creation is a finicky mess.
@@ -438,7 +438,7 @@ namespace Content.Server.Database
         public List<Profile> Profiles { get; } = new();
     }
 
-    public class Profile
+    public partial class Profile
     {
         public int Id { get; set; }
         public int Slot { get; set; }
@@ -607,6 +607,9 @@ namespace Content.Server.Database
         /// Corresponding loadout prototype.
         /// </summary>
         public string LoadoutName { get; set; } = string.Empty;
+
+        [MaxLength(4096)]
+        public string? Customization { get; set; }
 
         /*
          * Insert extra data here like custom descriptions or colors or whatever.
@@ -829,7 +832,7 @@ namespace Content.Server.Database
     public enum ServerBanExemptFlags
     {
         // @formatter:off
-        None       = 0,
+        None = 0,
 
         /// <summary>
         /// Ban is a datacenter range, connections usually imply usage of a VPN service.

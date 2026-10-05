@@ -1,0 +1,7 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: latheRecipe
+  id: SpeedLoaderRifleHeavy
+  parent: BaseAmmoRecipe
+  result: SpeedLoaderRifleHeavy
+  materials:
+    Steel: 140

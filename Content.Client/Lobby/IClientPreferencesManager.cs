@@ -5,6 +5,8 @@ namespace Content.Client.Lobby
     public interface IClientPreferencesManager
     {
         event Action OnServerDataLoaded;
+        event Action<bool>? OnChatPanelSaved;
+        void UpdateChatPanelSettings(string data);
 
         bool ServerDataLoaded => Settings != null;
 

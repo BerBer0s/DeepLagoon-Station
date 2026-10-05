@@ -189,6 +189,7 @@ namespace Content.Client.Options.UI.Tabs
             AddButton(ContentKeyFunctions.AltActivateItemInWorld);
             AddButton(ContentKeyFunctions.Drop);
             AddButton(ContentKeyFunctions.ExamineEntity);
+            AddButton(Content.Shared._DeepLagoon.InteractionPanel.InteractionPanelKeyFunctions.OpenInteractions);
             AddButton(ContentKeyFunctions.SwapHands);
             AddButton(ContentKeyFunctions.SwapHandsPrevious); // Frontier
             AddButton(ContentKeyFunctions.MoveStoredItem);
@@ -234,6 +235,9 @@ namespace Content.Client.Options.UI.Tabs
 
             AddHeader("ui-options-header-ui");
             AddButton(ContentKeyFunctions.FocusChat);
+            AddButton(ContentKeyFunctions.ChatSearch);
+            AddButton(ContentKeyFunctions.ChatZoomIn);
+            AddButton(ContentKeyFunctions.ChatZoomOut);
             AddButton(ContentKeyFunctions.FocusLocalChat);
             AddButton(ContentKeyFunctions.FocusEmote);
             AddButton(ContentKeyFunctions.FocusWhisperChat);

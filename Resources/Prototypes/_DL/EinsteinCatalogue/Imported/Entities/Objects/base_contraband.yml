@@ -1,0 +1,17 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+# any type of magical items used by wizards and similiar
+- type: entity
+  id: BaseSecurityBartenderContraband
+  parent: BaseRestrictedContraband
+  abstract: true
+  components:
+  - type: Contraband
+    allowedDepartments: [Security]
+    allowedJobs: [Bartender]
+- type: entity
+  id: BaseSecurityCargoContraband
+  parent: BaseRestrictedContraband
+  abstract: true
+  components:
+  - type: Contraband
+    allowedDepartments: [Security, Logistics]

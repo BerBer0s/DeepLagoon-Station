@@ -20,6 +20,9 @@
     },
     {
       "name": "screen"
+    },
+    {
+      "name": "ready"
     }
   ]
 }

@@ -13,11 +13,12 @@ namespace Content.Shared.Preferences
     {
         private Dictionary<int, ICharacterProfile> _characters;
 
-        public PlayerPreferences(IEnumerable<KeyValuePair<int, ICharacterProfile>> characters, int selectedCharacterIndex, Color adminOOCColor)
+        public PlayerPreferences(IEnumerable<KeyValuePair<int, ICharacterProfile>> characters, int selectedCharacterIndex, Color adminOOCColor, string chatPanelSettings = "")
         {
             _characters = new Dictionary<int, ICharacterProfile>(characters);
             SelectedCharacterIndex = selectedCharacterIndex;
             AdminOOCColor = adminOOCColor;
+            ChatPanelSettings = chatPanelSettings;
         }
 
         /// <summary>
@@ -41,6 +42,7 @@ namespace Content.Shared.Preferences
         public ICharacterProfile SelectedCharacter => Characters[SelectedCharacterIndex];
 
         public Color AdminOOCColor { get; set; }
+        public string ChatPanelSettings { get; set; }
 
         public int IndexOfCharacter(ICharacterProfile profile)
         {

@@ -44,6 +44,8 @@ namespace Content.Server.Connection
         /// <param name="duration">How long the bypass should last for.</param>
         void AddTemporaryConnectBypass(NetUserId user, TimeSpan duration);
 
+        Task<bool> CheckDiscordLobbyWhitelist(NetUserData data);
+
         void Update();
     }
 
@@ -245,7 +247,7 @@ namespace Content.Server.Connection
             var adminData = await _db.GetAdminDataForAsync(e.UserId);
             // New Frontiers - Session Respector - Checks that a player was connected before applying panic bunker/baby jail/no whitelist on low pop checks
             // This code is licensed under AGPLv3. See AGPLv3.txt
-            var wasInGame = EntitySystem.TryGet<GameTicker>(out var ticker) &&
+            var wasInGame = IoCManager.Resolve<IEntitySystemManager>().TryGetEntitySystem<GameTicker>(out var ticker) &&
                             ticker.PlayerGameStatuses.ContainsKey(userId); // Frontier: remove status.JoinedGame check, TryGetValue<ContainsKey
 
             if (_cfg.GetCVar(CCVars.PanicBunkerEnabled) && adminData == null && !wasInGame) // Frontier: allow users who joined before panic bunker was enforced to reconnect
@@ -273,7 +275,7 @@ namespace Content.Server.Connection
                 }
 
                 var minOverallMinutes = _cfg.GetCVar(CCVars.PanicBunkerMinOverallMinutes);
-                var overallTime = ( await _db.GetPlayTimes(e.UserId)).Find(p => p.Tracker == PlayTimeTrackingShared.TrackerOverall);
+                var overallTime = (await _db.GetPlayTimes(e.UserId)).Find(p => p.Tracker == PlayTimeTrackingShared.TrackerOverall);
                 var haveMinOverallTime = overallTime != null && overallTime.TimeSpent.TotalMinutes > minOverallMinutes;
 
                 // Use the custom reason if it exists & they don't have the minimum time
@@ -322,7 +324,7 @@ namespace Content.Server.Connection
             }
 
             // Checks for whitelist IF it's enabled AND the user isn't an admin. Admins are always allowed.
-            if (_cfg.GetCVar(CCVars.WhitelistEnabled) && !wasInGame && adminData is null) // Frontier: allow users who joined before panic bunker was enforced to reconnect
+            if (!CCVars.DiscordAdmissionDevelopment && _cfg.GetCVar(CCVars.WhitelistEnabled) && !CCVars.DiscordAdmissionRequired(_cfg) && !wasInGame && adminData is null) // Frontier: allow users who joined before panic bunker was enforced to reconnect
             {
                 if (_whitelists is null)
                 {

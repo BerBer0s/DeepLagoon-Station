@@ -10,7 +10,15 @@
     <PanelContainer Name="ChatWindowPanel" Access="Public" HorizontalExpand="True" VerticalExpand="True"
                     StyleClasses="StyleNano.StyleClassChatPanel">
         <BoxContainer Orientation="Vertical" SeparationOverride="4" HorizontalExpand="True" VerticalExpand="True">
-            <OutputPanel Name="Contents" HorizontalExpand="True" VerticalExpand="True" Margin="8 8 8 4" />
+            <BoxContainer Name="SearchBar" Visible="False" HorizontalExpand="True" Margin="4">
+                <LineEdit Name="SearchInput" HorizontalExpand="True" />
+                <Label Name="SearchCount" />
+                <Button Name="CloseSearch" Text="×" />
+            </BoxContainer>
+            <LayoutContainer Name="ChatBody" HorizontalExpand="True" VerticalExpand="True">
+                <controls:ChatOutputPanel Name="Contents" HorizontalExpand="True" VerticalExpand="True" Margin="8 8 8 4" />
+                <PanelContainer Name="SettingsPanel" Visible="False" HorizontalExpand="True" VerticalExpand="True" RectClipContent="True" Margin="4" />
+            </LayoutContainer>
             <controls:ChatInputBox HorizontalExpand="True" Name="ChatInput" Access="Public" Margin="2"/>
         </BoxContainer>
     </PanelContainer>

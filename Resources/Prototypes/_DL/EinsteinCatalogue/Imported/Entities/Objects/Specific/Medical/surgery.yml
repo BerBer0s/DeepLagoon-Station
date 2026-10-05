@@ -1,0 +1,35 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+# Base
+
+- type: entity
+  name: CMO's proto multitool
+  description: "A prototypical medical multitool designed by Nanotrasen to save valuable\
+    \ space in the backpacks of high ranking medical officers."
+  id: OmnimedToolLite
+  parent: OmnimedTool
+  components:
+  - type: Sprite
+    state: cmotool
+  - type: Item
+    heldPrefix: cmotool
+  - type: SurgeryTool
+  - type: Hemostat
+    speed: 1.25
+  - type: Scalpel
+    speed: 1.25
+  - type: Drill
+    speed: 1.25
+  - type: BoneSetter
+    speed: 1.25
+  - type: Retractor
+    speed: 1.25
+  - type: Cautery
+    speed: 1.25
+  - type: BoneGel
+    speed: 1.25
+  - type: BoneSaw
+    speed: 1.25
+  - type: Tweezers
+    speed: 1.25
+  - type: Tending
+    speed: 1.25

@@ -1,0 +1,27 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  id: CartridgeMagnum
+  name: cartridge (.45 magnum)
+  parent: BaseCartridgeMagnum
+  components:
+  - type: CartridgeAmmo
+    proto: BulletMagnum
+- type: entity
+  id: BaseCartridgeMagnum
+  name: cartridge (.45 magnum)
+  parent: [BaseCartridge, BaseRestrictedContraband]
+  abstract: true
+  components:
+  - type: Tag
+    tags:
+    - Cartridge
+    - CartridgeMagnum
+  - type: CartridgeAmmo
+    proto: BulletMagnum
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Ammunition/Casings/ammo_casing.rsi
+    layers:
+    - state: base
+      map: ["enum.AmmoVisualLayers.Base"]
+  - type: Appearance
+  - type: SpentAmmoVisuals

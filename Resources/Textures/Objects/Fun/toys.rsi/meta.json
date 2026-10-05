@@ -115,16 +115,16 @@
       "name": "plushie_lizard_inversed"
     },
     {
-       "name": "lizard-inversed-equipped-HELMET",
-       "directions": 4
+      "name": "lizard-inversed-equipped-HELMET",
+      "directions": 4
     },
     {
-       "name": "plushielizardinversed-inhand-left",
-       "directions": 4
+      "name": "plushielizardinversed-inhand-left",
+      "directions": 4
     },
     {
-       "name": "plushielizardinversed-inhand-right",
-       "directions": 4
+      "name": "plushielizardinversed-inhand-right",
+      "directions": 4
     },
     {
       "name": "plushie_lamp"
@@ -408,6 +408,59 @@
     },
     {
       "name": "rubber_chicken"
+    },
+    {
+      "name": "plushie_jester"
+    },
+    {
+      "name": "plushie_slips"
+    },
+    {
+      "name": "plushie_trystan"
+    },
+    {
+      "name": "plushie_vulp"
+    },
+    {
+      "name": "ipc"
+    },
+    {
+      "name": "deer"
+    },
+    {
+      "name": "grey"
+    },
+    {
+      "name": "loveable"
+    },
+    {
+      "name": "abductor"
+    },
+    {
+      "name": "abductor_agent"
+    },
+    {
+      "name": "gnome"
+    },
+    {
+      "name": "plushienuke-inhand-left",
+      "directions": 4
+    },
+    {
+      "name": "plushienuke-inhand-right",
+      "directions": 4
+    },
+    {
+      "name": "plushie_arachne"
+    },
+    {
+      "name": "shadowkin"
+    },
+    {
+      "name": "mortplush"
+    },
+    {
+      "name": "harpyplushie"
     }
   ]
 }

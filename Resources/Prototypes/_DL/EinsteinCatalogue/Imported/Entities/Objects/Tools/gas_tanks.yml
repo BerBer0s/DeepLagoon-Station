@@ -1,0 +1,14 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: DoubleEmergencyOxygenTank
+  id: DoubleEmergencyPlasmaTank
+  name: plasma internals tank
+  description: A tank of plasma designed to be internals for Plasmamen. It can hold
+    2.5 L of gas.
+  components:
+  - type: Sprite
+    sprite: Objects/Tanks/plasmaman.rsi
+  - type: Item
+    sprite: Objects/Tanks/plasmaman.rsi
+  - type: Clothing
+    sprite: Objects/Tanks/plasmaman.rsi

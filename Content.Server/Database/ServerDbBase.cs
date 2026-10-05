@@ -1,3 +1,4 @@
+using Content.Shared._DeepLagoon.InteractionPanel;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -17,6 +18,8 @@ using Content.Shared.Humanoid;
 using Content.Shared.Humanoid.Markings;
 using Content.Shared.Preferences;
 using Content.Shared.Preferences.Loadouts;
+using Content.Shared._DeepLagoon.Loadouts;
+using System.Text.Json;
 using Content.Shared.Roles;
 using Content.Shared.Traits;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +30,7 @@ using Robust.Shared.Utility;
 
 namespace Content.Server.Database
 {
-    public abstract class ServerDbBase
+    public abstract partial class ServerDbBase
     {
         private readonly ISawmill _opsLog;
 
@@ -70,7 +73,7 @@ namespace Content.Server.Database
                 profiles[profile.Slot] = ConvertProfiles(profile);
             }
 
-            return new PlayerPreferences(profiles, prefs.SelectedCharacterSlot, Color.FromHex(prefs.AdminOOCColor));
+            return new PlayerPreferences(profiles, prefs.SelectedCharacterSlot, Color.FromHex(prefs.AdminOOCColor), prefs.ChatPanelSettings);
         }
 
         public async Task SaveSelectedCharacterIndexAsync(NetUserId userId, int index)
@@ -145,7 +148,7 @@ namespace Content.Server.Database
         {
             await using var db = await GetDb();
 
-            var profile = ConvertProfiles((HumanoidCharacterProfile) defaultProfile, 0);
+            var profile = ConvertProfiles((HumanoidCharacterProfile)defaultProfile, 0);
             var prefs = new Preference
             {
                 UserId = userId.UserId,
@@ -159,7 +162,7 @@ namespace Content.Server.Database
 
             await db.DbContext.SaveChangesAsync();
 
-            return new PlayerPreferences(new[] {new KeyValuePair<int, ICharacterProfile>(0, defaultProfile)}, 0, Color.FromHex(prefs.AdminOOCColor));
+            return new PlayerPreferences(new[] { new KeyValuePair<int, ICharacterProfile>(0, defaultProfile) }, 0, Color.FromHex(prefs.AdminOOCColor), prefs.ChatPanelSettings);
         }
 
         public async Task DeleteSlotAndSetSelectedIndex(NetUserId userId, int deleteSlot, int newSlot)
@@ -193,7 +196,7 @@ namespace Content.Server.Database
 
         private static HumanoidCharacterProfile ConvertProfiles(Profile profile)
         {
-            var jobs = profile.Jobs.ToDictionary(j => new ProtoId<JobPrototype>(j.JobName), j => (JobPriority) j.Priority);
+            var jobs = profile.Jobs.ToDictionary(j => new ProtoId<JobPrototype>(j.JobName), j => (JobPriority)j.Priority);
             var antags = profile.Antags.Select(a => new ProtoId<AntagPrototype>(a.AntagName));
             var traits = profile.Traits.Select(t => new ProtoId<TraitPrototype>(t.TraitName));
 
@@ -201,7 +204,7 @@ namespace Content.Server.Database
             if (Enum.TryParse<Sex>(profile.Sex, true, out var sexVal))
                 sex = sexVal;
 
-            var spawnPriority = (SpawnPriorityPreference) profile.SpawnPriority;
+            var spawnPriority = (SpawnPriorityPreference)profile.SpawnPriority;
 
             var gender = sex == Sex.Male ? Gender.Male : Gender.Female;
             if (Enum.TryParse<Gender>(profile.Gender, true, out var genderVal))
@@ -242,6 +245,7 @@ namespace Content.Server.Database
                         groupLoadouts.Add(new Loadout()
                         {
                             Prototype = profLoadout.LoadoutName,
+                            Customization = profLoadout.Customization == null ? null : JsonSerializer.Deserialize<PersonalLoadoutCustomization>(profLoadout.Customization),
                         });
                     }
                 }
@@ -279,7 +283,7 @@ namespace Content.Server.Database
                 ),
                 spawnPriority,
                 jobs,
-                (PreferenceUnavailableMode) profile.PreferenceUnavailable,
+                (PreferenceUnavailableMode)profile.PreferenceUnavailable,
                 antags.ToHashSet(),
                 traits.ToHashSet(),
                 loadouts,
@@ -291,13 +295,16 @@ namespace Content.Server.Database
                     component.Sticky)),
                 profile.Items.Select(item => new PersistentProfileItem(
                     item.Data,
-                    item.Sticky))); // Mono end
+                    item.Sticky))) // Mono end
+                .WithInteractionPanelConsent(InteractionPanelCategory.Erotic, (InteractionPanelConsent)profile.ERPConsent)
+                .WithInteractionPanelConsent(InteractionPanelCategory.NonCon, (InteractionPanelConsent)profile.NonConConsent)
+                .WithInteractionPanelConsent(InteractionPanelCategory.Vore, (InteractionPanelConsent)profile.VoreConsent);
         }
 
         private static Profile ConvertProfiles(HumanoidCharacterProfile humanoid, int slot, Profile? profile = null)
         {
             profile ??= new Profile();
-            var appearance = (HumanoidCharacterAppearance) humanoid.CharacterAppearance;
+            var appearance = (HumanoidCharacterAppearance)humanoid.CharacterAppearance;
             List<string> markingStrings = new();
             foreach (var marking in appearance.Markings)
             {
@@ -320,10 +327,10 @@ namespace Content.Server.Database
             profile.SkinColor = appearance.SkinColor.ToHex();
             profile.Height = appearance.Height;
             profile.Width = appearance.Width;
-            profile.SpawnPriority = (int) humanoid.SpawnPriority;
+            profile.SpawnPriority = (int)humanoid.SpawnPriority;
             profile.Markings = markings;
             profile.Slot = slot;
-            profile.PreferenceUnavailable = (DbPreferenceUnavailableMode) humanoid.PreferenceUnavailable;
+            profile.PreferenceUnavailable = (DbPreferenceUnavailableMode)humanoid.PreferenceUnavailable;
             profile.Company = humanoid.Company;
             // Mono start
             profile.Flags = [..humanoid.Flags];
@@ -340,24 +347,27 @@ namespace Content.Server.Database
                 Sticky = item.Sticky,
             }));
             // Mono end
+            profile.ERPConsent = (int)humanoid.ERPConsent;
+            profile.NonConConsent = (int)humanoid.NonConConsent;
+            profile.VoreConsent = (int)humanoid.VoreConsent;
 
             profile.Jobs.Clear();
             profile.Jobs.AddRange(
                 humanoid.JobPriorities
                     .Where(j => j.Value != JobPriority.Never)
-                    .Select(j => new Job {JobName = j.Key, Priority = (DbJobPriority) j.Value})
+                    .Select(j => new Job { JobName = j.Key, Priority = (DbJobPriority)j.Value })
             );
 
             profile.Antags.Clear();
             profile.Antags.AddRange(
                 humanoid.AntagPreferences
-                    .Select(a => new Antag {AntagName = a})
+                    .Select(a => new Antag { AntagName = a })
             );
 
             profile.Traits.Clear();
             profile.Traits.AddRange(
                 humanoid.TraitPreferences
-                        .Select(t => new Trait {TraitName = t})
+                        .Select(t => new Trait { TraitName = t })
             );
 
             profile.Loadouts.Clear();
@@ -382,6 +392,7 @@ namespace Content.Server.Database
                         profileGroup.Loadouts.Add(new ProfileLoadout()
                         {
                             LoadoutName = loadout.Prototype,
+                            Customization = loadout.Customization == null ? null : JsonSerializer.Serialize(loadout.Customization),
                         });
                     }
 
@@ -1464,7 +1475,7 @@ INSERT INTO player_round (players_id, rounds_id) VALUES ({players[player]}, {id}
                 ban.LastEditedAt,
                 ban.ExpirationTime,
                 ban.Hidden,
-                new [] { ban.RoleId.Replace(BanManager.JobPrefix, null) },
+                new[] { ban.RoleId.Replace(BanManager.JobPrefix, null) },
                 MakePlayerRecord(unbanningAdmin),
                 ban.Unban?.UnbanTime);
         }
@@ -1628,10 +1639,10 @@ INSERT INTO player_round (players_id, rounds_id) VALUES ({players[player]}, {id}
         protected async Task<List<AdminWatchlistRecord>> GetActiveWatchlistsImpl(DbGuard db, Guid player)
         {
             var entities = await (from watchlist in db.DbContext.AdminWatchlists
-                          where watchlist.PlayerUserId == player &&
-                                !watchlist.Deleted &&
-                                (watchlist.ExpirationTime == null || DateTime.UtcNow < watchlist.ExpirationTime)
-                          select watchlist)
+                                  where watchlist.PlayerUserId == player &&
+                                        !watchlist.Deleted &&
+                                        (watchlist.ExpirationTime == null || DateTime.UtcNow < watchlist.ExpirationTime)
+                                  select watchlist)
                 .Include(note => note.Round)
                 .ThenInclude(r => r!.Server)
                 .Include(note => note.CreatedBy)
@@ -1656,9 +1667,9 @@ INSERT INTO player_round (players_id, rounds_id) VALUES ({players[player]}, {id}
         protected async Task<List<AdminMessageRecord>> GetMessagesImpl(DbGuard db, Guid player)
         {
             var entities = await (from message in db.DbContext.AdminMessages
-                        where message.PlayerUserId == player && !message.Deleted &&
-                              (message.ExpirationTime == null || DateTime.UtcNow < message.ExpirationTime)
-                        select message).Include(note => note.Round)
+                                  where message.PlayerUserId == player && !message.Deleted &&
+                                        (message.ExpirationTime == null || DateTime.UtcNow < message.ExpirationTime)
+                                  select message).Include(note => note.Round)
                     .ThenInclude(r => r!.Server)
                     .Include(note => note.CreatedBy)
                     .Include(note => note.LastEditedBy)

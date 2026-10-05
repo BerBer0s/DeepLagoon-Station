@@ -1,0 +1,38 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: BaseMagazineBoxRifle
+  id: MagazineBoxRifle
+  name: ammunition box (.20 rifle)
+  components:
+  - type: BallisticAmmoProvider
+    proto: CartridgeRifle
+  - type: Sprite
+    layers:
+    - state: base
+      map: ["enum.GunVisualLayers.Base"]
+    - state: mag-1
+      map: ["enum.GunVisualLayers.Mag"]
+- type: entity
+  abstract: true
+  parent: BaseMagazineBox
+  id: BaseMagazineBoxRifle
+  components:
+  - type: BallisticAmmoProvider
+    mayTransfer: true
+    whitelist:
+      tags:
+      - CartridgeRifle
+    proto: CartridgeRifle
+    capacity: 50
+  - type: Item
+    size: Small
+  - type: ContainerContainer
+    containers:
+      ballistic-ammo: !type:Container ''
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Ammunition/Boxes/rifle.rsi
+  - type: MagazineVisuals
+    magState: mag
+    steps: 4
+    zeroVisible: false
+  - type: Appearance

@@ -353,7 +353,7 @@ namespace Content.Server.GameTicking
                 if (LobbyEnabled && status == PlayerGameStatus.NotReadyToPlay)
                     continue;
 
-                if (!_playerManager.TryGetSessionById(userId, out _))
+                if (!_playerManager.TryGetSessionById(userId, out var candidate) || !DiscordAdmission.CanEnterRound(candidate))
                     continue;
 
                 total++;
@@ -391,6 +391,7 @@ namespace Content.Server.GameTicking
             {
                 if (LobbyEnabled && status != PlayerGameStatus.ReadyToPlay) continue;
                 if (!_playerManager.TryGetSessionById(userId, out var session)) continue;
+                if (!DiscordAdmission.CanEnterRound(session)) continue;
 
                 if (autoDeAdmin && _adminManager.IsAdmin(session))
                 {
@@ -692,7 +693,6 @@ namespace Content.Server.GameTicking
                 const int MaxEmbedCharacters = 6000;
                 const int MaxFieldsPerEmbed = 25;
                 const int MaxFieldValueLength = 1024;
-                const int MaxFieldNameLength = 256;
 
                 var webhookUrl = _cfg.GetCVar(CCVars.DiscordCrewManifestWebhook);
                 if (string.IsNullOrEmpty(webhookUrl))
@@ -1051,7 +1051,7 @@ namespace Content.Server.GameTicking
             _playerGameStatuses.Clear();
             foreach (var session in _playerManager.Sessions)
             {
-                _playerGameStatuses[session.UserId] = LobbyEnabled ? PlayerGameStatus.NotReadyToPlay : PlayerGameStatus.ReadyToPlay;
+                _playerGameStatuses[session.UserId] = LobbyEnabled || !DiscordAdmission.CanEnterRound(session) ? PlayerGameStatus.NotReadyToPlay : PlayerGameStatus.ReadyToPlay;
             }
         }
 

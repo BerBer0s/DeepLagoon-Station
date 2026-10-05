@@ -1,3 +1,4 @@
+using Content.Shared._DeepLagoon.Loadouts;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Serialization;
 
@@ -12,11 +13,14 @@ public sealed partial class Loadout : IEquatable<Loadout>
     [DataField]
     public ProtoId<LoadoutPrototype> Prototype;
 
+    [DataField]
+    public PersonalLoadoutCustomization? Customization;
+
     public bool Equals(Loadout? other)
     {
         if (ReferenceEquals(null, other)) return false;
         if (ReferenceEquals(this, other)) return true;
-        return Prototype.Equals(other.Prototype);
+        return Prototype.Equals(other.Prototype) && Equals(Customization, other.Customization);
     }
 
     public override bool Equals(object? obj)
@@ -26,6 +30,6 @@ public sealed partial class Loadout : IEquatable<Loadout>
 
     public override int GetHashCode()
     {
-        return Prototype.GetHashCode();
+        return HashCode.Combine(Prototype, Customization);
     }
 }

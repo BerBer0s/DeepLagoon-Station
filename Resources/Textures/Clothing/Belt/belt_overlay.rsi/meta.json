@@ -194,6 +194,9 @@
     {
       "name": "x4-equipped-BELT",
       "directions": 4
+    },
+    {
+      "name": "rpd"
     }
   ]
 }

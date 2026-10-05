@@ -1,0 +1,27 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  id: CartridgeLightRifle
+  name: cartridge (.30 rifle)
+  parent: BaseCartridgeLightRifle
+  components:
+  - type: CartridgeAmmo
+    proto: BulletLightRifle
+- type: entity
+  id: BaseCartridgeLightRifle
+  name: cartridge (.30 rifle)
+  parent: [BaseCartridge, BaseRestrictedContraband]
+  abstract: true
+  components:
+  - type: Tag
+    tags:
+    - Cartridge
+    - CartridgeLightRifle
+  - type: CartridgeAmmo
+    proto: BulletLightRifle
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Ammunition/Casings/ammo_casing.rsi
+    layers:
+    - state: base
+      map: ["enum.AmmoVisualLayers.Base"]
+  - type: Appearance
+  - type: SpentAmmoVisuals

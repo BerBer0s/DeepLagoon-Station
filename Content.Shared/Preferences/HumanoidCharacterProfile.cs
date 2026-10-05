@@ -29,6 +29,7 @@ namespace Content.Shared.Preferences
     {
         private static readonly Regex RestrictedNameRegex = new(@"[^A-Za-z0-9 '\-]");
         private static readonly Regex ICNameCaseRegex = new(@"^(?<word>\w)|\b(?<word>\w)(?=\w*$)");
+        private static readonly Regex RestrictedNameCharactersRegex = new(@"[^\u0041-\u005A,\u0061-\u007A,\u00C0-\u00D6,\u00D8-\u00F6,\u00F8-\u00FF,\u0100-\u017F, -]");
 
         public const int MaxNameLength = 32;
         public const int MaxLoadoutNameLength = 32;
@@ -207,6 +208,7 @@ namespace Content.Shared.Preferences
                 jobPriorities, other.PreferenceUnavailable, antagPreferences, traitPreferences, loadouts, other.Company,
                 other.Flags, other.Components, other.Items) // Mono
         {
+            CopyInteractionPanelPreferences(other);
         }
 
         /// <summary>Copy constructor</summary>
@@ -230,6 +232,7 @@ namespace Content.Shared.Preferences
                 other.Components, // Mono
                 other.Items) // Mono
         {
+            CopyInteractionPanelPreferences(other);
         }
 
         /// <summary>
@@ -436,7 +439,7 @@ namespace Content.Shared.Preferences
         {
             return new(this)
             {
-                _antagPreferences = new (antagPreferences),
+                _antagPreferences = new(antagPreferences),
             };
         }
 
@@ -551,6 +554,7 @@ namespace Content.Shared.Preferences
             if (!Flags.SequenceEqual(other.Flags)) return false; // Mono
             if (!Components.SequenceEqual(other.Components)) return false; // Mono
             if (!Items.SequenceEqual(other.Items)) return false; // Mono
+            if (!InteractionPanelPreferencesEqual(other)) return false;
             if (!_jobPriorities.SequenceEqual(other._jobPriorities)) return false;
             if (!_antagPreferences.SequenceEqual(other._antagPreferences)) return false;
             if (!_traitPreferences.SequenceEqual(other._traitPreferences)) return false;
@@ -575,6 +579,7 @@ namespace Content.Shared.Preferences
 
         public void EnsureValid(ICommonSession session, IDependencyCollection collection)
         {
+            ValidateInteractionPanelPreferences();
             var configManager = collection.Resolve<IConfigurationManager>();
             var prototypeManager = collection.Resolve<IPrototypeManager>();
 
@@ -625,7 +630,7 @@ namespace Content.Shared.Preferences
 
             if (configManager.GetCVar(CCVars.RestrictedNames) && Species != "IPC")
             {
-                name = Regex.Replace(name, @"[^\u0041-\u005A,\u0061-\u007A,\u00C0-\u00D6,\u00D8-\u00F6,\u00F8-\u00FF,\u0100-\u017F, -]", string.Empty);
+                name = RestrictedNameCharactersRegex.Replace(name, string.Empty);
                 /*
                  * 0041-005A  Basic Latin: Uppercase Latin Alphabet
                  * 0061-007A  Basic Latin: Lowercase Latin Alphabet

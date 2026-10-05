@@ -21,6 +21,16 @@ namespace Content.Client.Lobby
         [Dependency] private IPlayerManager _playerManager = default!;
 
         public event Action? OnServerDataLoaded;
+        public event Action<bool>? OnChatPanelSaved;
+        private int _chatPanelRevision;
+
+        public void UpdateChatPanelSettings(string data)
+        {
+            if (Preferences == null || Settings == null || data.Length > MsgChatPanelSettings.MaxLength)
+                return;
+            Preferences.ChatPanelSettings = data;
+            _netManager.ClientSendMessage(new MsgChatPanelSettings { Data = data, Revision = ++_chatPanelRevision });
+        }
 
         public GameSettings Settings { get; private set; } = default!;
         public PlayerPreferences Preferences { get; private set; } = default!;
@@ -31,6 +41,12 @@ namespace Content.Client.Lobby
             _netManager.RegisterNetMessage<MsgUpdateCharacter>();
             _netManager.RegisterNetMessage<MsgSelectCharacter>();
             _netManager.RegisterNetMessage<MsgDeleteCharacter>();
+            _netManager.RegisterNetMessage<MsgChatPanelSettings>();
+            _netManager.RegisterNetMessage<MsgChatPanelSettingsSaved>(msg =>
+            {
+                if (msg.Revision == _chatPanelRevision)
+                    OnChatPanelSaved?.Invoke(msg.Success);
+            });
 
             _baseClient.RunLevelChanged += BaseClientOnRunLevelChanged;
         }
@@ -51,7 +67,7 @@ namespace Content.Client.Lobby
 
         public void SelectCharacter(int slot)
         {
-            Preferences = new PlayerPreferences(Preferences.Characters, slot, Preferences.AdminOOCColor);
+            Preferences = new PlayerPreferences(Preferences.Characters, slot, Preferences.AdminOOCColor, Preferences.ChatPanelSettings);
             var msg = new MsgSelectCharacter
             {
                 SelectedCharacterIndex = slot
@@ -76,8 +92,8 @@ namespace Content.Client.Lobby
             }
 
             profile.EnsureValid(_playerManager.LocalSession!, collection);
-            var characters = new Dictionary<int, ICharacterProfile>(Preferences.Characters) {[slot] = profile};
-            Preferences = new PlayerPreferences(characters, Preferences.SelectedCharacterIndex, Preferences.AdminOOCColor);
+            var characters = new Dictionary<int, ICharacterProfile>(Preferences.Characters) { [slot] = profile };
+            Preferences = new PlayerPreferences(characters, Preferences.SelectedCharacterIndex, Preferences.AdminOOCColor, Preferences.ChatPanelSettings);
             var msg = new MsgUpdateCharacter
             {
                 Profile = profile,
@@ -100,7 +116,7 @@ namespace Content.Client.Lobby
 
             var l = lowest.Value;
             characters.Add(l, profile);
-            Preferences = new PlayerPreferences(characters, Preferences.SelectedCharacterIndex, Preferences.AdminOOCColor);
+            Preferences = new PlayerPreferences(characters, Preferences.SelectedCharacterIndex, Preferences.AdminOOCColor, Preferences.ChatPanelSettings);
 
             UpdateCharacter(profile, l);
         }
@@ -113,7 +129,7 @@ namespace Content.Client.Lobby
         public void DeleteCharacter(int slot)
         {
             var characters = Preferences.Characters.Where(p => p.Key != slot);
-            Preferences = new PlayerPreferences(characters, Preferences.SelectedCharacterIndex, Preferences.AdminOOCColor);
+            Preferences = new PlayerPreferences(characters, Preferences.SelectedCharacterIndex, Preferences.AdminOOCColor, Preferences.ChatPanelSettings);
             var msg = new MsgDeleteCharacter
             {
                 Slot = slot
@@ -151,7 +167,7 @@ namespace Content.Client.Lobby
 
                 if (needsUpdate)
                 {
-                    Preferences = new PlayerPreferences(characters, Preferences.SelectedCharacterIndex, Preferences.AdminOOCColor);
+                    Preferences = new PlayerPreferences(characters, Preferences.SelectedCharacterIndex, Preferences.AdminOOCColor, Preferences.ChatPanelSettings);
 
                     // Update the selected character on the server if needed
                     var selectedIndex = Preferences.SelectedCharacterIndex;

@@ -1,0 +1,65 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: [BaseSecurityCargoContraband, ClothingHandsGlovesCombat]
+  id: ClothingHandsMercGlovesCombat
+  name: mercenary combat gloves
+  description: High-quality combat gloves to protect hands from mechanical damage
+    during combat.
+  components:
+  - type: Sprite
+    sprite: Clothing/Hands/Gloves/mercbattle.rsi
+  - type: Clothing
+    sprite: Clothing/Hands/Gloves/mercbattle.rsi
+  - type: Butcherable
+    butcheringType: Knife
+    spawned:
+    - id: ClothingHandsGlovesMercFingerless
+  - type: Fiber
+    fiberMaterial: fibers-insulative
+    fiberColor: fibers-olive
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.95
+        Slash: 0.95
+        Piercing: 0.95
+- type: entity
+  parent: ClothingHandsGlovesSyntheticBase
+  id: ClothingHandsTacticalMaidGlovesLoadout
+  name: tactical maid gloves
+  description: Tactical maid gloves, every self-respecting maid should be able to
+    discreetly eliminate the stains the passengers leave.
+  components:
+  - type: Sprite
+    sprite: Clothing/Hands/Gloves/tacticalmaidgloves.rsi
+  - type: Clothing
+    sprite: Clothing/Hands/Gloves/tacticalmaidgloves.rsi
+  - type: Fiber
+    fiberColor: fibers-black
+- type: entity
+  parent: ClothingHandsGlovesSyntheticBase
+  id: ClothingHandsGlovesEvening
+  name: evening gloves
+  description: Gloves that reach past the elbow. Serving elegance and serving looks!
+  components:
+  - type: Sprite
+    sprite: Clothing/Hands/Gloves/evening_gloves.rsi
+  - type: Clothing
+    sprite: Clothing/Hands/Gloves/evening_gloves.rsi
+- type: entity
+  parent: ClothingHandsButcherable
+  id: ClothingHandsGlovesFingerlessWhite
+  name: fingerless gloves
+  description: Plain gloves without fingertips.
+  components:
+  - type: Sprite
+    sprite: Clothing/Hands/Gloves/fingerlesswhite.rsi
+  - type: Clothing
+    sprite: Clothing/Hands/Gloves/fingerlesswhite.rsi
+  - type: Fiber
+    fiberMaterial: fibers-synthetic
+    fiberColor: fibers-dyed
+  - type: DamageOnInteractProtection
+    damageProtection:
+      flatReductions:
+        Heat: 0

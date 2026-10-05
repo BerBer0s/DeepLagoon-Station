@@ -1,0 +1,17 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: ClothingOuterStorageToggleableBase
+  id: ClothingOuterCoatRndMysta
+  name: mystagogue lab coat
+  description: Similar to the standard model but with more purple and gold.
+  components:
+  - type: Sprite
+    sprite: DeltaV/Clothing/OuterClothing/Coats/mystacoat.rsi
+  - type: Clothing
+    sprite: DeltaV/Clothing/OuterClothing/Coats/mystacoat.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Caustic: 0.75
+  - type: ToggleableClothing
+    clothingPrototype: ClothingHeadHoodMysta

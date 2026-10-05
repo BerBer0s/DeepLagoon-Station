@@ -1,0 +1,25 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: PillCanister
+  id: PillCanisterSpaceDrugs
+  suffix: Space Drugs, 5
+  components:
+  - type: Label
+    currentLabel: LSD 15u
+  - type: StorageFill
+    contents:
+    - id: PillSpaceDrugs
+      amount: 5
+  - type: GuideHelp
+    guides: [Psionics]
+- type: entity
+  parent: PillCanister
+  id: PillCanisterPax
+  suffix: Pax, 5
+  components:
+  - type: Label
+    currentLabel: Pax 10u
+  - type: StorageFill
+    contents:
+    - id: PillPax
+      amount: 5

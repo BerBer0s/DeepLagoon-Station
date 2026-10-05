@@ -1,4 +1,4 @@
-﻿using Content.Client.Stylesheets;
+using Content.Client.Stylesheets;
 using Content.Shared.Chat;
 using Content.Shared.Input;
 using Robust.Client.UserInterface.Controls;
@@ -27,7 +27,7 @@ public class ChatInputBox : PanelContainer
         {
             Name = "ChannelSelector",
             ToggleMode = true,
-            StyleClasses = {"chatSelectorOptionButton"},
+            StyleClasses = { "chatSelectorOptionButton" },
             MinWidth = 75
         };
         Container.AddChild(ChannelSelector);
@@ -36,13 +36,13 @@ public class ChatInputBox : PanelContainer
             Name = "Input",
             PlaceHolder = GetChatboxInfoPlaceholder(),
             HorizontalExpand = true,
-            StyleClasses = {"chatLineEdit"}
+            StyleClasses = { "chatLineEdit" }
         };
         Container.AddChild(Input);
         FilterButton = new ChannelFilterButton
         {
             Name = "FilterButton",
-            StyleClasses = {"chatFilterOptionButton"}
+            StyleClasses = { "chatFilterOptionButton" }
         };
         Container.AddChild(FilterButton);
         AddStyleClass(StyleNano.StyleClassChatSubPanel);
@@ -51,7 +51,19 @@ public class ChatInputBox : PanelContainer
 
     private void UpdateActiveChannel(ChatSelectChannel selectedChannel)
     {
-        ActiveChannel = (ChatChannel) selectedChannel;
+        ActiveChannel = (ChatChannel)selectedChannel;
+    }
+
+    public void UseCompactLayout()
+    {
+        Container.RemoveAllChildren();
+        Container.Orientation = BoxContainer.LayoutOrientation.Vertical;
+        var channelRow = new BoxContainer { HorizontalExpand = true };
+        ChannelSelector.HorizontalExpand = true;
+        channelRow.AddChild(ChannelSelector);
+        channelRow.AddChild(FilterButton);
+        Container.AddChild(Input);
+        Container.AddChild(channelRow);
     }
 
     private static string GetChatboxInfoPlaceholder()

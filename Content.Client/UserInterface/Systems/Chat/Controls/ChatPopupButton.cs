@@ -1,4 +1,4 @@
-﻿using Robust.Client.UserInterface;
+using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controls;
 using Robust.Shared.Timing;
 
@@ -51,7 +51,9 @@ public abstract class ChatPopupButton<TPopup> : Button
     {
         if (args.Pressed)
         {
-            Popup.Open(GetPopupPosition());
+            // At the bottom of the screen, place the menu above its button so
+            // clamping does not cover the toggle and intercept the next click.
+            Popup.Open(GetPopupPosition(), altPosUp: GlobalPosition);
         }
         else
         {

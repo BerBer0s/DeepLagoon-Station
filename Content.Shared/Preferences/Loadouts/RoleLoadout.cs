@@ -157,6 +157,8 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
                     // continue; // Frontier: commented out old implementation
                 }
 
+                loadout.Customization = collection.Resolve<IEntityManager>().System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().Sanitize(loadoutProto, loadout.Customization);
+
                 // Validate the loadout can be applied (e.g. points).
                 if (!IsValid(profile, session, loadout.Prototype, collection, out _))
                 {
@@ -381,7 +383,8 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
         // Frontier: add hide effects
         foreach (var effect in loadoutProto.HideEffects)
         {
-            if (!effect.Validate(profile, this, session, collection, out var _)) {
+            if (!effect.Validate(profile, this, session, collection, out var _))
+            {
                 return true;
             }
         }

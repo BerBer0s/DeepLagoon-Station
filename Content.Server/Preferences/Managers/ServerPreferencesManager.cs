@@ -38,12 +38,19 @@ namespace Content.Server.Preferences.Managers
 
         private int MaxCharacterSlots => _cfg.GetCVar(CCVars.GameMaxCharacterSlots);
 
+        private int CharacterSlotLimit(NetUserId userId)
+            => _cachedPlayerPrefs.TryGetValue(userId, out var data) && data.Prefs != null
+                ? Math.Max(MaxCharacterSlots, data.Prefs.Characters.Keys.DefaultIfEmpty(-1).Max() + 1)
+                : MaxCharacterSlots;
+
         public void Init()
         {
             _netManager.RegisterNetMessage<MsgPreferencesAndSettings>();
             _netManager.RegisterNetMessage<MsgSelectCharacter>(HandleSelectCharacterMessage);
             _netManager.RegisterNetMessage<MsgUpdateCharacter>(HandleUpdateCharacterMessage);
             _netManager.RegisterNetMessage<MsgDeleteCharacter>(HandleDeleteCharacterMessage);
+            _netManager.RegisterNetMessage<MsgChatPanelSettings>(HandleChatPanelSettings);
+            _netManager.RegisterNetMessage<MsgChatPanelSettingsSaved>();
             _sawmill = _log.GetSawmill("prefs");
         }
 
@@ -54,11 +61,11 @@ namespace Content.Server.Preferences.Managers
 
             if (!_cachedPlayerPrefs.TryGetValue(userId, out var prefsData) || !prefsData.PrefsLoaded)
             {
-                Logger.WarningS("prefs", $"User {userId} tried to modify preferences before they loaded.");
+                _sawmill.Warning("prefs", $"User {userId} tried to modify preferences before they loaded.");
                 return;
             }
 
-            if (index < 0 || index >= MaxCharacterSlots)
+            if (index < 0 || index >= CharacterSlotLimit(userId))
             {
                 return;
             }
@@ -71,7 +78,7 @@ namespace Content.Server.Preferences.Managers
                 return;
             }
 
-            prefsData.Prefs = new PlayerPreferences(curPrefs.Characters, index, curPrefs.AdminOOCColor);
+            prefsData.Prefs = new PlayerPreferences(curPrefs.Characters, index, curPrefs.AdminOOCColor, curPrefs.ChatPanelSettings);
 
             if (ShouldStorePrefs(message.MsgChannel.AuthType))
             {
@@ -99,7 +106,7 @@ namespace Content.Server.Preferences.Managers
                 return;
             }
 
-            if (slot < 0 || slot >= MaxCharacterSlots)
+            if (slot < 0 || slot >= CharacterSlotLimit(userId))
                 return;
 
             var curPrefs = prefsData.Prefs!;
@@ -125,7 +132,7 @@ namespace Content.Server.Preferences.Managers
                 [slot] = profile
             };
 
-            prefsData.Prefs = new PlayerPreferences(profiles, slot, curPrefs.AdminOOCColor);
+            prefsData.Prefs = new PlayerPreferences(profiles, slot, curPrefs.AdminOOCColor, curPrefs.ChatPanelSettings);
 
             if (ShouldStorePrefs(session.Channel.AuthType))
                 await _db.SaveCharacterSlotAsync(userId, profile, slot);
@@ -138,11 +145,11 @@ namespace Content.Server.Preferences.Managers
 
             if (!_cachedPlayerPrefs.TryGetValue(userId, out var prefsData) || !prefsData.PrefsLoaded)
             {
-                Logger.WarningS("prefs", $"User {userId} tried to modify preferences before they loaded.");
+                _sawmill.Warning("prefs", $"User {userId} tried to modify preferences before they loaded.");
                 return;
             }
 
-            if (slot < 0 || slot >= MaxCharacterSlots)
+            if (slot < 0 || slot >= CharacterSlotLimit(userId))
             {
                 return;
             }
@@ -168,7 +175,7 @@ namespace Content.Server.Preferences.Managers
             var arr = new Dictionary<int, ICharacterProfile>(curPrefs.Characters);
             arr.Remove(slot);
 
-            prefsData.Prefs = new PlayerPreferences(arr, nextSlot ?? curPrefs.SelectedCharacterIndex, curPrefs.AdminOOCColor);
+            prefsData.Prefs = new PlayerPreferences(arr, nextSlot ?? curPrefs.SelectedCharacterIndex, curPrefs.AdminOOCColor, curPrefs.ChatPanelSettings);
 
             if (ShouldStorePrefs(message.MsgChannel.AuthType))
             {
@@ -193,7 +200,7 @@ namespace Content.Server.Preferences.Managers
                 {
                     PrefsLoaded = true,
                     Prefs = new PlayerPreferences(
-                        new[] {new KeyValuePair<int, ICharacterProfile>(0, HumanoidCharacterProfile.Random())},
+                        new[] { new KeyValuePair<int, ICharacterProfile>(0, HumanoidCharacterProfile.Random()) },
                         0, Color.Transparent)
                 };
 
@@ -230,7 +237,7 @@ namespace Content.Server.Preferences.Managers
             msg.Preferences = prefsData.Prefs;
             msg.Settings = new GameSettings
             {
-                MaxCharacterSlots = MaxCharacterSlots
+                MaxCharacterSlots = CharacterSlotLimit(session.UserId)
             };
             _netManager.ServerSendMessage(msg, session.Channel);
 
@@ -332,7 +339,7 @@ namespace Content.Server.Preferences.Managers
                         Preferences = prefs,
                         Settings = new GameSettings
                         {
-                            MaxCharacterSlots = MaxCharacterSlots
+                            MaxCharacterSlots = CharacterSlotLimit(session.UserId)
                         }
                     };
 
@@ -350,7 +357,7 @@ namespace Content.Server.Preferences.Managers
             return new PlayerPreferences(prefs.Characters.Select(p =>
             {
                 return new KeyValuePair<int, ICharacterProfile>(p.Key, p.Value.Validated(session, collection));
-            }), prefs.SelectedCharacterIndex, prefs.AdminOOCColor);
+            }), prefs.SelectedCharacterIndex, prefs.AdminOOCColor, prefs.ChatPanelSettings);
         }
 
         public IEnumerable<KeyValuePair<NetUserId, ICharacterProfile>> GetSelectedProfilesForPlayers(

@@ -96,9 +96,9 @@ public sealed partial class GhostGui : UIWidget
     {
         base.Dispose(disposing);
 
-        if (disposing)
-        {
-            TargetWindow.Dispose();
-        }
+        if (!disposing)
+            return;
+
+        TargetWindow?.Dispose();
     }
 }

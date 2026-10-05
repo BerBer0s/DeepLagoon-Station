@@ -1,0 +1,13 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  id: BaseIntegratedMagboot
+  name: integrated magboots
+  description: A set of magnetic locks integrated into a suit.
+  abstract: true
+  components:
+  - type: ToggleClothing
+    action: ActionToggleMagboots
+  - type: Magboots
+    slot: outerClothing
+  - type: ItemToggle
+    onUse: false

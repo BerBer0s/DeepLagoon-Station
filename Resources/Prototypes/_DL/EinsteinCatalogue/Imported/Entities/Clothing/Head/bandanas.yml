@@ -1,0 +1,5 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: [ClothingHeadBandBase, ClothingMaskBandWhite]
+  id: ClothingHeadBandWhite
+  name: bandana

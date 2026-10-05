@@ -1,0 +1,33 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  name: energy cutlass
+  parent: EnergyCutlass
+  id: EnergyCutlassSecurity
+  description: A sleek energy weapon, its blade hums with volatile plasma, expertly
+    contained to cut through nearly any material. The serial number on the hilt marks
+    this gun as belonging to an NT Security Officer.
+  suffix: Security Loadouts
+  components:
+  - type: MeleeWeapon
+    attackRate: 1.25
+  - type: ItemToggleMeleeWeapon
+    activatedDamage:
+      types:
+        Slash: 5
+        Heat: 12
+        Structural: 20
+  - type: GuideHelp
+    guides: [SecurityWeapons]
+- type: entity
+  name: antique energy sword
+  parent: EnergySword
+  id: EnergySwordHoS
+  description: An elegant weapon fit for a prince, this otherwise plain silver hilt
+    is engraved with, "My Love".
+  components:
+  - type: EnergySword
+    activatedColor: "#00CCFF"
+    colorOptions:
+    - "#00CCFF"
+  - type: StealTarget
+    stealGroup: HoSAntiqueWeapon

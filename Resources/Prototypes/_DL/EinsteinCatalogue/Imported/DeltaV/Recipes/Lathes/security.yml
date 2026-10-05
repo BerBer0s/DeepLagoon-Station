@@ -1,0 +1,34 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: latheRecipe
+  id: CartridgeSpecial
+  result: CartridgeSpecial
+  category: Ammo
+  completetime: 2
+  materials:
+    Steel: 20
+- type: latheRecipe
+  id: SpeedLoaderSpecial
+  result: SpeedLoaderSpecial
+  category: Ammo
+  completetime: 5
+  materials:
+    Steel: 200
+- type: latheRecipe
+  id: WeaponEnergyGunPistol
+  result: WeaponEnergyGunPistol
+  category: Weapons
+  completetime: 10
+  materials:
+    Steel: 1500
+    Glass: 600
+    Plastic: 400
+    Gold: 150
+- type: latheRecipe
+  id: WeaponEnergyGunMini
+  result: WeaponEnergyGunMini
+  category: Weapons
+  completetime: 4
+  materials:
+    Steel: 1000
+    Glass: 400
+    Plastic: 250

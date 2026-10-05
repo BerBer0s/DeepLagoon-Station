@@ -1,0 +1,34 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  id: ClothingBeltMedicalAdvancedFilled
+  parent: ClothingBeltMedical
+  suffix: Filled
+  components:
+  - type: StorageFill
+    contents:
+    - id: MedicatedSuture
+      amount: 2
+    - id: RegenerativeMesh
+      amount: 1
+    - id: Bloodpack
+      amount: 1
+    - id: Gauze
+    - id: EmergencyMedipen
+    - id: BruteAutoInjector
+    - id: BurnAutoInjector
+    - id: PainMedipen
+- type: entity
+  id: ClothingBeltUtilityAtmos
+  parent: ClothingBeltUtility
+  suffix: Engineering
+  components:
+  - type: StorageFill
+    contents:
+    - id: Crowbar
+    - id: Wrench
+    - id: Screwdriver
+    - id: Wirecutter
+    - id: Welder
+    - id: Multitool
+    - id: GasAnalyzer
+    - id: HolofanProjector

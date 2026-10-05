@@ -5,6 +5,7 @@ using Content.Shared.CCVar;
 using Content.Shared.Decals;
 using Content.Shared.Examine;
 using Content.Shared.Humanoid.Markings;
+using Content.Shared.Sprite;
 using Content.Shared._Shitmed.Humanoid.Events; // Shitmed Change
 using Content.Shared.Humanoid.Prototypes;
 using Content.Shared.IdentityManagement;
@@ -41,6 +42,8 @@ public abstract partial class SharedHumanoidAppearanceSystem : EntitySystem
     [Dependency] private ISerializationManager _serManager = default!;
     [Dependency] private MarkingManager _markingManager = default!;
     [Dependency] private SharedAppearanceSystem _appearance = default!;
+
+    [Dependency] private GrammarSystem _grammar = default!;
 
     [ValidatePrototypeId<SpeciesPrototype>]
     public const string DefaultSpecies = "Human";
@@ -169,7 +172,7 @@ public abstract partial class SharedHumanoidAppearanceSystem : EntitySystem
 
         targetHumanoid.Gender = sourceHumanoid.Gender;
         if (TryComp<GrammarComponent>(target, out var grammar))
-            grammar.Gender = sourceHumanoid.Gender;
+            _grammar.SetGender((target, grammar), sourceHumanoid.Gender);
 
         // Apply scaling (height and width)
         if (sourceHumanoid.Height != 1.0f || sourceHumanoid.Width != 1.0f)
@@ -458,7 +461,7 @@ public abstract partial class SharedHumanoidAppearanceSystem : EntitySystem
         humanoid.Gender = profile.Gender;
         if (TryComp<GrammarComponent>(uid, out var grammar))
         {
-            grammar.Gender = profile.Gender;
+            _grammar.SetGender((uid, grammar), profile.Gender);
         }
 
         humanoid.Age = profile.Age;
@@ -473,6 +476,8 @@ public abstract partial class SharedHumanoidAppearanceSystem : EntitySystem
             _appearance.SetData(uid, ScaleVisuals.Scale, new Vector2(profile.Appearance.Width, profile.Appearance.Height), appearance);
         }
 
+        var interactionPanelProfile = new Content.Shared._DeepLagoon.InteractionPanel.InteractionPanelProfileLoadedEvent(profile);
+        RaiseLocalEvent(uid, ref interactionPanelProfile);
         RaiseLocalEvent(uid, new ProfileLoadFinishedEvent()); // Shitmed Change
         Dirty(uid, humanoid);
     }

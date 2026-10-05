@@ -1,0 +1,11 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  id: BulletRifle
+  name: bullet (0.20 rifle)
+  parent: BaseBullet
+  categories: [HideSpawnMenu]
+  components:
+  - type: Projectile
+    damage:
+      types:
+        Piercing: 23

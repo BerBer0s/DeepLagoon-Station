@@ -1,0 +1,37 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: AmmoProviderShotgunShell
+  id: BoxBeanbag
+  name: shell box (beanbag)
+  components:
+  - type: BallisticAmmoProvider
+    proto: ShellShotgunBeanbag
+  - type: MagazineVisuals
+    magState: mag-beanbag
+    steps: 5
+    zeroVisible: false
+  - type: Sprite
+    layers:
+    - state: base
+      map: ["enum.GunVisualLayers.Base"]
+    - state: mag-beanbag-1
+      map: ["enum.GunVisualLayers.Mag"]
+    - state: beanbag
+- type: entity
+  parent: BaseAmmoProvider
+  id: AmmoProviderShotgunShell
+  abstract: true
+  components:
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Ammunition/Boxes/shotgun.rsi
+  - type: BallisticAmmoProvider
+    mayTransfer: true
+    whitelist:
+      tags:
+      - ShellShotgun
+    capacity: 16
+  - type: MagazineVisuals
+    magState: mag
+    steps: 5
+    zeroVisible: false
+  - type: Appearance
