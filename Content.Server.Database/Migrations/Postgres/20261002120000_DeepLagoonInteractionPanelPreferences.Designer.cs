@@ -15,7 +15,7 @@ using NpgsqlTypes;
 namespace Content.Server.Database.Migrations.Postgres
 {
     [DbContext(typeof(PostgresServerDbContext))]
-    [Migration("20261002120000_DeepLagoonInteractionPanelPreferences")]
+    [Migration("20261002120000_DeepLagoonSocialPreferences")]
     partial class DeepLagoonInteractionPanelPreferences
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
