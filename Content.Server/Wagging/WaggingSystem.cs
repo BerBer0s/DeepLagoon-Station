@@ -1,5 +1,7 @@
-﻿using Content.Server.Actions;
+using Content.Shared.Mobs.Components;
+using Content.Server.Actions;
 using Content.Server.Humanoid;
+using Content.Shared.GameTicking;
 using Content.Shared.Humanoid;
 using Content.Shared.Humanoid.Markings;
 using Content.Shared.Mobs;
@@ -21,82 +23,72 @@ public sealed partial class WaggingSystem : EntitySystem
     public override void Initialize()
     {
         base.Initialize();
-
-        SubscribeLocalEvent<WaggingComponent, MapInitEvent>(OnWaggingMapInit);
-        SubscribeLocalEvent<WaggingComponent, ComponentShutdown>(OnWaggingShutdown);
-        SubscribeLocalEvent<WaggingComponent, ToggleActionEvent>(OnWaggingToggle);
+        SubscribeLocalEvent<WaggingComponent, ComponentStartup>(OnStartup);
+        SubscribeLocalEvent<WaggingComponent, ComponentShutdown>(OnShutdown);
+        SubscribeLocalEvent<WaggingComponent, ToggleActionEvent>(OnToggle);
         SubscribeLocalEvent<WaggingComponent, MobStateChangedEvent>(OnMobStateChanged);
+        SubscribeLocalEvent<PlayerSpawnCompleteEvent>(OnPlayerSpawned);
     }
 
-    private void OnWaggingMapInit(EntityUid uid, WaggingComponent component, MapInitEvent args)
+    private void OnPlayerSpawned(PlayerSpawnCompleteEvent args)
     {
-        _actions.AddAction(uid, ref component.ActionEntity, component.Action, uid);
+        if (TryComp<HumanoidAppearanceComponent>(args.Mob, out var humanoid) && HasTail(humanoid))
+            EnsureComp<WaggingComponent>(args.Mob);
     }
 
-    private void OnWaggingShutdown(EntityUid uid, WaggingComponent component, ComponentShutdown args)
+    private bool HasTail(HumanoidAppearanceComponent humanoid)
     {
-        _actions.RemoveAction(uid, component.ActionEntity);
+        if (!humanoid.MarkingSet.Markings.TryGetValue(MarkingCategories.Tail, out var markings))
+            return false;
+        foreach (var marking in markings)
+        {
+            if (_prototype.TryIndex<MarkingPrototype>(marking.MarkingId, out var proto) && proto.BodyPart == HumanoidVisualLayers.Tail)
+                return true;
+        }
+        return false;
     }
 
-    private void OnWaggingToggle(EntityUid uid, WaggingComponent component, ref ToggleActionEvent args)
-    {
-        if (args.Handled)
-            return;
+    private void OnStartup(EntityUid uid, WaggingComponent component, ComponentStartup args)
+        => _actions.AddAction(uid, ref component.ActionEntity, component.Action, uid);
 
-        TryToggleWagging(uid, wagging: component);
+    private void OnShutdown(EntityUid uid, WaggingComponent component, ComponentShutdown args)
+        => _actions.RemoveAction(uid, component.ActionEntity);
+
+    private void OnToggle(EntityUid uid, WaggingComponent component, ref ToggleActionEvent args)
+    {
+        if (!args.Handled)
+            args.Handled = TryToggleWagging(uid, wagging: component);
     }
 
     private void OnMobStateChanged(EntityUid uid, WaggingComponent component, MobStateChangedEvent args)
     {
-        if (component.Wagging)
+        if (component.Wagging && args.NewMobState != MobState.Alive)
             TryToggleWagging(uid, wagging: component);
     }
 
     public bool TryToggleWagging(EntityUid uid, WaggingComponent? wagging = null, HumanoidAppearanceComponent? humanoid = null)
     {
-        if (!Resolve(uid, ref wagging, ref humanoid))
+        if (!Resolve(uid, ref wagging, ref humanoid) || !HasTail(humanoid))
             return false;
-
-        if (!humanoid.MarkingSet.Markings.TryGetValue(MarkingCategories.Tail, out var markings))
-            return false;
-
-        if (markings.Count == 0)
+        if (!wagging.Wagging && TryComp<MobStateComponent>(uid, out var mob) && mob.CurrentState != MobState.Alive)
             return false;
 
         wagging.Wagging = !wagging.Wagging;
+        _actions.SetToggled(wagging.ActionEntity, wagging.Wagging);
+        Dirty(uid, wagging);
 
-        for (var idx = 0; idx < markings.Count; idx++) // Animate all possible tails
+        var markings = humanoid.MarkingSet.Markings[MarkingCategories.Tail];
+        for (var idx = 0; idx < markings.Count; idx++)
         {
-            var currentMarkingId = markings[idx].MarkingId;
-            string newMarkingId;
-
-            if (wagging.Wagging)
-            {
-                newMarkingId = $"{currentMarkingId}{wagging.Suffix}";
-            }
-            else
-            {
-                if (currentMarkingId.EndsWith(wagging.Suffix))
-                {
-                    newMarkingId = currentMarkingId[..^wagging.Suffix.Length];
-                }
-                else
-                {
-                    newMarkingId = currentMarkingId;
-                    Log.Warning($"Unable to revert wagging for {currentMarkingId}");
-                }
-            }
-
-            if (!_prototype.HasIndex<MarkingPrototype>(newMarkingId))
-            {
-                Log.Warning($"{ToPrettyString(uid)} tried toggling wagging but {newMarkingId} marking doesn't exist");
+            var current = markings[idx].MarkingId;
+            if (!_prototype.TryIndex<MarkingPrototype>(current, out var proto) || proto.BodyPart != HumanoidVisualLayers.Tail)
                 continue;
-            }
-
-            _humanoidAppearance.SetMarkingId(uid, MarkingCategories.Tail, idx, newMarkingId,
-                humanoid: humanoid);
+            var target = wagging.Wagging
+                ? current.EndsWith(wagging.Suffix) ? current : current + wagging.Suffix
+                : current.EndsWith(wagging.Suffix) ? current[..^wagging.Suffix.Length] : current;
+            if (current != target && _prototype.HasIndex<MarkingPrototype>(target))
+                _humanoidAppearance.SetMarkingId(uid, MarkingCategories.Tail, idx, target, humanoid: humanoid);
         }
-
         return true;
     }
 }

@@ -1,0 +1,10 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: soundCollection
+  id: FootstepTacticalWebbing
+  files:
+  - /Audio/Effects/Footsteps/gear1.ogg
+  - /Audio/Effects/Footsteps/gear2.ogg
+  - /Audio/Effects/Footsteps/gear3.ogg
+  - /Audio/Effects/Footsteps/gear4.ogg
+  - /Audio/Effects/Footsteps/gear5.ogg
+  - /Audio/Effects/Footsteps/gear6.ogg

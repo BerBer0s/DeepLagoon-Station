@@ -1,0 +1,13 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+# Shitmed Recipes
+
+- type: latheRecipe
+  id: OmnimedTool
+  result: OmnimedTool
+  completetime: 2
+  materials:
+    Steel: 1200
+    Glass: 300
+    Gold: 300
+    Silver: 300
+    Plasma: 300

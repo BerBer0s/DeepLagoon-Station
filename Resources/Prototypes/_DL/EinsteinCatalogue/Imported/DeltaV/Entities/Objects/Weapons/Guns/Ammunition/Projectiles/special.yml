@@ -1,0 +1,11 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  id: BulletSpecial
+  name: bullet (.38 special)
+  parent: BaseBullet
+  categories: [HideSpawnMenu]
+  components:
+  - type: Projectile
+    damage:
+      types:
+        Piercing: 30

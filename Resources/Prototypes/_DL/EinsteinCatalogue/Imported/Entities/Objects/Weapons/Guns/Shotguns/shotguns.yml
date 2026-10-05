@@ -1,0 +1,20 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: WeaponShotgunSawn
+  id: WeaponShotgunSawnLumen
+  suffix: Lumenblast
+  description: Groovy! Uses .50 shotgun shells.
+  components:
+  - type: BallisticAmmoProvider
+    capacity: 2
+    proto: ShellShotgunLumen
+- type: entity
+  name: antique Bulldog
+  parent: WeaponShotgunBulldog
+  id: WeaponShotgunBulldogHoS
+  description: This is a seemingly ordinary shotgun, no different from those issued
+    as standard in the Republic of Biesel Navy. A close inspection reveals that this
+    weapon's serial number is 000000013.
+  components:
+  - type: StealTarget
+    stealGroup: HoSAntiqueWeapon

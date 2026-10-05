@@ -1,0 +1,22 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: ClothingOuterWinterCoat
+  id: ClothingOuterCorporateJacket
+  name: Nanotrasen Corporate Jacket
+  description: A cozy jacket with the Nanotrasen logo printed on the back. Merchandise
+    rewarded to stations with a safety factor of uhh... seven.
+  components:
+  - type: Sprite
+    sprite: DeltaV/Clothing/OuterClothing/WinterCoats/corpo_jacket.rsi
+  - type: Clothing
+    sprite: DeltaV/Clothing/OuterClothing/WinterCoats/corpo_jacket.rsi
+- type: entity
+  parent: ClothingOuterWinterCoat
+  id: ClothingOuterDenimJacket
+  name: Denim jacket
+  description: A jean jacket with a warm inner lining.
+  components:
+  - type: Sprite
+    sprite: DeltaV/Clothing/OuterClothing/WinterCoats/denim_jacket.rsi
+  - type: Clothing
+    sprite: DeltaV/Clothing/OuterClothing/WinterCoats/denim_jacket.rsi

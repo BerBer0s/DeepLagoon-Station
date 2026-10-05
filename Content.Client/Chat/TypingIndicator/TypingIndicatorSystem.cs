@@ -63,6 +63,8 @@ public sealed partial class TypingIndicatorSystem : SharedTypingIndicatorSystem
     {
         base.Update(frameTime);
 
+        // This state tracks UI input, rather than predicted entity state. Do not
+        // expire it while replaying an earlier tick during reconciliation.
         if (!_time.IsFirstTimePredicted)
             return;
 
@@ -90,7 +92,7 @@ public sealed partial class TypingIndicatorSystem : SharedTypingIndicatorSystem
             state = _isClientTyping ? TypingIndicatorState.Typing : TypingIndicatorState.Idle;
 
         // send a networked event to server
-        RaisePredictiveEvent(new TypingChangedEvent(state));
+        RaiseNetworkEvent(new TypingChangedEvent(state));
     }
 
     private void OnShowTypingChanged(bool showTyping)

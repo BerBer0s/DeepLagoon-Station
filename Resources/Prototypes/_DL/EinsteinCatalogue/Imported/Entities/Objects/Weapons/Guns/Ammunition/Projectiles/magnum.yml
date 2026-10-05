@@ -1,0 +1,11 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  id: BulletMagnum
+  name: bullet (.45 magnum)
+  parent: BaseBullet
+  categories: [HideSpawnMenu]
+  components:
+  - type: Projectile
+    damage:
+      types:
+        Piercing: 25

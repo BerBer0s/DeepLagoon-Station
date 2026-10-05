@@ -62,10 +62,12 @@ public sealed partial class CharacterPickerButton : ContainerButton
         }
 
         Pressed = isSelected;
+        SelectionMarker.Visible = isSelected;
         DeleteButton.Visible = !isSelected;
 
         View.SetEntity(_previewDummy);
         DescriptionLabel.Text = description;
+        ToolTip = description;
 
         ConfirmDeleteButton.OnPressed += _ =>
         {
@@ -81,11 +83,9 @@ public sealed partial class CharacterPickerButton : ContainerButton
         };
     }
 
-    protected override void Dispose(bool disposing)
+    protected override void ExitedTree()
     {
-        base.Dispose(disposing);
-        if (!disposing)
-            return;
+        base.ExitedTree();
 
         _entManager.DeleteEntity(_previewDummy);
         _previewDummy = default;

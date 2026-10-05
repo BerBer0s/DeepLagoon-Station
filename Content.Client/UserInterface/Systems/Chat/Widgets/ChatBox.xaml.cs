@@ -28,6 +28,7 @@ public partial class ChatBox : UIWidget
     public bool Main { get; set; }
 
     public ChatSelectChannel SelectedChannel => ChatInput.ChannelSelector.SelectedChannel;
+    private bool _changingDraftChannel;
     // WD EDIT START
     private bool _coalescence = false; // op ult btw
     private (string, Color)? _lastLine;
@@ -71,14 +72,17 @@ public partial class ChatBox : UIWidget
 
     private void OnMessageAdded(ChatMessage msg)
     {
-        Logger.DebugS("chat", $"{msg.Channel}: {msg.Message}");
+        Logger.GetSawmill("chat").Debug($"{msg.Channel}: {msg.Message}");
         if (!ChatInput.FilterButton.Popup.IsActive(msg.Channel))
         {
             return;
         }
+        if (!string.IsNullOrWhiteSpace(_searchText) &&
+            !ChatHighlight.PlainText(FormattedMessage.FromMarkupPermissive(msg.WrappedMessage)).Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+            return;
 
         if (msg is { Read: false, AudioPath: { } })
-            _entManager.System<AudioSystem>().PlayGlobal(msg.AudioPath, Filter.Local(), false, AudioParams.Default.WithVolume(msg.AudioVolume));
+            _entManager.System<AudioSystem>().PlayGlobal(new ResolvedPathSpecifier(new ResPath(msg.AudioPath)), Filter.Local(), false, AudioParams.Default.WithVolume(msg.AudioVolume));
 
         msg.Read = true;
 
@@ -104,31 +108,50 @@ public partial class ChatBox : UIWidget
             _lastLine = (msg.WrappedMessage, color);
             AddLine(msg.WrappedMessage, color, _lastLineRepeatCount);
         } // WD EDIT END
+        if (_searchCount != null && SearchBar.Visible)
+            _searchCount.Text = Loc.GetString("chat-panel-search-count", ("count", Contents.EntryCount));
     }
 
     private void OnChannelSelect(ChatSelectChannel channel)
     {
+        // An explicit selection takes precedence over a prefix in the draft.
+        // Otherwise UpdateSelectedChannel immediately restores the previous label,
+        // and SendMessage still sends to the prefixed channel.
+        var input = ChatInput.Input;
+        var text = input.Text.TrimStart();
+        if (_controller.SplitInputContents(text).chatChannel != ChatSelectChannel.None &&
+            text.Length > 0 && ChatUIController.PrefixToChannel.ContainsKey(text[0]))
+        {
+            _changingDraftChannel = true;
+            try
+            {
+                input.SetText(text[1..].TrimStart());
+            }
+            finally
+            {
+                _changingDraftChannel = false;
+            }
+        }
         _controller.UpdateSelectedChannel(this);
     }
 
     public void Repopulate()
     {
         Contents.Clear();
+        _lastLine = null;
+        _lastLineRepeatCount = 0;
 
         foreach (var message in _controller.History)
         {
             OnMessageAdded(message.Item2);
         }
+        if (_searchCount != null) _searchCount.Text = Loc.GetString("chat-panel-search-count", ("count", Contents.EntryCount));
     }
 
     private void OnChannelFilter(ChatChannel channel, bool active)
     {
-        Contents.Clear();
-
-        foreach (var message in _controller.History)
-        {
-            OnMessageAdded(message.Item2);
-        }
+        SaveActiveTabFilters();
+        Repopulate();
 
         if (active)
         {
@@ -155,15 +178,19 @@ public partial class ChatBox : UIWidget
     {
         var formatted = new FormattedMessage(4); // WD EDIT // specifying size beforehand smells like a useless microoptimisation, but i'll give them the benefit of doubt
         formatted.PushColor(color);
-        formatted.AddMarkupOrThrow(message);
+        var source = FormattedMessage.FromMarkupPermissive(message);
+        formatted.AddMessage(_tabs != null
+            ? ChatHighlight.Apply(source, _tabs.Appearance.HighlightWords, _tabs.Appearance.WholeWords,
+                Color.FromHex(_tabs.Appearance.HighlightColor), _searchText)
+            : source);
         formatted.Pop();
-        if(repeat != 0) // WD EDIT START
+        if (repeat != 0) // WD EDIT START
         {
             int displayRepeat = repeat + 1;
             int sizeIncrease = Math.Min(displayRepeat / 6, 5);
-            formatted.AddMarkup(_loc.GetString("chat-system-repeated-message-counter",
+            formatted.AddMarkupOrThrow(_loc.GetString("chat-system-repeated-message-counter",
                 ("count", displayRepeat),
-                ("size", 8+sizeIncrease)
+                ("size", 8 + sizeIncrease)
             ));
         } // WD EDIT END
         Contents.AddMessage(formatted, tagsAllowed: null);
@@ -236,7 +263,8 @@ public partial class ChatBox : UIWidget
         _controller.UpdateSelectedChannel(this);
 
         // Warn typing indicator about change
-        _controller.NotifyChatTextChange();
+        if (!_changingDraftChannel)
+            _controller.NotifyChatTextChange();
     }
 
     private void OnFocusEnter(LineEditEventArgs args)
@@ -253,14 +281,23 @@ public partial class ChatBox : UIWidget
 
     protected override void Dispose(bool disposing)
     {
+        if (_settingsSaveDelay >= 0) FlushPanelSettings();
+        if (_panelPreferences != null)
+        {
+            _panelPreferences.OnServerDataLoaded -= LoadServerPanelSettings;
+            _panelPreferences.OnChatPanelSaved -= OnPanelSettingsSaved;
+        }
+        if (_chatImage is IDisposable disposable) disposable.Dispose();
         base.Dispose(disposing);
 
-        if (!disposing) return;
         _controller.UnregisterChat(this);
+        _controller.MessageAdded -= OnMessageAdded;
+        _controller.FilterableChannelsChanged -= OnTabChannelsChanged;
         ChatInput.Input.OnTextEntered -= OnTextEntered;
         ChatInput.Input.OnKeyBindDown -= OnInputKeyBindDown;
         ChatInput.Input.OnTextChanged -= OnTextChanged;
         ChatInput.ChannelSelector.OnChannelSelect -= OnChannelSelect;
+        ChatInput.FilterButton.Popup.OnChannelFilter -= OnChannelFilter;
         _cfg.UnsubValueChanged(CCVars.CoalesceIdenticalMessages, UpdateCoalescence); // WD EDIT
     }
 }

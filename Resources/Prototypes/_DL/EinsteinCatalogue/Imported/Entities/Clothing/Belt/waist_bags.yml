@@ -1,0 +1,11 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: ClothingBeltStorageWaistbag
+  id: ClothingBeltStorageWaistbagColor
+  name: waist bag
+  description: A waist bag meant for carrying small items.
+  components:
+  - type: Sprite
+    sprite: Clothing/Belt/waistbag_color.rsi
+  - type: Clothing
+    sprite: Clothing/Belt/waistbag_color.rsi

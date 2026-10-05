@@ -24,6 +24,10 @@ public sealed partial class GraphicsTab : Control
         Control.AddOptionCheckBox(CCVars.AmbientOcclusion, AmbientOcclusionCheckBox);
         Control.AddOption(new OptionFullscreen(Control, _cfg, FullscreenCheckBox));
         Control.AddOption(new OptionLightingQuality(Control, _cfg, DropDownLightingQuality));
+        Control.AddOptionCheckBox(CCVars.AmbientOcclusionEnabled, ContactOcclusionCheckBox);
+        Control.AddOptionCheckBox(CCVars.AmbientOcclusionEntities, AmbientOcclusionEntitiesCheckBox);
+        Control.AddOptionSlider(CCVars.AmbientOcclusionIntensity, AmbientOcclusionIntensitySlider,
+            100, 300, (_, value) => $"{value}%");
 
         Control.AddOptionDropDown(
             CVars.DisplayUIScale,
@@ -191,8 +195,8 @@ public sealed partial class GraphicsTab : Control
 
         protected override int Value
         {
-            get => _checkBox.Pressed ? (int) WindowMode.Fullscreen : (int) WindowMode.Windowed;
-            set => _checkBox.Pressed = (value == (int) WindowMode.Fullscreen);
+            get => _checkBox.Pressed ? (int)WindowMode.Fullscreen : (int)WindowMode.Windowed;
+            set => _checkBox.Pressed = (value == (int)WindowMode.Fullscreen);
         }
 
         public OptionFullscreen(

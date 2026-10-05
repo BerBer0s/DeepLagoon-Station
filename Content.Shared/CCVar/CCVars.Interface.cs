@@ -1,4 +1,4 @@
-﻿using Robust.Shared.Configuration;
+using Robust.Shared.Configuration;
 
 namespace Content.Shared.CCVar;
 
@@ -20,7 +20,7 @@ public sealed partial class CCVars
     /// The layout style of the UI
     /// </summary>
     public static readonly CVarDef<string> UILayout =
-        CVarDef.Create("ui.layout", "Default", CVar.CLIENTONLY | CVar.ARCHIVE);
+        CVarDef.Create("ui.layout", "Separated", CVar.CLIENTONLY | CVar.ARCHIVE);
 
     /// <summary>
     /// The dimensions for the chat window in Default UI mode
@@ -33,6 +33,10 @@ public sealed partial class CCVars
     /// </summary>
     public static readonly CVarDef<string> SeparatedScreenChatSize =
         CVarDef.Create("ui.separated_chat_size", "0.6,0", CVar.CLIENTONLY | CVar.ARCHIVE);
+
+    /// <summary>Saved chat tabs, their message filters and the selected tab.</summary>
+    public static readonly CVarDef<string> ChatTabs =
+        CVarDef.Create("ui.chat_tabs", "", CVar.CLIENTONLY | CVar.ARCHIVE);
 
     public static readonly CVarDef<bool> OutlineEnabled =
         CVarDef.Create("outline.enabled", true, CVar.CLIENTONLY);

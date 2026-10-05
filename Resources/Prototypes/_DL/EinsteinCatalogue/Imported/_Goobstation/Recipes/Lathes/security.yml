@@ -1,0 +1,7 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: latheRecipe
+  parent: BaseAmmoRecipe
+  id: MagazineMagnumLeverRifle
+  result: MagazineMagnumLeverRifle
+  materials:
+    Steel: 185

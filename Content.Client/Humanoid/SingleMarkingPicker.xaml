@@ -1,4 +1,5 @@
 <BoxContainer xmlns="https://spacestation14.io"
+              xmlns:adaptive="clr-namespace:Content.Client.UserInterface.Controls"
               Orientation="Vertical"
               HorizontalExpand="True"
               VerticalExpand="True">
@@ -13,12 +14,12 @@
 
     <!-- Item list -->
     <BoxContainer Name="MarkingSelectorContainer" Orientation="Vertical" HorizontalExpand="True" VerticalExpand="True">
-        <ScrollContainer MinHeight="500" VerticalExpand="True" HorizontalExpand="True">
-            <ItemList Name="MarkingList" VerticalExpand="True" />
+        <ScrollContainer MinHeight="180" SetHeight="320" HScrollEnabled="False" VerticalExpand="True" HorizontalExpand="True">
+            <adaptive:AdaptiveGridContainer Name="MarkingList" HorizontalExpand="True" />
         </ScrollContainer>
 
         <!-- Color sliders -->
-        <ScrollContainer MinHeight="200" HorizontalExpand="True">
+        <ScrollContainer MaxHeight="220" HScrollEnabled="False" HorizontalExpand="True">
             <BoxContainer Name="ColorSelectorContainer" HorizontalExpand="True" />
         </ScrollContainer>
     </BoxContainer>

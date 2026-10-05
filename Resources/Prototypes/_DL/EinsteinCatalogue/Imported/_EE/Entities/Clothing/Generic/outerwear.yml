@@ -1,0 +1,55 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: [ClothingOuterStorageBase, AllowSuitStorageClothing]
+  id: ClothingOuterArmorStandardHeavy
+  name: heavy security armor
+  description: A suit of heavy security armor manufactured by Zavodskoi Interstellar
+    and sold to NT Security. It trades mobility for unparalleled protection against
+    general threats.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/Generic/OuterClothing/heavy_armor_standard.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/Generic/OuterClothing/heavy_armor_standard.rsi
+    clothingVisuals:
+      outerClothing:
+      - state: equipped-OUTERCLOTHING
+      - state: equipped-OUTERCLOTHING-unshaded
+        shader: unshaded
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.5
+        Slash: 0.5
+        Piercing: 0.5
+        Heat: 0.5
+        Caustic: 0.5
+  - type: ExplosionResistance
+    damageCoefficient: 0.5
+  - type: Reflect
+    reflectProb: 0.05
+    spread: 270
+    innate: true
+    reflects:
+    - Energy
+    - NonEnergy
+  - type: ClothingSpeedModifier
+    walkModifier: 0.7
+    sprintModifier: 0.7
+- type: entity
+  parent: [ClothingOuterArmorStandardHeavy, AllowSuitStorageClothing]
+  id: ClothingOuterArmorHoSHeavy
+  name: heavy tactical armor
+  description: A suit of heavy security armor manufactured by Zavodskoi Interstellar
+    and sold to NT Security. It trades mobility for unparalleled protection against
+    general threats. This one has NT Command staff markings.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/Generic/OuterClothing/heavy_armor_hos.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/Generic/OuterClothing/heavy_armor_hos.rsi
+    clothingVisuals:
+      outerClothing:
+      - state: equipped-OUTERCLOTHING
+      - state: equipped-OUTERCLOTHING-unshaded
+        shader: unshaded

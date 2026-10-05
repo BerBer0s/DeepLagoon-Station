@@ -10,8 +10,6 @@ public sealed class ChannelSelectorButton : ChatPopupButton<ChannelSelectorPopup
 
     public ChatSelectChannel SelectedChannel { get; private set; }
 
-    private const int SelectorDropdownOffset = 38;
-
     public ChannelSelectorButton()
     {
         Name = "ChannelSelector";
@@ -26,11 +24,9 @@ public sealed class ChannelSelectorButton : ChatPopupButton<ChannelSelectorPopup
 
     protected override UIBox2 GetPopupPosition()
     {
-        var globalLeft = GlobalPosition.X;
-        var globalBot = GlobalPosition.Y + Height;
         return UIBox2.FromDimensions(
-            new Vector2(globalLeft, globalBot),
-            new Vector2(SizeBox.Width, SelectorDropdownOffset));
+            new Vector2(GlobalPosition.X, GlobalPosition.Y + Height),
+            new Vector2(SizeBox.Width, 0));
     }
 
     private void OnChannelSelected(ChatSelectChannel channel)
@@ -45,8 +41,6 @@ public sealed class ChannelSelectorButton : ChatPopupButton<ChannelSelectorPopup
             Popup.Close();
         }
 
-        if (SelectedChannel == channel)
-            return;
         SelectedChannel = channel;
         OnChannelSelect?.Invoke(channel);
     }

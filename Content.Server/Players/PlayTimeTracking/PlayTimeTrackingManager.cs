@@ -78,6 +78,8 @@ public sealed partial class PlayTimeTrackingManager : ISharedPlaytimeManager, IP
     // We must block server shutdown on these to avoid losing data.
     private readonly List<Task> _pendingSaveTasks = new();
 
+    public Task WaitPendingSavesAsync() => Task.WhenAll(_pendingSaveTasks.ToArray());
+
     private readonly Dictionary<ICommonSession, PlayTimeData> _playTimeData = new();
 
     public event CalcPlayTimeTrackersCallback? CalcTrackers;

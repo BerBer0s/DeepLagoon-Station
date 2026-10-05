@@ -1,0 +1,39 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: BaseMagazineBoxLightRifle
+  id: MagazineBoxLightRifle
+  name: ammunition box (.30 rifle)
+  components:
+  - type: BallisticAmmoProvider
+    proto: CartridgeLightRifle
+  - type: Sprite
+    layers:
+    - state: base
+      map: ["enum.GunVisualLayers.Base"]
+    - state: mag-1
+      map: ["enum.GunVisualLayers.Mag"]
+- type: entity
+  abstract: true
+  parent: BaseMagazineBox
+  id: BaseMagazineBoxLightRifle
+  name: ammunition box (.30 rifle)
+  components:
+  - type: BallisticAmmoProvider
+    mayTransfer: true
+    whitelist:
+      tags:
+      - CartridgeLightRifle
+    proto: CartridgeLightRifle
+    capacity: 60
+  - type: Item
+    size: Small
+  - type: ContainerContainer
+    containers:
+      ballistic-ammo: !type:Container ''
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Ammunition/Boxes/light_rifle.rsi
+  - type: MagazineVisuals
+    magState: mag
+    steps: 4
+    zeroVisible: false
+  - type: Appearance

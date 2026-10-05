@@ -1,0 +1,9 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: ClothingBackpack
+  id: ClothingBackpackBlueshield
+  name: blueshield backpack
+  description: A very protective backpack, smells like energy gun.
+  components:
+  - type: Sprite
+    sprite: _Goobstation/Clothing/Back/Backpacks/blueshield.rsi

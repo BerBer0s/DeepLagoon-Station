@@ -74,7 +74,7 @@ namespace Content.Client.Lobby.UI
         private TextEdit? _flavorTextEdit;
 
         // One at a time.
-        private LoadoutWindow? _loadoutWindow;
+        private readonly PersonalLoadoutEditor _personalLoadoutEditor = new();
 
         private bool _exporting;
         private bool _imaging;
@@ -116,7 +116,6 @@ namespace Content.Client.Lobby.UI
 
         private bool _isDirty;
 
-        [ValidatePrototypeId<GuideEntryPrototype>]
         private const string DefaultSpeciesGuidebook = "Species";
 
         public event Action<List<ProtoId<GuideEntryPrototype>>>? OnOpenGuidebook;
@@ -137,6 +136,7 @@ namespace Content.Client.Lobby.UI
             CompanyManager manager) // Mono
         {
             RobustXamlLoader.Load(this);
+            InitializeInteractionPanelPreferences();
             _sawmill = logManager.GetSawmill("profile.editor");
             _cfgManager = configurationManager;
             _entManager = entManager;
@@ -181,7 +181,7 @@ namespace Content.Client.Lobby.UI
 
             ResetButton.OnPressed += args =>
             {
-                SetProfile((HumanoidCharacterProfile?) _preferencesManager.Preferences?.SelectedCharacter, _preferencesManager.Preferences?.SelectedCharacterIndex);
+                SetProfile((HumanoidCharacterProfile?)_preferencesManager.Preferences?.SelectedCharacter, _preferencesManager.Preferences?.SelectedCharacterIndex);
             };
 
             SaveButton.OnPressed += args =>
@@ -203,13 +203,37 @@ namespace Content.Client.Lobby.UI
             #region Appearance
 
             TabContainer.SetTabTitle(0, Loc.GetString("humanoid-profile-editor-appearance-tab"));
+            TabContainer.AddChild(_personalLoadoutEditor);
+            TabContainer.SetTabTitle(TabContainer.ChildCount - 1, Loc.GetString("dl-loadout-tab"));
+            var personalLoadoutTab = TabContainer.ChildCount - 1;
+            _personalLoadoutEditor.SlotOpened += () => TabContainer.CurrentTab = personalLoadoutTab;
+            TabContainer.OnTabChanged += tab =>
+            {
+                if (tab == personalLoadoutTab)
+                    RefreshPersonalLoadouts();
+            };
+            _personalLoadoutEditor.JobChanged += job =>
+            {
+                JobOverride = job == null ? null : _prototypeManager.Index<JobPrototype>(job);
+                ReloadPreview();
+            };
+            _personalLoadoutEditor.RoleNameChanged += role =>
+            {
+                Profile = Profile?.WithLoadout(role);
+                SetDirty();
+            };
+            _personalLoadoutEditor.SelectionChanged += role =>
+            {
+                Profile = Profile?.WithLoadout(role);
+                ReloadPreview();
+            };
 
             #region Sex
 
             SexButton.OnItemSelected += args =>
             {
                 SexButton.SelectId(args.Id);
-                SetSex((Sex) args.Id);
+                SetSex((Sex)args.Id);
             };
 
             #endregion Sex
@@ -228,15 +252,15 @@ namespace Content.Client.Lobby.UI
 
             #region Gender
 
-            PronounsButton.AddItem(Loc.GetString("humanoid-profile-editor-pronouns-male-text"), (int) Gender.Male);
-            PronounsButton.AddItem(Loc.GetString("humanoid-profile-editor-pronouns-female-text"), (int) Gender.Female);
-            PronounsButton.AddItem(Loc.GetString("humanoid-profile-editor-pronouns-epicene-text"), (int) Gender.Epicene);
-            PronounsButton.AddItem(Loc.GetString("humanoid-profile-editor-pronouns-neuter-text"), (int) Gender.Neuter);
+            PronounsButton.AddItem(Loc.GetString("humanoid-profile-editor-pronouns-male-text"), (int)Gender.Male);
+            PronounsButton.AddItem(Loc.GetString("humanoid-profile-editor-pronouns-female-text"), (int)Gender.Female);
+            PronounsButton.AddItem(Loc.GetString("humanoid-profile-editor-pronouns-epicene-text"), (int)Gender.Epicene);
+            PronounsButton.AddItem(Loc.GetString("humanoid-profile-editor-pronouns-neuter-text"), (int)Gender.Neuter);
 
             PronounsButton.OnItemSelected += args =>
             {
                 PronounsButton.SelectId(args.Id);
-                SetGender((Gender) args.Id);
+                SetGender((Gender)args.Id);
             };
 
             #endregion Gender
@@ -331,7 +355,7 @@ namespace Content.Client.Lobby.UI
                 ReloadPreview();
             };
 
-            HairStylePicker.OnSlotAdd += delegate()
+            HairStylePicker.OnSlotAdd += delegate ()
             {
                 if (Profile is null)
                     return;
@@ -351,7 +375,7 @@ namespace Content.Client.Lobby.UI
                 ReloadPreview();
             };
 
-            FacialHairPicker.OnSlotAdd += delegate()
+            FacialHairPicker.OnSlotAdd += delegate ()
             {
                 if (Profile is null)
                     return;
@@ -377,13 +401,13 @@ namespace Content.Client.Lobby.UI
 
             foreach (var value in Enum.GetValues<SpawnPriorityPreference>())
             {
-                SpawnPriorityButton.AddItem(Loc.GetString($"humanoid-profile-editor-preference-spawn-priority-{value.ToString().ToLower()}"), (int) value);
+                SpawnPriorityButton.AddItem(Loc.GetString($"humanoid-profile-editor-preference-spawn-priority-{value.ToString().ToLower()}"), (int)value);
             }
 
             SpawnPriorityButton.OnItemSelected += args =>
             {
                 SpawnPriorityButton.SelectId(args.Id);
-                SetSpawnPriority((SpawnPriorityPreference) args.Id);
+                SetSpawnPriority((SpawnPriorityPreference)args.Id);
             };
 
             #endregion SpawnPriority
@@ -438,7 +462,7 @@ namespace Content.Client.Lobby.UI
 
             PreferenceUnavailableButton.AddItem(
                 Loc.GetString("humanoid-profile-editor-preference-unavailable-stay-in-lobby-button"),
-                (int) PreferenceUnavailableMode.StayInLobby);
+                (int)PreferenceUnavailableMode.StayInLobby);
             // Frontier: we have more than one overflow job type, so we change this string.
             // PreferenceUnavailableButton.AddItem(
             //     Loc.GetString("humanoid-profile-editor-preference-unavailable-spawn-as-overflow-button",
@@ -446,13 +470,13 @@ namespace Content.Client.Lobby.UI
             //     (int) PreferenceUnavailableMode.SpawnAsOverflow);
             PreferenceUnavailableButton.AddItem(
                 Loc.GetString("humanoid-profile-editor-preference-unavailable-spawn-as-overflow-button"),
-                (int) PreferenceUnavailableMode.SpawnAsOverflow);
+                (int)PreferenceUnavailableMode.SpawnAsOverflow);
             // End Frontier
 
             PreferenceUnavailableButton.OnItemSelected += args =>
             {
                 PreferenceUnavailableButton.SelectId(args.Id);
-                Profile = Profile?.WithPreferenceUnavailable((PreferenceUnavailableMode) args.Id);
+                Profile = Profile?.WithPreferenceUnavailable((PreferenceUnavailableMode)args.Id);
                 SetDirty();
             };
 
@@ -491,7 +515,7 @@ namespace Content.Client.Lobby.UI
             for (var i = 0; i < companies.Count; i++)
             {
                 CompanyButton.AddItem(companies[i].Name, i);
-                //Logger.Debug($"Added company to dropdown: {i} - {companies[i].ID} - {companies[i].Name}");
+                //Logger.GetSawmill("client").Debug($"Added company to dropdown: {i} - {companies[i].ID} - {companies[i].Name}");
             }
 
             CompanyButton.OnItemSelected += args =>
@@ -523,7 +547,7 @@ namespace Content.Client.Lobby.UI
                     Profile = Profile?.WithCompany(companyId);
 
                     // Debug logging to verify selection
-                    //Logger.Debug($"Company changed from {oldCompany} to {companyId}");
+                    //Logger.GetSawmill("client").Debug($"Company changed from {oldCompany} to {companyId}");
 
                     // Explicitly call SetDirty to update save button state
                     SetDirty();
@@ -571,6 +595,7 @@ namespace Content.Client.Lobby.UI
 
             UpdateSpeciesGuidebookIcon();
             UpdateCompanyControls();
+            UpdateInteractionPanelPreferences();
             IsDirty = false;
         }
 
@@ -598,7 +623,7 @@ namespace Content.Client.Lobby.UI
 
                 TabContainer.RemoveChild(_flavorText);
                 _flavorText.OnFlavorTextChanged -= OnFlavorTextChange;
-                _flavorText.Dispose();
+                _flavorText?.Dispose();
                 _flavorTextEdit?.Dispose();
                 _flavorTextEdit = null;
                 _flavorText = null;
@@ -610,7 +635,7 @@ namespace Content.Client.Lobby.UI
         /// </summary>
         public void RefreshTraits()
         {
-            TraitsList.DisposeAllChildren();
+            TraitsList.RemoveAllChildren();
 
             EnforceSpeciesTraitRestrictions();
 
@@ -1064,7 +1089,7 @@ namespace Content.Client.Lobby.UI
         {
             // Frontier: no antags
             /*
-            AntagList.DisposeAllChildren();
+            AntagList.RemoveAllChildren();
             var items = new[]
             {
                 ("humanoid-profile-editor-antag-preference-yes-button", 0),
@@ -1159,19 +1184,42 @@ namespace Content.Client.Lobby.UI
         /// <summary>
         /// Refresh all loadouts.
         /// </summary>
-        public void RefreshLoadouts()
+        private void RefreshPersonalLoadouts()
         {
-            _loadoutWindow?.Dispose();
+            _personalLoadoutEditor.Refresh(Profile, Profile == null ? string.Empty : (JobOverride ?? _controller.GetPreferredJob(Profile)).ID, _playerManager.LocalSession);
         }
 
-        /// <summary>
-        /// Reloads the entire dummy entity for preview.
-        /// </summary>
-        /// <remarks>
-        /// This is expensive so not recommended to run if you have a slider.
-        /// </remarks>
+        public void RefreshLoadouts()
+        {
+            RefreshPersonalLoadouts();
+        }
+
+        private HumanoidCharacterProfile? _previewEquipmentProfile;
+        private string? _previewJob;
+        private bool _previewClothes;
+
+        /// <summary>Update the existing doll, rebuilding equipment only when its inputs change.</summary>
         private void ReloadPreview()
         {
+            if (Profile == null)
+            {
+                _entManager.DeleteEntity(PreviewDummy);
+                PreviewDummy = EntityUid.Invalid;
+                _previewEquipmentProfile = null;
+                SpriteView.SetEntity(null);
+                return;
+            }
+            var job = (JobOverride ?? _controller.GetPreferredJob(Profile)).ID;
+            if (_entManager.EntityExists(PreviewDummy) && _previewEquipmentProfile is { } previous
+                && previous.Species == Profile.Species && _previewJob == job && _previewClothes == ShowClothes.Pressed
+                && previous.Loadouts.Count == Profile.Loadouts.Count
+                && previous.Loadouts.All(x => Profile.Loadouts.TryGetValue(x.Key, out var current) && x.Value.SelectedLoadouts.Count == current.SelectedLoadouts.Count && x.Value.SelectedLoadouts.All(g => current.SelectedLoadouts.TryGetValue(g.Key, out var items) && g.Value.SequenceEqual(items))))
+            {
+                ReloadProfilePreview();
+                _entManager.System<MetaDataSystem>().SetEntityName(PreviewDummy, Profile.Name);
+                return;
+            }
+            RefreshPersonalLoadouts();
             _entManager.DeleteEntity(PreviewDummy);
             PreviewDummy = EntityUid.Invalid;
 
@@ -1179,7 +1227,13 @@ namespace Content.Client.Lobby.UI
                 return;
 
             PreviewDummy = _controller.LoadProfileEntity(Profile, JobOverride, ShowClothes.Pressed);
+            _previewEquipmentProfile = Profile.Clone();
+            foreach (var loadout in Profile.Loadouts.Values)
+                _previewEquipmentProfile.SetLoadout(loadout.Clone());
+            _previewJob = job;
+            _previewClothes = ShowClothes.Pressed;
             SpriteView.SetEntity(PreviewDummy);
+            _personalLoadoutEditor.UpdatePreviewSlots(PreviewDummy, PreviewSlotsLeft, PreviewSlotsRight);
             _entManager.System<MetaDataSystem>().SetEntityName(PreviewDummy, Profile.Name);
 
             // Check and set the dirty flag to enable the save/reset buttons as appropriate.
@@ -1192,7 +1246,7 @@ namespace Content.Client.Lobby.UI
         public void ResetToDefault()
         {
             SetProfile(
-                (HumanoidCharacterProfile?) _preferencesManager.Preferences?.SelectedCharacter,
+                (HumanoidCharacterProfile?)_preferencesManager.Preferences?.SelectedCharacter,
                 _preferencesManager.Preferences?.SelectedCharacterIndex);
         }
 
@@ -1222,6 +1276,7 @@ namespace Content.Client.Lobby.UI
             UpdateCMarkingsHair();
             UpdateCMarkingsFacialHair();
             UpdateCompanyControls();
+            UpdateInteractionPanelPreferences();
 
             RefreshAntags();
             RefreshJobs();
@@ -1234,7 +1289,7 @@ namespace Content.Client.Lobby.UI
 
             if (Profile != null)
             {
-                PreferenceUnavailableButton.SelectId((int) Profile.PreferenceUnavailable);
+                PreferenceUnavailableButton.SelectId((int)Profile.PreferenceUnavailable);
             }
         }
 
@@ -1335,6 +1390,11 @@ namespace Content.Client.Lobby.UI
                 return;
 
             _entManager.System<HumanoidAppearanceSystem>().LoadProfile(PreviewDummy, Profile);
+            // Loading defaults does not reset an existing scale component, so restore it explicitly.
+            if (_entManager.HasComponent<Content.Shared.Sprite.ScaleVisualsComponent>(PreviewDummy))
+                _entManager.System<Robust.Client.GameObjects.AppearanceSystem>().SetData(PreviewDummy,
+                    Content.Shared.Sprite.ScaleVisuals.Scale,
+                    new Vector2(Profile.Appearance.Width, Profile.Appearance.Height));
 
             // Check and set the dirty flag to enable the save/reset buttons as appropriate.
             SetDirty();
@@ -1357,7 +1417,7 @@ namespace Content.Client.Lobby.UI
                 var dict = new Dictionary<ProtoId<GuideEntryPrototype>, GuideEntry>();
                 dict.Add(DefaultSpeciesGuidebook, guideRoot);
                 //TODO: Don't close the guidebook if its already open, just go to the correct page
-                guidebookController.OpenGuidebook(dict, includeChildren:true, selected: page);
+                guidebookController.OpenGuidebook(dict, includeChildren: true, selected: page);
             }
         }
 
@@ -1366,7 +1426,7 @@ namespace Content.Client.Lobby.UI
         /// </summary>
         public void RefreshJobs()
         {
-            JobList.DisposeAllChildren();
+            JobList.RemoveAllChildren();
             _jobCategories.Clear();
             _jobPriorities.Clear();
             var firstCategory = true;
@@ -1419,7 +1479,7 @@ namespace Content.Client.Lobby.UI
 
                     category.AddChild(new PanelContainer
                     {
-                        PanelOverride = new StyleBoxFlat {BackgroundColor = Color.FromHex("#363636")},
+                        PanelOverride = new StyleBoxFlat { BackgroundColor = Color.FromHex("#363636") },
                         Children =
                         {
                             new Label
@@ -1460,7 +1520,7 @@ namespace Content.Client.Lobby.UI
                         VerticalAlignment = VAlignment.Center
                     };
                     var jobIcon = _prototypeManager.Index(job.Icon);
-                    icon.Texture = jobIcon.Icon.Frame0();
+                    icon.Texture = _entManager.System<Robust.Client.GameObjects.SpriteSystem>().Frame0(jobIcon.Icon);
                     selector.Setup(items, job.LocalizedName, 200, job.LocalizedDescription, icon, job.Guides);
 
                     if (!_requirements.IsAllowed(job, (HumanoidCharacterProfile?)_preferencesManager.Preferences?.SelectedCharacter, out var reason))
@@ -1474,7 +1534,7 @@ namespace Content.Client.Lobby.UI
 
                     selector.OnSelected += selectedPrio =>
                     {
-                        var selectedJobPrio = (JobPriority) selectedPrio;
+                        var selectedJobPrio = (JobPriority)selectedPrio;
                         Profile = Profile?.WithJobPriority(job.ID, selectedJobPrio);
 
                         foreach (var (jobId, other) in _jobPriorities)
@@ -1486,7 +1546,7 @@ namespace Content.Client.Lobby.UI
                                 continue;
                             }
 
-                            if (selectedJobPrio != JobPriority.High || (JobPriority) other.Selected != JobPriority.High)
+                            if (selectedJobPrio != JobPriority.High || (JobPriority)other.Selected != JobPriority.High)
                                 continue;
 
                             // Lower any other high priorities to medium.
@@ -1501,108 +1561,11 @@ namespace Content.Client.Lobby.UI
                         SetDirty();
                     };
 
-                    var loadoutWindowBtn = new Button()
-                    {
-                        Text = Loc.GetString("loadout-window"),
-                        HorizontalAlignment = HAlignment.Right,
-                        VerticalAlignment = VAlignment.Center,
-                        Margin = new Thickness(3f, 3f, 0f, 0f),
-                    };
-
-                    var collection = IoCManager.Instance!;
-                    var protoManager = collection.Resolve<IPrototypeManager>();
-
-                    // If no loadout found then disabled button
-                    if (!protoManager.TryIndex<RoleLoadoutPrototype>(LoadoutSystem.GetJobPrototype(job.ID), out var roleLoadoutProto))
-                    {
-                        loadoutWindowBtn.Disabled = true;
-                    }
-                    // else
-                    else
-                    {
-                        loadoutWindowBtn.OnPressed += args =>
-                        {
-                            RoleLoadout? loadout = null;
-
-                            // Clone so we don't modify the underlying loadout.
-                            Profile?.Loadouts.TryGetValue(LoadoutSystem.GetJobPrototype(job.ID), out loadout);
-                            loadout = loadout?.Clone();
-
-                            if (loadout == null)
-                            {
-                                loadout = new RoleLoadout(roleLoadoutProto.ID);
-                                loadout.SetDefault(Profile, _playerManager.LocalSession, _prototypeManager);
-                            }
-
-                            OpenLoadout(job, loadout, roleLoadoutProto);
-                        };
-                    }
-
                     _jobPriorities.Add((job.ID, selector));
                     jobContainer.AddChild(selector);
-                    jobContainer.AddChild(loadoutWindowBtn);
                     category.AddChild(jobContainer);
                 }
             }
-
-            UpdateJobPriorities();
-        }
-
-        private void OpenLoadout(JobPrototype? jobProto, RoleLoadout roleLoadout, RoleLoadoutPrototype roleLoadoutProto)
-        {
-            _loadoutWindow?.Dispose();
-            _loadoutWindow = null;
-            var collection = IoCManager.Instance;
-
-            if (collection == null || _playerManager.LocalSession == null || Profile == null)
-                return;
-
-            JobOverride = jobProto;
-            var session = _playerManager.LocalSession;
-
-            _loadoutWindow = new LoadoutWindow(Profile, roleLoadout, roleLoadoutProto, _playerManager.LocalSession, collection)
-            {
-                Title = jobProto?.LocalizedName + " loadout", // Mono - replace the "-" with a space in "-loadout", change to LocalizedName from ID
-            };
-
-            // Refresh the buttons etc.
-            _loadoutWindow.RefreshLoadouts(roleLoadout, session, collection);
-            _loadoutWindow.OpenCenteredLeft();
-
-            _loadoutWindow.OnNameChanged += name =>
-            {
-                roleLoadout.EntityName = name;
-                Profile = Profile.WithLoadout(roleLoadout);
-                SetDirty();
-            };
-
-            _loadoutWindow.OnLoadoutPressed += (loadoutGroup, loadoutProto) =>
-            {
-                roleLoadout.AddLoadout(loadoutGroup, loadoutProto, _prototypeManager);
-                _loadoutWindow.RefreshLoadouts(roleLoadout, session, collection);
-                Profile = Profile?.WithLoadout(roleLoadout);
-                ReloadPreview();
-            };
-
-            _loadoutWindow.OnLoadoutUnpressed += (loadoutGroup, loadoutProto) =>
-            {
-                roleLoadout.RemoveLoadout(loadoutGroup, loadoutProto, _prototypeManager);
-                _loadoutWindow.RefreshLoadouts(roleLoadout, session, collection);
-                Profile = Profile?.WithLoadout(roleLoadout);
-                ReloadPreview();
-            };
-
-            JobOverride = jobProto;
-            ReloadPreview();
-
-            _loadoutWindow.OnClose += () =>
-            {
-                JobOverride = null;
-                ReloadPreview();
-            };
-
-            if (Profile is null)
-                return;
 
             UpdateJobPriorities();
         }
@@ -1664,58 +1627,54 @@ namespace Content.Client.Lobby.UI
                     }
                 // Goobstation Section End - Tajaran
                 case HumanoidSkinColor.Hues:
-                {
-                    if (!RgbSkinColorContainer.Visible)
                     {
-                        Skin.Visible = false;
-                        RgbSkinColorContainer.Visible = true;
-                    }
+                        if (!RgbSkinColorContainer.Visible)
+                        {
+                            Skin.Visible = false;
+                            RgbSkinColorContainer.Visible = true;
+                        }
 
-                    Markings.CurrentSkinColor = _rgbSkinColorSelector.Color;
-                    Profile = Profile.WithCharacterAppearance(Profile.Appearance.WithSkinColor(_rgbSkinColorSelector.Color));
-                    break;
-                }
+                        Markings.CurrentSkinColor = _rgbSkinColorSelector.Color;
+                        Profile = Profile.WithCharacterAppearance(Profile.Appearance.WithSkinColor(_rgbSkinColorSelector.Color));
+                        break;
+                    }
                 case HumanoidSkinColor.TintedHues:
-                {
-                    if (!RgbSkinColorContainer.Visible)
                     {
-                        Skin.Visible = false;
-                        RgbSkinColorContainer.Visible = true;
+                        if (!RgbSkinColorContainer.Visible)
+                        {
+                            Skin.Visible = false;
+                            RgbSkinColorContainer.Visible = true;
+                        }
+
+                        var color = SkinColor.TintedHues(_rgbSkinColorSelector.Color);
+
+                        Markings.CurrentSkinColor = color;
+                        Profile = Profile.WithCharacterAppearance(Profile.Appearance.WithSkinColor(color));
+                        break;
                     }
-
-                    var color = SkinColor.TintedHues(_rgbSkinColorSelector.Color);
-
-                    Markings.CurrentSkinColor = color;
-                    Profile = Profile.WithCharacterAppearance(Profile.Appearance.WithSkinColor(color));
-                    break;
-                }
                 case HumanoidSkinColor.VoxFeathers:
-                {
-                    if (!RgbSkinColorContainer.Visible)
                     {
-                        Skin.Visible = false;
-                        RgbSkinColorContainer.Visible = true;
+                        if (!RgbSkinColorContainer.Visible)
+                        {
+                            Skin.Visible = false;
+                            RgbSkinColorContainer.Visible = true;
+                        }
+
+                        var color = SkinColor.ClosestVoxColor(_rgbSkinColorSelector.Color);
+
+                        Markings.CurrentSkinColor = color;
+                        Profile = Profile.WithCharacterAppearance(Profile.Appearance.WithSkinColor(color));
+                        break;
                     }
-
-                    var color = SkinColor.ClosestVoxColor(_rgbSkinColorSelector.Color);
-
-                    Markings.CurrentSkinColor = color;
-                    Profile = Profile.WithCharacterAppearance(Profile.Appearance.WithSkinColor(color));
-                    break;
-                }
             }
 
             ReloadProfilePreview();
         }
 
-        protected override void Dispose(bool disposing)
+        protected override void ExitedTree()
         {
-            base.Dispose(disposing);
-            if (!disposing)
-                return;
+            base.ExitedTree();
 
-            _loadoutWindow?.Dispose();
-            _loadoutWindow = null;
 
             // Mono start
             foreach (var entity in _savedItemEntities)
@@ -1729,13 +1688,6 @@ namespace Content.Client.Lobby.UI
         {
             base.EnteredTree();
             ReloadPreview();
-        }
-
-        protected override void ExitedTree()
-        {
-            base.ExitedTree();
-            _entManager.DeleteEntity(PreviewDummy);
-            PreviewDummy = EntityUid.Invalid;
         }
 
         private void SetAge(int newAge)
@@ -1832,7 +1784,7 @@ namespace Content.Client.Lobby.UI
             SetDirty();
         }
 
-        private void SetHeight(float newHeight)
+        private new void SetHeight(float newHeight)
         {
             Profile = Profile?.WithCharacterAppearance(Profile.Appearance.WithHeight(newHeight));
             SetDirty();
@@ -1845,7 +1797,7 @@ namespace Content.Client.Lobby.UI
             UpdateHeightControls();
         }
 
-        private void SetWidth(float newWidth)
+        private new void SetWidth(float newWidth)
         {
             Profile = Profile?.WithCharacterAppearance(Profile.Appearance.WithWidth(newWidth));
             SetDirty();
@@ -1897,7 +1849,7 @@ namespace Content.Client.Lobby.UI
             foreach (var (jobId, prioritySelector) in _jobPriorities)
             {
                 var priority = Profile?.JobPriorities.GetValueOrDefault(jobId, JobPriority.Never) ?? JobPriority.Never;
-                prioritySelector.Select((int) priority);
+                prioritySelector.Select((int)priority);
             }
         }
 
@@ -1926,13 +1878,13 @@ namespace Content.Client.Lobby.UI
             // add button for each sex
             foreach (var sex in sexes)
             {
-                SexButton.AddItem(Loc.GetString($"humanoid-profile-editor-sex-{sex.ToString().ToLower()}-text"), (int) sex);
+                SexButton.AddItem(Loc.GetString($"humanoid-profile-editor-sex-{sex.ToString().ToLower()}-text"), (int)sex);
             }
 
             if (sexes.Contains(Profile.Sex))
-                SexButton.SelectId((int) Profile.Sex);
+                SexButton.SelectId((int)Profile.Sex);
             else
-                SexButton.SelectId((int) sexes[0]);
+                SexButton.SelectId((int)sexes[0]);
         }
 
         private void UpdateSkinColor()
@@ -1945,41 +1897,41 @@ namespace Content.Client.Lobby.UI
             switch (skin)
             {
                 case HumanoidSkinColor.HumanToned:
-                {
-                    if (!Skin.Visible)
                     {
-                        Skin.Visible = true;
-                        RgbSkinColorContainer.Visible = false;
+                        if (!Skin.Visible)
+                        {
+                            Skin.Visible = true;
+                            RgbSkinColorContainer.Visible = false;
+                        }
+
+                        Skin.Value = SkinColor.HumanSkinToneFromColor(Profile.Appearance.SkinColor);
+
+                        break;
                     }
-
-                    Skin.Value = SkinColor.HumanSkinToneFromColor(Profile.Appearance.SkinColor);
-
-                    break;
-                }
                 case HumanoidSkinColor.Hues:
-                {
-                    if (!RgbSkinColorContainer.Visible)
                     {
-                        Skin.Visible = false;
-                        RgbSkinColorContainer.Visible = true;
-                    }
+                        if (!RgbSkinColorContainer.Visible)
+                        {
+                            Skin.Visible = false;
+                            RgbSkinColorContainer.Visible = true;
+                        }
 
-                    // set the RGB values to the direct values otherwise
-                    _rgbSkinColorSelector.Color = Profile.Appearance.SkinColor;
-                    break;
-                }
+                        // set the RGB values to the direct values otherwise
+                        _rgbSkinColorSelector.Color = Profile.Appearance.SkinColor;
+                        break;
+                    }
                 case HumanoidSkinColor.TintedHues:
-                {
-                    if (!RgbSkinColorContainer.Visible)
                     {
-                        Skin.Visible = false;
-                        RgbSkinColorContainer.Visible = true;
-                    }
+                        if (!RgbSkinColorContainer.Visible)
+                        {
+                            Skin.Visible = false;
+                            RgbSkinColorContainer.Visible = true;
+                        }
 
-                    // set the RGB values to the direct values otherwise
-                    _rgbSkinColorSelector.Color = Profile.Appearance.SkinColor;
-                    break;
-                }
+                        // set the RGB values to the direct values otherwise
+                        _rgbSkinColorSelector.Color = Profile.Appearance.SkinColor;
+                        break;
+                    }
                 case HumanoidSkinColor.VoxFeathers:
                     {
                         if (!RgbSkinColorContainer.Visible)
@@ -2004,7 +1956,7 @@ namespace Content.Client.Lobby.UI
                         _rgbSkinColorSelector.Color = SkinColor.ClosestAnimalFurColor(Profile.Appearance.SkinColor);
                         break;
                     }
-                // Goobstation Section End - Tajaran
+                    // Goobstation Section End - Tajaran
             }
 
         }
@@ -2047,7 +1999,7 @@ namespace Content.Client.Lobby.UI
                 return;
             }
 
-            PronounsButton.SelectId((int) Profile.Gender);
+            PronounsButton.SelectId((int)Profile.Gender);
         }
 
         private void UpdateSpawnPriorityControls()
@@ -2057,7 +2009,7 @@ namespace Content.Client.Lobby.UI
                 return;
             }
 
-            SpawnPriorityButton.SelectId((int) Profile.SpawnPriority);
+            SpawnPriorityButton.SelectId((int)Profile.SpawnPriority);
         }
 
         private void UpdateHeightControls()
@@ -2117,7 +2069,7 @@ namespace Content.Client.Lobby.UI
 
             // hair color
             Color? hairColor = null;
-            if ( Profile.Appearance.HairStyleId != HairStyles.DefaultHairStyle &&
+            if (Profile.Appearance.HairStyleId != HairStyles.DefaultHairStyle &&
                 _markingManager.Markings.TryGetValue(Profile.Appearance.HairStyleId, out var hairProto)
             )
             {
@@ -2135,7 +2087,7 @@ namespace Content.Client.Lobby.UI
             }
             if (hairColor != null)
             {
-                Markings.HairMarking = new (Profile.Appearance.HairStyleId, new List<Color>() { hairColor.Value });
+                Markings.HairMarking = new(Profile.Appearance.HairStyleId, new List<Color>() { hairColor.Value });
             }
             else
             {
@@ -2152,7 +2104,7 @@ namespace Content.Client.Lobby.UI
 
             // facial hair color
             Color? facialHairColor = null;
-            if ( Profile.Appearance.FacialHairStyleId != HairStyles.DefaultFacialHairStyle &&
+            if (Profile.Appearance.FacialHairStyleId != HairStyles.DefaultFacialHairStyle &&
                 _markingManager.Markings.TryGetValue(Profile.Appearance.FacialHairStyleId, out var facialHairProto))
             {
                 if (_markingManager.CanBeApplied(Profile.Species, Profile.Sex, facialHairProto, _prototypeManager))
@@ -2169,7 +2121,7 @@ namespace Content.Client.Lobby.UI
             }
             if (facialHairColor != null)
             {
-                Markings.FacialHairMarking = new (Profile.Appearance.FacialHairStyleId, new List<Color>() { facialHairColor.Value });
+                Markings.FacialHairMarking = new(Profile.Appearance.FacialHairStyleId, new List<Color>() { facialHairColor.Value });
             }
             else
             {
@@ -2197,7 +2149,7 @@ namespace Content.Client.Lobby.UI
 
         private void SetPreviewRotation(Direction direction)
         {
-            SpriteView.OverrideDirection = (Direction) ((int) direction % 4 * 2);
+            SpriteView.OverrideDirection = (Direction)((int)direction % 4 * 2);
         }
 
         private void RandomizeEverything()
@@ -2328,8 +2280,8 @@ namespace Content.Client.Lobby.UI
                 companies.Insert(0, none);
             }
 
-            //Logger.Debug($"Updating company controls." +
-                         //$"Current profile company: {Profile.Company}\n");
+            //Logger.GetSawmill("client").Debug($"Updating company controls." +
+            //$"Current profile company: {Profile.Company}\n");
 
             // Find the company in the list and select it
             bool found = false;
@@ -2338,7 +2290,7 @@ namespace Content.Client.Lobby.UI
                 if (companies[i].ID != Profile.Company)
                     continue; // Short circuit.
 
-                //Logger.Debug($"Found company at index {i}: {companies[i].ID} - {companies[i].Name}");
+                //Logger.GetSawmill("client").Debug($"Found company at index {i}: {companies[i].ID} - {companies[i].Name}");
                 CompanyButton.SelectId(i);
 
                 // Description of Company (pointed-to in prototype, defined in Locale)
@@ -2364,7 +2316,7 @@ namespace Content.Client.Lobby.UI
             // If company wasn't found, default to "None" (index 0)
             if (!found)
             {
-                //Logger.Debug($"Company {Profile.Company} not found in list, defaulting to None");
+                //Logger.GetSawmill("client").Debug($"Company {Profile.Company} not found in list, defaulting to None");
                 CompanyButton.SelectId(0);
                 CompanyImage.Visible = false;
 

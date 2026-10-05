@@ -1,0 +1,36 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: ClothingHandsBase
+  id: ClothingHandsGlovesChemist
+  name: heavy nitrile gloves
+  description: A pair of thick gloves that provide some protection from caustic chemicals.
+  components:
+  - type: Sprite
+    sprite: DeltaV/Clothing/Hands/Gloves/hvchemresgloves.rsi
+  - type: Clothing
+    sprite: DeltaV/Clothing/Hands/Gloves/hvchemresgloves.rsi
+  - type: Fiber
+    fiberMaterial: fibers-rubber
+    fiberColor: fibers-black
+  - type: Armor
+    modifiers:
+      coefficients:
+        Caustic: 0.95
+  - type: TemperatureProtection
+    heatingCoefficient: 1
+    coolingCoefficient: 1
+- type: entity
+  parent: ClothingHandsBase
+  id: ClothingHandsGlovesInspection
+  name: inspection gloves
+  description: A fancy pair of white gloves, both durable and delicate.
+  components:
+  - type: Sprite
+    sprite: DeltaV/Clothing/Hands/Gloves/inspection.rsi
+  - type: Clothing
+    sprite: DeltaV/Clothing/Hands/Gloves/inspection.rsi
+  - type: Insulated
+  - type: Fiber
+    fiberMaterial: fibers-leather
+    fiberColor: fibers-white
+  - type: FingerprintMask

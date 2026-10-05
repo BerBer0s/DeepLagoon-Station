@@ -1,0 +1,18 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: ClothingBackpack
+  id: ClothingBackpackRobotics
+  name: robotics backpack
+  description: A sturdy backpack to store all the tools and parts.
+  components:
+  - type: Sprite
+    sprite: Clothing/Back/Backpacks/robotics.rsi
+- type: entity
+  parent: ClothingBackpack
+  id: ClothingBackpackMerc
+  name: mercenary bag
+  description: A backpack that has been in many dangerous places, a reliable combat
+    backpack.
+  components:
+  - type: Sprite
+    sprite: Clothing/Back/Backpacks/merc.rsi

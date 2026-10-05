@@ -1,0 +1,7 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: soundCollection
+  id: ShellLand
+  files:
+  - "/Audio/_EE/Weapons/Guns/Casings/shotgun_shell1.ogg"
+  - "/Audio/_EE/Weapons/Guns/Casings/shotgun_shell2.ogg"
+  - "/Audio/_EE/Weapons/Guns/Casings/shotgun_shell3.ogg"

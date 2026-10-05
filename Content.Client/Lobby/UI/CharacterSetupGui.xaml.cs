@@ -27,6 +27,8 @@ namespace Content.Client.Lobby.UI
         [Dependency] private IConfigurationManager _cfg = default!;
 
         private readonly Button _createNewCharacterButton;
+        private bool _sidebarChosen;
+        private bool _updatingSidebar;
 
         public event Action<int>? SelectCharacter;
         public event Action<int>? DeleteCharacter;
@@ -59,6 +61,13 @@ namespace Content.Client.Lobby.UI
             };
 
             CharEditor.AddChild(profileEditor);
+            CharactersToggle.OnToggled += args =>
+            {
+                if (!_updatingSidebar)
+                    _sidebarChosen = true;
+                CharactersSidebar.Visible = args.Pressed;
+                SidebarSeparator.Visible = args.Pressed;
+            };
             RulesButton.OnPressed += _ => new RulesAndInfoWindow().Open();
 
             StatsButton.OnPressed += _ => new PlaytimeStatsWindow().OpenCentered();
@@ -66,13 +75,30 @@ namespace Content.Client.Lobby.UI
             _cfg.OnValueChanged(CCVars.SeeOwnNotes, p => AdminRemarksButton.Visible = p, true);
         }
 
+        protected override void Resized()
+        {
+            base.Resized();
+            if (!_sidebarChosen)
+            {
+                _updatingSidebar = true;
+                var show = Size.X >= 1000;
+                CharactersToggle.Pressed = show;
+                CharactersSidebar.Visible = show;
+                SidebarSeparator.Visible = show;
+                _updatingSidebar = false;
+            }
+            Header.Orientation = Size.X < 1100
+                ? BoxContainer.LayoutOrientation.Vertical
+                : BoxContainer.LayoutOrientation.Horizontal;
+        }
+
         /// <summary>
         /// Disposes and reloads all character picker buttons from the preferences data.
         /// </summary>
         public void ReloadCharacterPickers()
         {
-            _createNewCharacterButton.Orphan();
-            Characters.DisposeAllChildren();
+            if (!_createNewCharacterButton.Disposed) _createNewCharacterButton.Orphan();
+            Characters.RemoveAllChildren();
 
             var numberOfFullSlots = 0;
             var characterButtonsGroup = new ButtonGroup();

@@ -13,6 +13,9 @@ namespace Content.Client.Input
         {
             var common = contexts.GetContext("common");
             common.AddFunction(ContentKeyFunctions.FocusChat);
+            common.AddFunction(ContentKeyFunctions.ChatSearch);
+            common.AddFunction(ContentKeyFunctions.ChatZoomIn);
+            common.AddFunction(ContentKeyFunctions.ChatZoomOut);
             common.AddFunction(ContentKeyFunctions.FocusLocalChat);
             common.AddFunction(ContentKeyFunctions.FocusEmote);
             common.AddFunction(ContentKeyFunctions.FocusWhisperChat);
@@ -26,6 +29,7 @@ namespace Content.Client.Input
             common.AddFunction(ContentKeyFunctions.CycleChatChannelBackward);
             common.AddFunction(ContentKeyFunctions.EscapeContext);
             common.AddFunction(ContentKeyFunctions.ExamineEntity);
+            common.AddFunction(Content.Shared._DeepLagoon.InteractionPanel.InteractionPanelKeyFunctions.OpenInteractions);
             common.AddFunction(ContentKeyFunctions.OpenAHelp);
             common.AddFunction(ContentKeyFunctions.TakeScreenshot);
             common.AddFunction(ContentKeyFunctions.TakeScreenshotNoUI);

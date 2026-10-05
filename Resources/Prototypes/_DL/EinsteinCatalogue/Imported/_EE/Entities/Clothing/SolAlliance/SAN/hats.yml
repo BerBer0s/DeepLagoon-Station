@@ -1,0 +1,94 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+# Headgear other than armor
+- type: entity
+  parent: [ClothingHeadBaseButcherable, SolAllianceInfo]
+  id: ClothingHeadHatSANWheelCap
+  name: Solarian wheel cap
+  suffix: SAN
+  description: Also known as a "Mechanic hat", this hat is worn by technicians in
+    the Solarian Armed Forces
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_wheel_cap.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_wheel_cap.rsi
+- type: entity
+  parent: [ClothingHeadBaseButcherable, SolAllianceInfo]
+  id: ClothingHeadHatSANNavyCap
+  name: Solarian navy cap
+  suffix: SAN
+  description: A simple cap worn by Solarian Navy ratings.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_navy_cap.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_navy_cap.rsi
+- type: entity
+  parent: [ClothingHeadBaseButcherable, SolAllianceInfo]
+  id: ClothingHeadHatSANMarineUtilityGrey
+  name: Solarian marine utility hat
+  suffix: SAN
+  description: A common hat worn by Solarian grunts. This one is colored stone grey.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_marine_utility_grey.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_marine_utility_grey.rsi
+- type: entity
+  parent: [ClothingHeadBaseButcherable, SolAllianceInfo]
+  id: ClothingHeadHatSANMarineUtility
+  name: Solarian marine utility hat
+  suffix: SAN
+  description: A common hat worn by Solarian grunts. This one is colored olive drab.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_marine_utility.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_marine_utility.rsi
+- type: entity
+  parent: [ClothingHeadBaseButcherable, SolAllianceInfo]
+  id: ClothingHeadHatSANArmyGarrison
+  name: Solarian army garrison hat
+  suffix: SAN
+  description: A garrison hat worn by grunts in the Solarian PDF.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_army_garrison.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_army_garrison.rsi
+- type: entity
+  parent: [ClothingHeadBaseButcherable, SolAllianceInfo]
+  id: ClothingHeadHatSANArmyFieldGrey
+  name: Solarian army field hat
+  suffix: SAN
+  description: A common field hat worn by Solarian grunts. This one is colored stone
+    grey.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_army_field_grey.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_army_field_grey.rsi
+- type: entity
+  parent: [ClothingHeadBaseButcherable, SolAllianceInfo]
+  id: ClothingHeadHatSANArmyField
+  name: Solarian army field hat
+  suffix: SAN
+  description: A common field hat worn by Solarian grunts. This one is colored olive
+    drab.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_army_field.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_army_field.rsi
+- type: entity
+  parent: [ClothingHeadBaseButcherable, SolAllianceInfo]
+  id: ClothingHeadHatSANArmyCap
+  name: Solarian army cap
+  suffix: SAN
+  description: Tradition holds that the brim of this hat must never be used to shield
+    one's eyes from mother Sol'.
+  components:
+  - type: Sprite
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_army_cap.rsi
+  - type: Clothing
+    sprite: _EE/Clothing/SolAlliance/Helmet/SAN_army_cap.rsi

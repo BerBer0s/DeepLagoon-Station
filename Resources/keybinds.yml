@@ -1,5 +1,37 @@
 version: 1 # Not used right now, whatever.
 binds:
+- function: ChatSearch
+  type: State
+  key: F
+  mod1: Control
+  canFocus: true
+  priority: 15
+- function: ChatZoomIn
+  type: State
+  key: Equal
+  mod1: Control
+  canFocus: true
+- function: ChatZoomIn
+  type: State
+  key: Equal
+  mod1: Control
+  mod2: Shift
+  canFocus: true
+- function: ChatZoomIn
+  type: State
+  key: NumpadAdd
+  mod1: Control
+  canFocus: true
+- function: ChatZoomOut
+  type: State
+  key: Minus
+  mod1: Control
+  canFocus: true
+- function: ChatZoomOut
+  type: State
+  key: NumpadSubtract
+  mod1: Control
+  canFocus: true
 - function: UIClick
   type: State
   key: MouseLeft
@@ -212,6 +244,13 @@ binds:
   key: MouseLeft
   mod1: Shift
   canFocus: true
+- function: DeepLagoonOpenInteractions
+  type: State
+  key: MouseLeft
+  mod1: Control
+  mod2: Shift
+  canFocus: true
+  allowSubCombs: false
 - function: ExamineEntity
   type: State
   key: MouseLeft

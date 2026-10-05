@@ -1,0 +1,117 @@
+# Legacy dependencies required by the DeepLagoon loadout catalogue.
+- type: entity
+  name: NT N1984 (.45 magnum)
+  parent: [BaseWeaponPistol, BaseC2ContrabandUnredeemable] # Frontier: BaseSecurityContraband<BaseC2ContrabandUnredeemable
+  id: WeaponPistolN1984 # the spaces in description are for formatting.
+  description: The sidearm of any self respecting officer. Comes in .45 magnum, the lord's caliber. On the handle is a label that says 'for authorized use only.'
+  components:
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Pistols/N1984.rsi
+    layers:
+    - state: base
+      map: ["enum.GunVisualLayers.Base"]
+    - state: mag-0
+      map: ["enum.GunVisualLayers.Mag"]
+  - type: Clothing
+    sprite: Objects/Weapons/Guns/Pistols/N1984.rsi
+  - type: Gun
+    minAngle: 1
+    maxAngle: 20
+    angleIncrease: 8
+    angleDecay: 9
+    fireRate: 4
+    availableModes:
+    - SemiAuto
+    soundGunshot:
+      path: /Audio/Weapons/Guns/Gunshots/mateba.ogg
+  - type: ItemSlots
+    slots:
+      gun_magazine:
+        name: Magazine
+        startingItem: Magazine45_magnumPistolFMJ
+        insertSound: /Audio/Weapons/Guns/MagIn/pistol_magin.ogg
+        ejectSound: /Audio/Weapons/Guns/MagOut/pistol_magout.ogg
+        priority: 2
+        whitelist:
+          tags:
+            - Magazine45_magnumPistolFMJ
+        whitelistFailPopup: gun-magazine-whitelist-fail
+      gun_chamber:
+        name: Chamber
+        startingItem: Cartridge45_magnumFMJ
+        priority: 1
+        whitelist:
+          tags:
+            - Cartridge45_magnumFMJ
+- type: entity
+  name: NT Deckard (.45 magnum)
+  parent: [BaseWeaponRevolver, BaseC1Contraband] # Frontier: BaseSecurityCommandContraband<BaseC1Contraband
+  id: WeaponRevolverDeckard
+  description: A rare, civilian grade custom-built revolver. Use when there is no time for Voight-Kampff test. Uses .45 magnum ammo.
+  components:
+  - type: Sprite
+    sprite: Objects/Weapons/Guns/Revolvers/deckard.rsi
+    layers:
+    - state: base
+      map: ["enum.GunVisualLayers.Base"]
+    - state: mag-unshaded-3
+      map: ["enum.GunVisualLayers.MagUnshaded"]
+      shader: unshaded
+  - type: Gun
+    fireRate: 2
+  - type: RevolverAmmoProvider
+    capacity: 5
+    chambers: [ True, True, True, True, True ]
+    ammoSlots: [ null, null, null, null, null ]
+  - type: MagazineVisuals
+    magState: mag
+    steps: 4
+    zeroVisible: true
+  - type: Appearance
+  - type: StaticPrice
+    price: 150
+
+- type: entity
+  name: Fitz Special (.45 magnum)
+  parent: [BaseWeaponRevolver, BaseC1Contraband]
+  id: WeaponRevolverFitz
+  description: A compact and concealable self defence snub revolver. Uses .45 magnum ammo.
+  components:
+  - type: Sprite
+    sprite: _DV/Objects/Weapons/Guns/Revolvers/fitz.rsi
+  - type: Clothing
+    sprite: _DV/Objects/Weapons/Guns/Revolvers/fitz.rsi
+  - type: Gun
+    selectedMode: SemiAuto
+    fireRate: 1.75
+    availableModes:
+    - SemiAuto
+  - type: RevolverAmmoProvider
+    proto: Cartridge45_magnumFMJ
+    capacity: 6
+    chambers: [ True, True, True, True, True, True ]
+    ammoSlots: [ null, null, null, null, null, null ]
+  - type: StaticPrice
+    price: 340
+
+
+- type: entity
+  id: BaseRestrictedContraband
+  abstract: true
+  components:
+  - type: Contraband
+    severity: Restricted
+
+- type: entity
+  parent: ClothingNeckBase
+  id: ClothingNeckBellCollar
+  name: bell collar
+  description: A way to inform others about your presence, or just to annoy everyone around you!
+  components:
+  - type: Sprite
+    sprite: _NF/Clothing/Neck/bellcollar.rsi
+  - type: Clothing
+    sprite: _NF/Clothing/Neck/bellcollar.rsi
+  - type: EmitsSoundOnMove
+    soundCollection:
+      collection: FootstepJester

@@ -1,0 +1,47 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+#Basic armor vest replacement
+- type: entity
+  parent: [ClothingOuterBaseMedium, AllowSuitStorageClothing]
+  id: ClothingOuterArmorDuraVest
+  name: durathread vest
+  description: A tight-fitting and sturdy armor vest, reinforced with durathread weave
+    to protect against sharp objects and blunt force trauma.
+  components:
+  - type: Sprite
+    sprite: DeltaV/Clothing/OuterClothing/Armor/duravest.rsi
+  - type: Clothing
+    sprite: DeltaV/Clothing/OuterClothing/Armor/duravest.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.60
+        Slash: 0.60
+        Piercing: 0.90
+        Heat: 0.90
+  - type: ExplosionResistance
+    damageCoefficient: 0.90
+  - type: AllowSuitStorage
+- type: entity
+  parent: [ClothingOuterBaseMedium, AllowSuitStorageClothing]
+  id: ClothingOuterArmorPlateCarrier
+  name: plate carrier
+  description: A large and bulky carrier featuring steel plates that offer decent
+    protection against gunfire.
+  components:
+  - type: Sprite
+    sprite: DeltaV/Clothing/OuterClothing/Armor/platecarrier.rsi
+  - type: Clothing
+    sprite: DeltaV/Clothing/OuterClothing/Armor/platecarrier.rsi
+  - type: Armor
+    modifiers:
+      coefficients:
+        Blunt: 0.80
+        Slash: 0.80
+        Piercing: 0.50
+        Heat: 0.80
+  - type: ClothingSpeedModifier
+    walkModifier: 0.90
+    sprintModifier: 0.90
+  - type: ExplosionResistance
+    damageCoefficient: 0.70
+  - type: AllowSuitStorage

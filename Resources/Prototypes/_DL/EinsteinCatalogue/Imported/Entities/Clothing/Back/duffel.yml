@@ -1,0 +1,9 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  parent: ClothingBackpackDuffel
+  id: ClothingBackpackDuffelRobotics
+  name: robotics duffel bag
+  description: A large and sturdy duffel bag to fit everything needed to build a cyborg.
+  components:
+  - type: Sprite
+    sprite: Clothing/Back/Duffels/robotics.rsi

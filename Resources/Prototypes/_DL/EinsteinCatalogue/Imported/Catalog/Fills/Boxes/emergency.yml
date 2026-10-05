@@ -1,0 +1,21 @@
+# Imported from Simple-Station/Einstein-Engines, master archive.
+- type: entity
+  name: survival box
+  parent: BoxCardboardSmall
+  id: BoxSurvivalBrigmedic
+  description: It's a box with basic internals inside.
+  suffix: Brigmedic
+  components:
+  - type: StorageFill
+    contents:
+    - id: ClothingMaskBreathMedicalSecurity
+    - id: EmergencyOxygenTankFilled
+    - id: SpaceMedipen
+    - id: EmergencyMedipen
+    - id: EmergencyMedipen
+    - id: FoodPSB
+    - id: DrinkWaterBottleFull
+  - type: Sprite
+    layers:
+    - state: internals
+    - state: emergencytank
