@@ -18,6 +18,25 @@ namespace Content.Tests.Server;
 [TestFixture]
 public sealed class ChatPanelDatabaseTest
 {
+    [TestCase(true)]
+    [TestCase(false)]
+    public void MigrationHistoryRetainsDeployedDeepLagoonIdentifiers(bool postgres)
+    {
+        using DbContext context = postgres
+            ? new PostgresServerDbContext(new DbContextOptionsBuilder<PostgresServerDbContext>()
+                .UseNpgsql("Host=localhost;Database=unused;Username=unused").Options)
+            : new SqliteServerDbContext(new DbContextOptionsBuilder<SqliteServerDbContext>()
+                .UseSqlite("Data Source=:memory:").Options);
+        var migrations = context.Database.GetMigrations().ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(migrations, Does.Contain("20261002120000_DeepLagoonSocialPreferences"));
+            Assert.That(migrations, Does.Contain("20261002190000_DeepLagoonSocialLibrary"));
+            Assert.That(migrations, Does.Not.Contain("20261002120000_DeepLagoonInteractionPanelPreferences"));
+            Assert.That(migrations, Does.Not.Contain("20261002190000_DeepLagoonInteractionPanelLibrary"));
+        });
+    }
+
     [Test]
     public async Task SqliteMigrationAndAccountScopedSavePreserveOtherPreferences()
     {

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Content.Server.Database.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteServerDbContext))]
-    [Migration("20261002190000_DeepLagoonInteractionPanelLibrary")]
+    [Migration("20261002190000_DeepLagoonSocialLibrary")]
     partial class DeepLagoonInteractionPanelLibrary
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
