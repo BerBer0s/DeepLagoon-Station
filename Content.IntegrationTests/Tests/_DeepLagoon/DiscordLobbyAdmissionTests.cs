@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using Content.Server.Voting.Managers;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -29,6 +31,17 @@ public sealed class DiscordLobbyAdmissionTests
         var config = server.ResolveDependency<IConfigurationManager>();
         var linking = server.ResolveDependency<IEntitySystemManager>().GetEntitySystem<DiscordLinkSystem>();
         await server.WaitPost(() => config.SetCVar(CCVars.DiscordLinkEnabled, true));
+        await server.WaitPost(() =>
+        {
+            config.SetCVar(CCVars.AutoVoteEnabled, false);
+            config.SetCVar(CCVars.MapAutoVoteEnabled, false);
+            config.SetCVar(CCVars.PresetAutoVoteEnabled, false);
+            config.SetCVar(CCVars.VoteEnabled, false);
+            var votes = server.ResolveDependency<IVoteManager>();
+            foreach (var vote in votes.ActiveVotes.ToArray())
+                vote.Cancel();
+            votes.Update();
+        });
         var session = await server.AddDummySession();
         await PoolManager.WaitUntil(server, () => session.Status == SessionStatus.InGame, 600);
         try
@@ -77,6 +90,17 @@ public sealed class DiscordLobbyAdmissionTests
             config.SetCVar(CCVars.PresetAutoVoteEnabled, false);
             config.SetCVar(CCVars.VoteEnabled, false);
             ticker.RestartRound();
+        });
+        await server.WaitPost(() =>
+        {
+            config.SetCVar(CCVars.AutoVoteEnabled, false);
+            config.SetCVar(CCVars.MapAutoVoteEnabled, false);
+            config.SetCVar(CCVars.PresetAutoVoteEnabled, false);
+            config.SetCVar(CCVars.VoteEnabled, false);
+            var votes = server.ResolveDependency<IVoteManager>();
+            foreach (var vote in votes.ActiveVotes.ToArray())
+                vote.Cancel();
+            votes.Update();
         });
         var session = await server.AddDummySession();
         await PoolManager.WaitUntil(server, () => session.Status == SessionStatus.InGame, 600);
