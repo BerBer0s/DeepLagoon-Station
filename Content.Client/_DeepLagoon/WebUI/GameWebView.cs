@@ -11,22 +11,62 @@ namespace Content.Client._DeepLagoon.WebUI;
 
 /// <summary>
 /// Local packaged web UI. CEF callbacks run on another thread: only enqueue here;
-/// dispatch messages from FrameUpdate. Remote documents and downloads are rejected.
+/// dispatch messages after the UI frame traversal. Remote documents and downloads are rejected.
 /// </summary>
 public sealed class GameWebView : Control
 {
     private const string Root = "/Web/DeepLagoon/";
-    private readonly WebViewControl _view;
+    private WebViewControl _view;
+    private readonly string _documentUrl;
     private readonly string? _devOrigin;
     private readonly ConcurrentQueue<string> _incoming = new();
     private readonly Queue<string> _outgoing = new();
     private bool _ready;
     private bool _disposed;
+    private bool _messageDispatchPending;
+    private bool _explicitTextInput;
     private readonly bool _suspendWhenHidden;
     public bool BrowserActive => _view.IsInsideTree;
     public bool IsReady => _ready;
     public event Action<string, string>? Message;
     public event Action? Ready;
+
+    public void FocusInput() => _view.GrabKeyboardFocus();
+
+    public bool HasInputFocus => _view.HasKeyboardFocus();
+
+    public void SetWindowDragging(bool dragging)
+    {
+        if (!_ready || _disposed) return;
+        _view.ExecuteJavaScript("window.dispatchEvent(new CustomEvent('deeplagoon/window-drag', {detail:" +
+            (dragging ? "true" : "false") + "}));");
+    }
+
+    public void FocusTextInput()
+    {
+        FocusInput();
+        _explicitTextInput = true;
+        _view.Root?.Window?.TextInputStart();
+        if (_ready)
+            _view.ExecuteJavaScript("window.focus(); window.dispatchEvent(new Event('deeplagoon/focus-input'));");
+    }
+
+    // The current CEF adapter follows Return with a Backspace char event.
+    // Composer intercepts that key and sends a DOM keydown without the bad char.
+    public void SendInputKey(bool tab, bool shift)
+    {
+        if (!_ready || _disposed || !HasInputFocus) return;
+        _view.ExecuteJavaScript("document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', {" +
+            (tab ? "key:'Tab',code:'Tab',keyCode:9,which:9," : "key:'Enter',code:'Enter',keyCode:13,which:13,") +
+            "bubbles:true,cancelable:true,shiftKey:" +
+            (shift ? "true" : "false") + "}));");
+    }
+
+    public void ReleaseTextInput()
+    {
+        if (_explicitTextInput && HasInputFocus) _view.Root?.Window?.TextInputStop();
+        _explicitTextInput = false;
+    }
 
     public GameWebView(bool chat = false, bool suspendWhenHidden = false)
     {
@@ -35,16 +75,23 @@ public sealed class GameWebView : Control
 #if DEBUG
         _devOrigin = TguiDevelopmentPolicy.GetOrigin(IoCManager.Resolve<IConfigurationManager>().GetCVar(WebUiCVars.DevServer));
 #endif
-        _view = new WebViewControl
+        _documentUrl = (_devOrigin == null ? "res://deeplagoon" + Root : _devOrigin + "/") +
+            (chat ? "chat.html" : "interface.html");
+        _view = CreateView();
+        if (!_suspendWhenHidden) AddChild(_view);
+    }
+
+    private WebViewControl CreateView()
+    {
+        var view = new WebViewControl
         {
             HorizontalExpand = true,
             VerticalExpand = true,
-            Url = (_devOrigin == null ? "res://deeplagoon" + Root : _devOrigin + "/") +
-                  (chat ? "chat.html" : "interface.html")
+            Url = _documentUrl
         };
-        _view.AddBeforeBrowseHandler(BeforeBrowse);
-        _view.AddResourceRequestHandler(ResourceRequest);
-        if (!_suspendWhenHidden) AddChild(_view);
+        view.AddBeforeBrowseHandler(BeforeBrowse);
+        view.AddResourceRequestHandler(ResourceRequest);
+        return view;
     }
 
     private static bool IsLocal(Uri uri) => uri.Scheme == "res" &&
@@ -125,6 +172,19 @@ public sealed class GameWebView : Control
         // Attach only once the visible viewport is laid out. Hidden editors do
         // not create background CEF browsers, even while their UI stays in tree.
         if (_suspendWhenHidden && VisibleInTree && _view.Parent == null) AddChild(_view);
+        if (_disposed || _messageDispatchPending || _incoming.IsEmpty) return;
+        _messageDispatchPending = true;
+        // Actions can add or remove windows (including this browser's owner).
+        // Never invoke them while an ancestor enumerates its child controls.
+        UserInterfaceManager.DeferAction(() =>
+        {
+            _messageDispatchPending = false;
+            DispatchIncoming();
+        });
+    }
+
+    private void DispatchIncoming()
+    {
         for (var i = 0; i < 32 && _incoming.TryDequeue(out var json); i++)
         {
             if (_disposed)
@@ -154,7 +214,7 @@ public sealed class GameWebView : Control
     protected override void ExitedTree()
     {
         base.ExitedTree();
-        if (_suspendWhenHidden && _view.Parent != null) _view.Orphan();
+        if (_suspendWhenHidden && !_disposed) SuspendBrowser();
         _ready = false;
         _outgoing.Clear();
         while (_incoming.TryDequeue(out _)) { }
@@ -164,14 +224,27 @@ public sealed class GameWebView : Control
     {
         base.VisibilityChanged(newVisible);
         if (!_suspendWhenHidden || VisibleInTree || _view.Parent == null) return;
-        _view.Orphan();
+        SuspendBrowser();
         _ready = false;
         _outgoing.Clear();
         while (_incoming.TryDequeue(out _)) { }
     }
 
+    private void SuspendBrowser()
+    {
+        ReleaseTextInput();
+        _view.RemoveBeforeBrowseHandler(BeforeBrowse);
+        _view.RemoveResourceRequestHandler(ResourceRequest);
+        _view.Orphan();
+        _view.Dispose();
+        // StartBrowser allocates a 1x1 texture. A fresh control guarantees that
+        // layout invokes Resized even when the resumed viewport has the same size.
+        _view = CreateView();
+    }
+
     protected override void Dispose(bool disposing)
     {
+        ReleaseTextInput();
         _disposed = true;
         _view.RemoveBeforeBrowseHandler(BeforeBrowse);
         _view.RemoveResourceRequestHandler(ResourceRequest);

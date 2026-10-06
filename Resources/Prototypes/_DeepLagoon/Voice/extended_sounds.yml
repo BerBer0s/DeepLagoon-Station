@@ -1,0 +1,68 @@
+# Exact Extended emote audio selections; source hashes: Resources/Audio/_DeepLagoon/Emotes/SOURCE.txt.
+
+- type: soundCollection
+  id: ExtendedChokeMaleSound
+  files:
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_male1.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_male2.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_male3.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_male4.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_male5.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_male6.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_male7.ogg
+
+- type: soundCollection
+  id: ExtendedChokeFemaleSound
+  files:
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_female1.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_female2.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_female3.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_female4.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_female5.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_female6.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/voice/gasp_female7.ogg
+
+- type: soundCollection
+  id: ExtendedMoanMaleSound
+  files:
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/final_m1.ogg
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/final_m2.ogg
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/final_m3.ogg
+
+- type: soundCollection
+  id: ExtendedMoanFemaleSound
+  files:
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/moan_f1.ogg
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/moan_f2.ogg
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/moan_f3.ogg
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/moan_f4.ogg
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/moan_f5.ogg
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/moan_f6.ogg
+  - /Audio/_DeepLagoon/Emotes/modular_sand/sound/interactions/moan_f7.ogg
+
+- type: soundCollection
+  id: ExtendedMedicSound
+  files:
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/demoman_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/demoman_medic02.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/demoman_medic03.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/engineer_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/engineer_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/engineer_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/heavy_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/heavy_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/heavy_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/medic1.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/medic2.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/pyro_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/scout_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/scout_medic02.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/scout_medic03.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/sniper_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/sniper_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/soldier_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/soldier_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/soldier_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/spy_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/spy_medic01.ogg
+  - /Audio/_DeepLagoon/Emotes/sound/magic/tf2/spy_medic01.ogg

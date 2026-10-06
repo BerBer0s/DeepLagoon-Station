@@ -5,6 +5,23 @@ source changes are required. Local packaged UI and remote wiki documents have
 separate request policies and separate controls. A wiki page never receives the
 TGUI bridge.
 
+`GameWebView` dispatches browser events through the UI manager's deferred-action
+queue after frame traversal. Action and ready handlers can open or close windows
+without modifying the collection currently being enumerated. Pending messages
+are discarded when their browser is removed or disposed.
+
+Use in-document TGUI `Dropdown` controls and RGB/HEX color controls. Native
+HTML `<select>` and `<input type="color">` open CEF popup surfaces which this
+WebView implementation does not composite separately; they can corrupt the
+main view's paint buffer. Do not use native browser popup widgets in interfaces.
+
+`TguiPanel` automatically moves its enclosing native window when that window is
+directly attached to `WindowRoot`. Hold the left mouse button anywhere in the
+browser and move it at least four UI pixels to drag; a stationary click works
+normally. Dragging does not resize or reload CEF, and the release click is
+suppressed. Embedded panels (chat, lobby and character editor) stay anchored.
+No per-interface drag header, JavaScript action or registration is needed.
+
 ## Create an interface
 
 Quick start: `pnpm new:interface MyInterface` generates a TSX interface, shared
@@ -69,20 +86,38 @@ BYOND-specific features such as `ByondUi` require an SS14-specific replacement.
 developer previews from the client console. Preview actions do not change server
 state. Use `ComputerTguiDemo` to test actual client/server actions.
 
-## BlueMoon chat
+## TGUI chat
 
-The separated chat layout uses BlueMoon's renderer, tabs, search, highlights and
+Settings → Misc → Classic chat (Классический чат) restores the original native `OutputPanel`
+and horizontal input in lobby and round, with no chat CEF browser. During rounds
+it selects the original floating chat HUD; disabling the option restores the
+previous HUD layout. The archived client-only setting is `ui.vanilla_chat`.
+The shared message history and input draft survive switching. Character TGUI
+and wiki windows are independent of this chat setting.
+
+The separated chat layout uses TGUI's renderer, tabs, search, highlights and
 appearance settings. Enable the separated chat layout in game settings. SS14's
-native input, channel selection, typing indicators and server permissions remain
-connected through the existing `ChatUIController`.
+TGUI mode hides the native bottom input. Chat focus keybindings and the pen button
+open the `ChatComposer` interface; Enter submits, Shift+Enter inserts a newline,
+and Escape closes while retaining the draft. The mounted form confirms focus
+to the host, which focuses the native browser and starts platform text input.
+While that browser owns keyboard focus, Return is bridged to a DOM keydown;
+this avoids the engine CEF adapter's extra Backspace char event. IME confirmation
+is passed through normally, and the keyboard hook is removed on close.
+Emotes expand the form from 440px
+to 840px and the input from 66px to 250px over 180ms, inside a fixed browser
+surface. The browser is disposed when the composer closes. Draft updates are
+debounced; state replay supports dev-server reload without losing the draft.
+Channel selection, typing indicators and server permissions remain connected
+through the existing `ChatUIController`.
 
 Only messages received by the client enter the web panel. SS14 markup is converted
 to escaped HTML with supported rich-text styles (bold, italic, color and relative
-font size). Channel metadata selects BlueMoon message classes; text prefixes never
+font size). Channel metadata selects TGUI message classes; text prefixes never
 determine the channel. Explicit server colors, including departmental radio colors,
 are preserved. The renderer uses HTML for display and plain text for searching,
 and never combines different message types or formatting just because text matches.
-The light/dark message styles remain identical to the BlueMoon source files.
+The light/dark message styles remain identical to the TGUI source files.
 Message history is never restored from
 browser storage; server deletions rebuild the panel from current client history.
 Settings are stored in the existing chat preference record, in the YAML
@@ -91,8 +126,8 @@ Settings are stored in the existing chat preference record, in the YAML
 pin/unpin emotes (up to 24); pinned buttons execute the regular predictive SS14
 event and follow species, whitelist and availability restrictions. The visible
 12-pixel grip between viewport and chat adjusts its width (15–55%); the proportion
-is saved in `ui.chat_panel_width`. See [EMOTES.md](EMOTES.md) for the 50 ported
-descriptive emotes and the comparison scope.
+is saved in `ui.chat_panel_width`. The imported descriptive emotes are defined in
+`Resources/Prototypes/_DeepLagoon/Voice/extended_emotes.yml`.
 
 BYOND's audio player, map controls and arbitrary external chat images
 are not included in this port. TGUI fonts and icons are packaged locally.
@@ -120,7 +155,7 @@ EntityManager.System<Content.Server._DeepLagoon.WebUI.WikiPageSystem>()
 This sends a page ID, not a URL, and always opens the guidebook window. Local
 TGUI windows and the chat reject every wiki/network request.
 
-## Build and validation
+## Build
 
 Build the normal client and server projects with .NET 10. CEF's subprocess,
 native libraries and resources are required, not just the managed WebView DLL.
@@ -132,21 +167,7 @@ Confirm that the chosen engine release publishes that module before deployment.
 ```text
 dotnet build Content.Client/Content.Client.csproj -c Debug
 dotnet build Content.Server/Content.Server.csproj -c Debug
-dotnet test Content.Tests/Content.Tests.csproj --filter "FullyQualifiedName~ClientSandboxTest|FullyQualifiedName~ChatTabsSettingsTest"
 ```
-
-Integration checks:
-
-```text
-dotnet test Content.IntegrationTests/Content.IntegrationTests.csproj --filter "FullyQualifiedName~SeparatedChatTest"
-```
-
-Validation on 2026-10-06 includes actual C# chat payloads rendered with BlueMoon
-light/dark styles and native in-game CEF Fast Refresh: the document stayed open
-and its backend data survived the TSX edit. The user reports that the previously
-added game/wikiguidebook integration works. Builds/headless checks alone do not
-verify account-backed chat settings or every graphical character/editor path.
-No engine source changes were made.
 
 ## Character editor and emote audio
 
@@ -177,13 +198,9 @@ rich-text history. Performance validation must measure an actual round;
 editor/menu lifecycle checks do not establish in-round FPS.
 Server/character details scroll on shorter lobby windows so the chat viewport
 retains a usable minimum height.
-In Debug, `tgui_preview character-wait` waits for a local connected lobby, and
-the `dev-select-tab` action is available to lifecycle tests. Native CEF checks
-cover 12 tab switches and three page reloads with retained hair color.
-
-Emote audio files and sex-dependent/random bindings are copied from BlueMoon;
-see [EMOTE-SOUNDS.md](EMOTE-SOUNDS.md). Regenerate with
-`node tools/port-emote-sounds.cjs <BlueMoon repository path>` (also invoked by
+Emote audio files and sex-dependent/random bindings are copied from TGUI;
+regenerate with
+`node tools/port-emote-sounds.cjs <source repository path>` (also invoked by
 the emote importer). `SOURCE.txt` records hashes; upstream voice attribution
 is preserved beside the imported files. The picker supports a responsive grid,
 an explicit Close button, Escape, auto-close after performing an emote and

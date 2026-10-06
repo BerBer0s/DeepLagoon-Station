@@ -1,6 +1,6 @@
 // The separately compiled light theme also loads shared Sass dependencies.
 // State both theme defaults explicitly so that switching to dark cannot inherit
-// its black text. Message-specific BlueMoon colors and user customization remain.
+// its black text. Message-specific TGUI colors and user customization remain.
 .theme-dark .Chat {
   color: var(--chat-text, #abc6ec);
 }

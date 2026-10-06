@@ -67,8 +67,14 @@ public sealed class ChatTabsSettings
             var settings = new ChatTabsSettings();
             if (root.TryGet<SequenceDataNode>("PinnedEmotes", out var pinned))
                 foreach (var node in pinned.Sequence.Take(24))
-                    if (node is ValueDataNode id && id.Value.Length is > 0 and <= 64 && !settings.PinnedEmotes.Contains(id.Value))
-                        settings.PinnedEmotes.Add(id.Value);
+                    if (node is ValueDataNode id && id.Value.Length is > 0 and <= 64)
+                    {
+                        // Read-only compatibility with identifiers saved before the neutral rename.
+                        const string legacyPrefix = "BlueMoon";
+                        var value = id.Value.StartsWith(legacyPrefix, StringComparison.Ordinal)
+                            ? "Extended" + id.Value[legacyPrefix.Length..] : id.Value;
+                        if (!settings.PinnedEmotes.Contains(value)) settings.PinnedEmotes.Add(value);
+                    }
             foreach (var node in tabs.Sequence)
             {
                 if (node is not MappingDataNode tab ||

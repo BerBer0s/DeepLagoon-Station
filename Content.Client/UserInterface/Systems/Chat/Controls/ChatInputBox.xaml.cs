@@ -56,7 +56,10 @@ public class ChatInputBox : PanelContainer
 
     public void UseCompactLayout()
     {
-        Container.RemoveAllChildren();
+        ChannelSelector.Orphan();
+        Input.Orphan();
+        FilterButton.Orphan();
+        Container.DisposeAllChildren();
         Container.Orientation = BoxContainer.LayoutOrientation.Vertical;
         var channelRow = new BoxContainer { HorizontalExpand = true };
         ChannelSelector.HorizontalExpand = true;
@@ -64,6 +67,19 @@ public class ChatInputBox : PanelContainer
         channelRow.AddChild(FilterButton);
         Container.AddChild(Input);
         Container.AddChild(channelRow);
+    }
+
+    public void UseVanillaLayout()
+    {
+        ChannelSelector.Orphan();
+        Input.Orphan();
+        FilterButton.Orphan();
+        Container.DisposeAllChildren();
+        Container.Orientation = BoxContainer.LayoutOrientation.Horizontal;
+        ChannelSelector.HorizontalExpand = false;
+        Container.AddChild(ChannelSelector);
+        Container.AddChild(Input);
+        Container.AddChild(FilterButton);
     }
 
     private static string GetChatboxInfoPlaceholder()

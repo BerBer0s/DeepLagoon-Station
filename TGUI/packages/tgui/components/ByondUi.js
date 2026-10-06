@@ -1,0 +1,144 @@
+/**
+ * @file
+ * @copyright 2020 Aleksej Komarov
+ * @license MIT
+ */
+
+import { shallowDiffers } from 'common/react';
+import { debounce } from 'common/timer';
+import { Component, createRef } from 'react';
+
+import { sendMessage } from '../backend';
+import { createLogger } from '../logging';
+import { computeBoxProps } from './Box';
+
+const logger = createLogger('ByondUi');
+
+// Stack of currently allocated BYOND UI element ids.
+const byondUiStack = [];
+
+const createByondUiElement = (elementId, phonehome = true) => {
+  // Reserve an index in the stack
+  const index = byondUiStack.length;
+  byondUiStack.push(null);
+  // Get a unique id
+  const id = elementId || 'byondui_' + index;
+  logger.log(`allocated '${id}'`);
+  // Return a control structure
+  return {
+    render: params => {
+      logger.log(`rendering '${id}'`);
+      if (phonehome) {
+        sendMessage({ type: 'renderByondUi', payload: { renderByondUi: id } });
+      }
+      byondUiStack[index] = id;
+      Byond.winset(id, params);
+    },
+    unmount: () => {
+      logger.log(`unmounting '${id}'`);
+      if (phonehome) {
+        sendMessage({ type: 'unmountByondUi', payload: { renderByondUi: id } });
+      }
+      byondUiStack[index] = null;
+      Byond.winset(id, {
+        parent: '',
+      });
+    },
+  };
+};
+
+window.addEventListener('beforeunload', () => {
+  // Cleanly unmount all visible UI elements
+  for (let index = 0; index < byondUiStack.length; index++) {
+    const id = byondUiStack[index];
+    if (typeof id === 'string') {
+      logger.log(`unmounting '${id}' (beforeunload)`);
+      byondUiStack[index] = null;
+      Byond.winset(id, {
+        parent: '',
+      });
+    }
+  }
+});
+
+/**
+ * Get the bounding box of the DOM element.
+ */
+const getBoundingBox = element => {
+  const rect = element.getBoundingClientRect();
+  // DPI fix: getBoundingClientRect() returns CSS pixels (scaled down by body zoom),
+  // but Byond.winset() expects physical pixels. Multiply by devicePixelRatio.
+  const pr = window.devicePixelRatio ?? 1;
+  return {
+    pos: [
+      Math.round(rect.left * pr),
+      Math.round(rect.top * pr),
+    ],
+    size: [
+      Math.round((rect.right - rect.left) * pr),
+      Math.round((rect.bottom - rect.top) * pr),
+    ],
+  };
+};
+
+export class ByondUi extends Component {
+  constructor(props) {
+    super(props);
+    this.containerRef = createRef();
+    this.byondUiElement = createByondUiElement(props.params?.id, props.phonehome);
+    this.handleResize = debounce(() => {
+      this.forceUpdate();
+    }, 100);
+  }
+
+  shouldComponentUpdate(nextProps) {
+    const {
+      params: prevParams = {},
+      ...prevRest
+    } = this.props;
+    const {
+      params: nextParams = {},
+      ...nextRest
+    } = nextProps;
+    return shallowDiffers(prevParams, nextParams)
+      || shallowDiffers(prevRest, nextRest);
+  }
+
+  componentDidMount() {
+    window.addEventListener('resize', this.handleResize);
+    this.componentDidUpdate();
+    this.handleResize();
+  }
+
+  componentDidUpdate() {
+    const {
+      params = {},
+    } = this.props;
+    const box = getBoundingBox(this.containerRef.current);
+    logger.debug('bounding box', box);
+    this.byondUiElement.render({
+      parent: window.__windowId__,
+      ...params,
+      pos: box.pos[0] + ',' + box.pos[1],
+      size: box.size[0] + 'x' + box.size[1],
+    });
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this.handleResize);
+    this.byondUiElement.unmount();
+  }
+
+  render() {
+    const { params, ...rest } = this.props;
+    const boxProps = computeBoxProps(rest);
+    return (
+      <div
+        ref={this.containerRef}
+        {...boxProps}>
+        {/* Filler */}
+        <div style={{ minHeight: '22px' }} />
+      </div>
+    );
+  }
+}

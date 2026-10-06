@@ -1,4 +1,4 @@
-// BlueMoon chat renderer, tabs, search, highlights and appearance settings.
+// TGUI chat renderer, tabs, search, highlights and appearance settings.
 // Game input and permission checks remain in SS14's ChatInputBox/ChatUIController.
 import './packages/tgui-panel/styles/main.scss';
 import './packages/tgui-panel/styles/themes/light.scss';
@@ -28,6 +28,7 @@ const Panel = () => {
       <Stack fill vertical>
         <Stack.Item><Section fitted><Stack align="center">
           <Stack.Item grow><ChatTabs /></Stack.Item>
+          <Stack.Item><Button icon="pen" tooltip="Написать сообщение" onClick={() => Byond.topic({ type: 'act/compose', payload: {} })} /></Stack.Item>
           <Stack.Item><Button icon="search" onClick={() => setSearchOpen(!searchOpen)} /></Stack.Item>
           <Stack.Item><Button icon="cog" onClick={() => settings.toggle()} /></Stack.Item>
         </Stack></Section></Stack.Item>

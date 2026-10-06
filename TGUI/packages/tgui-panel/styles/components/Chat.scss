@@ -1,0 +1,324 @@
+/**
+ * Copyright (c) 2020 Aleksej Komarov
+ * SPDX-License-Identifier: MIT
+ */
+
+@use 'sass:color';
+@use 'sass:math';
+@use '~tgui/styles/base.scss';
+@use '~tgui/styles/colors.scss';
+
+$text-color: #abc6ec !default;
+$color-bg-section: base.$color-bg-section !default;
+
+// Thinner scrollbar with transparent track for the chat panel,
+// so it doesn't create a visible gap on the right side.
+.Layout__content--scrollable {
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+.Chat {
+  color: $text-color;
+}
+
+.Chat__badge {
+  display: inline-block;
+  min-width: 0.5em;
+  font-size: 0.7em;
+  padding: 0.2em 0.3em;
+  line-height: 1;
+  color: white;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  background-color: crimson;
+  border-radius: 10px;
+  transition: font-size 200ms ease-out;
+
+  &:before {
+    content: 'x';
+  }
+}
+
+.Chat__badge--animate {
+  font-size: 0.9em;
+  transition: font-size 0ms;
+}
+
+.Chat__scrollButton {
+  position: absolute;
+  z-index: 2;
+  right: 2em;
+  bottom: 1em;
+}
+
+.Chat__reconnected {
+  font-size: 0.85em;
+  text-align: center;
+  margin: 1em 0 2em;
+
+  &:before {
+    content: 'Reconnected';
+    display: inline-block;
+    border-radius: 1em;
+    padding: 0 0.7em;
+    color: colors.$red;
+    background-color: $color-bg-section;
+  }
+
+  &:after {
+    content: '';
+    display: block;
+    margin-top: -0.75em;
+    border-bottom: math.div(1em, 6) solid colors.$red;
+  }
+}
+
+.Chat__highlight {
+  color: #000;
+
+  // Спаны с background-clip: text делают текст прозрачным через
+  // наследуемый -webkit-text-fill-color; без сброса подсветка
+  // превращается в нечитаемую цветную плашку.
+  -webkit-text-fill-color: #000;
+  text-shadow: none;
+}
+
+.Chat__highlight--restricted {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  background-color: #a00;
+  font-weight: bold;
+}
+
+.Chat__unreadBadge {
+  font-size: 0.7em;
+  border-radius: 0.25em;
+  width: 1.7em;
+  line-height: 1.55em;
+  background-color: crimson;
+  color: #fff;
+  text-align: center;
+  animation: unreadPulse 2s ease-in-out infinite;
+}
+
+@keyframes unreadPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 20, 60, 0);
+  }
+  50% {
+    box-shadow: 0 0 6px 2px rgba(220, 20, 60, 0.4);
+  }
+}
+
+.ChatMessage {
+  word-wrap: break-word;
+}
+
+.ChatMessage--highlighted {
+  position: relative;
+  border-left: math.div(1em, 6) solid rgba(255, 221, 68);
+  padding-left: 0.5em;
+
+  &:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(255, 221, 68, 0.1);
+    // Make this click-through since this is an overlay
+    pointer-events: none;
+  }
+}
+
+blockquote {
+  background-color: rgba($text-color, 0.05);
+  border-left: 0.15em solid;
+  border-color: $text-color;
+  padding-left: 0.3em;
+  padding-right: 0.3em;
+  margin-bottom: 0.15em;
+  margin-left: 0.3em;
+  margin-right: 0em;
+}
+
+hr {
+  background-color: rgba($text-color, 0.25);
+  height: 0.15em;
+  border-style: none;
+  margin-left: 1em;
+  margin-right: 2em;
+  margin-bottom: 0.3em;
+  margin-top: 0.3em;
+}
+
+// Кастомизация стилей сообщений (вкладка настроек "Стили текста").
+// Классы Chat--plain-<стиль> вешаются на корень чата и возвращают
+// выбранному спану вид обычного текста. Цвета переопределяются через
+// CSS-переменные --cs-<стиль>-color в темах goon/chat-dark|light.
+@mixin plain-message-style {
+  color: inherit;
+  font-family: inherit;
+  font-style: normal;
+  font-weight: inherit;
+  font-size: 100%;
+  letter-spacing: inherit;
+  opacity: 1;
+  text-shadow: none;
+  border-left: none;
+  padding-left: 0;
+  animation: none;
+  transform: none;
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+}
+
+.Chat--plain-emote .emote {
+  @include plain-message-style;
+}
+
+.Chat--plain-whisper .whisper {
+  @include plain-message-style;
+}
+
+.Chat--plain-singing .singing {
+  @include plain-message-style;
+}
+
+.Chat--plain-lewd .lewd {
+  @include plain-message-style;
+}
+
+.Chat--plain-purr .purr {
+  @include plain-message-style;
+}
+
+.Chat--plain-croon .croon {
+  @include plain-message-style;
+}
+
+.Chat--plain-deadsay .deadsay {
+  @include plain-message-style;
+}
+
+.Chat--plain-telepathy .telepathy,
+.Chat--plain-telepathy .telepathybold {
+  @include plain-message-style;
+}
+
+.Chat--plain-signlang .signlang {
+  @include plain-message-style;
+}
+
+.Chat--plain-signlang .signlang::before {
+  content: none;
+}
+
+.Chat--plain-thought .thought {
+  @include plain-message-style;
+}
+
+.Chat--plain-thought .thought::before {
+  content: none;
+}
+
+.Chat--plain-dream .dream {
+  @include plain-message-style;
+}
+
+// Глобальный тумблер декоративных анимаций особых стилей чата.
+.Chat--fxAnimOff .mesmerize,
+.Chat--fxAnimOff .infernal_ascension,
+.Chat--fxAnimOff .supermatter_delam,
+.Chat--fxAnimOff .ai_corruption,
+.Chat--fxAnimOff .broadcast_static,
+.Chat--fxAnimOff .glitch,
+.Chat--fxAnimOff .dream,
+.Chat--fxAnimOff .last_breath {
+  animation: none;
+}
+
+// Библиотека анимаций для кастомизации стилей игроком.
+// Только opacity/text-shadow/color - transform ломает перенос строк,
+// а на длинных сообщениях это критично.
+@keyframes cs-pulse {
+  0% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+// text-shadow без цвета = currentColor, свечение подстраивается
+// под выбранный игроком цвет стиля.
+@keyframes cs-glow {
+  0% {
+    text-shadow: 0 0 1px;
+  }
+
+  100% {
+    text-shadow: 0 0 7px;
+  }
+}
+
+@keyframes cs-flicker {
+  0% {
+    opacity: 0.95;
+  }
+
+  25% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  75% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes cs-rainbow {
+  0%, 100% {
+    color: #f06a6a;
+  }
+
+  17% {
+    color: #e8a13c;
+  }
+
+  33% {
+    color: #c9c93e;
+  }
+
+  50% {
+    color: #5cc95c;
+  }
+
+  67% {
+    color: #5aa8e8;
+  }
+
+  83% {
+    color: #b06ae0;
+  }
+}

@@ -48,7 +48,29 @@
   };
   // Remote links, popups and wiki requests are not supported in local TGUI windows.
   window.open = () => null;
+  let dragging = false;
+  let suppressClick = false;
+  let previousSelection = '';
+  window.addEventListener('deeplagoon/window-drag', event => {
+    dragging = event.detail === true;
+    if (dragging) {
+      suppressClick = true;
+      previousSelection = document.documentElement.style.userSelect;
+      document.documentElement.style.userSelect = 'none';
+      window.getSelection()?.removeAllRanges();
+    } else {
+      document.documentElement.style.userSelect = previousSelection;
+    }
+  });
+  document.addEventListener('mousedown', () => { if (!dragging) suppressClick = false; }, true);
+  document.addEventListener('keydown', () => { if (!dragging) suppressClick = false; }, true);
   document.addEventListener('click', event => {
+    if (suppressClick) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      suppressClick = false;
+      return;
+    }
     const link = event.target.closest?.('a');
     if (link && link.href && !link.href.startsWith(root)) event.preventDefault();
   }, true);

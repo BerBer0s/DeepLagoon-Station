@@ -1,0 +1,547 @@
+# Descriptive emotes adapted from upstream SS13 source (AGPL-3.0).
+# Source/license: TGUI/UPSTREAM-LICENSE.
+
+- type: emote
+  id: ExtendedBlush
+  name: chat-emote-extended-blush-name
+  category: General
+  chatMessages: [chat-emote-extended-blush-message]
+  chatTriggers: ["blush"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedBow
+  name: chat-emote-extended-bow-name
+  category: Hands
+  chatMessages: [chat-emote-extended-bow-message]
+  chatTriggers: ["bow"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedChoke
+  maleSound:
+    collection: ExtendedChokeMaleSound
+    params:
+      volume: -6
+      variation: 0.125
+  femaleSound:
+    collection: ExtendedChokeFemaleSound
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-extended-choke-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-choke-message]
+  chatTriggers: ["choke"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedCross
+  name: chat-emote-extended-cross-name
+  category: Hands
+  chatMessages: [chat-emote-extended-cross-message]
+  chatTriggers: ["cross"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedDance
+  name: chat-emote-extended-dance-name
+  category: Hands
+  chatMessages: [chat-emote-extended-dance-message]
+  chatTriggers: ["dance"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedDrool
+  name: chat-emote-extended-drool-name
+  category: General
+  chatMessages: [chat-emote-extended-drool-message]
+  chatTriggers: ["drool"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedFrown
+  name: chat-emote-extended-frown-name
+  category: General
+  chatMessages: [chat-emote-extended-frown-message]
+  chatTriggers: ["frown"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedGlare
+  name: chat-emote-extended-glare-name
+  category: General
+  chatMessages: [chat-emote-extended-glare-message]
+  chatTriggers: ["glare"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedGrin
+  name: chat-emote-extended-grin-name
+  category: General
+  chatMessages: [chat-emote-extended-grin-message]
+  chatTriggers: ["grin"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedGroan
+  sound:
+    path: /Audio/_DeepLagoon/Emotes/sound/voice/roar.ogg
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-extended-groan-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-groan-message]
+  chatTriggers: ["groan"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedGrimace
+  name: chat-emote-extended-grimace-name
+  category: General
+  chatMessages: [chat-emote-extended-grimace-message]
+  chatTriggers: ["grimace"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedKiss
+  name: chat-emote-extended-kiss-name
+  category: General
+  chatMessages: [chat-emote-extended-kiss-message]
+  chatTriggers: ["kiss"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedLook
+  name: chat-emote-extended-look-name
+  category: General
+  chatMessages: [chat-emote-extended-look-message]
+  chatTriggers: ["look"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedNod
+  name: chat-emote-extended-nod-name
+  category: General
+  chatMessages: [chat-emote-extended-nod-message]
+  chatTriggers: ["nod"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedPoint
+  name: chat-emote-extended-point-name
+  category: Hands
+  chatMessages: [chat-emote-extended-point-message]
+  chatTriggers: ["point"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedPout
+  name: chat-emote-extended-pout-name
+  category: General
+  chatMessages: [chat-emote-extended-pout-message]
+  chatTriggers: ["pout"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedScowl
+  name: chat-emote-extended-scowl-name
+  category: General
+  chatMessages: [chat-emote-extended-scowl-message]
+  chatTriggers: ["scowl"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedShake
+  name: chat-emote-extended-shake-name
+  category: General
+  chatMessages: [chat-emote-extended-shake-message]
+  chatTriggers: ["shake"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedShiver
+  name: chat-emote-extended-shiver-name
+  category: General
+  chatMessages: [chat-emote-extended-shiver-message]
+  chatTriggers: ["shiver"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedSmile
+  name: chat-emote-extended-smile-name
+  category: General
+  chatMessages: [chat-emote-extended-smile-message]
+  chatTriggers: ["smile"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedSmirk
+  name: chat-emote-extended-smirk-name
+  category: General
+  chatMessages: [chat-emote-extended-smirk-message]
+  chatTriggers: ["smirk"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedSmug
+  name: chat-emote-extended-smug-name
+  category: General
+  chatMessages: [chat-emote-extended-smug-message]
+  chatTriggers: ["smug"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedSniff
+  maleSound:
+    path: /Audio/_DeepLagoon/Emotes/sound/voice/sniff_m1.ogg
+    params:
+      volume: -6
+      variation: 0.125
+  femaleSound:
+    path: /Audio/_DeepLagoon/Emotes/sound/voice/sniff_f1.ogg
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-extended-sniff-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-sniff-message]
+  chatTriggers: ["sniff"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedStare
+  name: chat-emote-extended-stare-name
+  category: General
+  chatMessages: [chat-emote-extended-stare-message]
+  chatTriggers: ["stare"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedStretch
+  name: chat-emote-extended-stretch-name
+  category: Hands
+  chatMessages: [chat-emote-extended-stretch-message]
+  chatTriggers: ["stretch"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedSulk
+  name: chat-emote-extended-sulk-name
+  category: General
+  chatMessages: [chat-emote-extended-sulk-message]
+  chatTriggers: ["sulk"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedSway
+  name: chat-emote-extended-sway-name
+  category: General
+  chatMessages: [chat-emote-extended-sway-message]
+  chatTriggers: ["sway"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedTremble
+  name: chat-emote-extended-tremble-name
+  category: General
+  chatMessages: [chat-emote-extended-tremble-message]
+  chatTriggers: ["tremble"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedTwitch
+  name: chat-emote-extended-twitch-name
+  category: General
+  chatMessages: [chat-emote-extended-twitch-message]
+  chatTriggers: ["twitch"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedTwitchS
+  name: chat-emote-extended-twitch-s-name
+  category: General
+  chatMessages: [chat-emote-extended-twitch-s-message]
+  chatTriggers: ["twitch_s"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedWave
+  name: chat-emote-extended-wave-name
+  category: Hands
+  chatMessages: [chat-emote-extended-wave-message]
+  chatTriggers: ["wave"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedWsmile
+  name: chat-emote-extended-wsmile-name
+  category: General
+  chatMessages: [chat-emote-extended-wsmile-message]
+  chatTriggers: ["wsmile"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedInhale
+  name: chat-emote-extended-inhale-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-inhale-message]
+  chatTriggers: ["inhale"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedExhale
+  name: chat-emote-extended-exhale-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-exhale-message]
+  chatTriggers: ["exhale"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedMedic
+  sound:
+    collection: ExtendedMedicSound
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-extended-medic-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-medic-message]
+  chatTriggers: ["medic"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedAirguitar
+  name: chat-emote-extended-airguitar-name
+  category: Hands
+  chatMessages: [chat-emote-extended-airguitar-message]
+  chatTriggers: ["airguitar"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedBlink
+  name: chat-emote-extended-blink-name
+  category: General
+  chatMessages: [chat-emote-extended-blink-message]
+  chatTriggers: ["blink"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedBlink3
+  name: chat-emote-extended-blink3-name
+  category: General
+  chatMessages: [chat-emote-extended-blink3-message]
+  chatTriggers: ["blink3"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedMoan
+  maleSound:
+    collection: ExtendedMoanMaleSound
+    params:
+      volume: -6
+      variation: 0.125
+  femaleSound:
+    collection: ExtendedMoanFemaleSound
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-extended-moan-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-moan-message]
+  chatTriggers: ["moan"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedScratch
+  name: chat-emote-extended-scratch-name
+  category: Hands
+  chatMessages: [chat-emote-extended-scratch-message]
+  chatTriggers: ["scratch"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedWink
+  name: chat-emote-extended-wink-name
+  category: General
+  chatMessages: [chat-emote-extended-wink-message]
+  chatTriggers: ["wink"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedGrumble
+  name: chat-emote-extended-grumble-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-grumble-message]
+  chatTriggers: ["grumble"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedEyebrow
+  name: chat-emote-extended-eyebrow-name
+  category: General
+  chatMessages: [chat-emote-extended-eyebrow-message]
+  chatTriggers: ["eyebrow"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedHandshake
+  name: chat-emote-extended-handshake-name
+  category: Hands
+  chatMessages: [chat-emote-extended-handshake-message]
+  chatTriggers: ["handshake"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedHug
+  name: chat-emote-extended-hug-name
+  category: Hands
+  chatMessages: [chat-emote-extended-hug-message]
+  chatTriggers: ["hug"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedMumble
+  name: chat-emote-extended-mumble-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-mumble-message]
+  chatTriggers: ["mumble"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: ExtendedPale
+  name: chat-emote-extended-pale-name
+  category: General
+  chatMessages: [chat-emote-extended-pale-message]
+  chatTriggers: ["pale"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedRaise
+  name: chat-emote-extended-raise-name
+  category: Hands
+  chatMessages: [chat-emote-extended-raise-message]
+  chatTriggers: ["raise"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: ExtendedShrug
+  name: chat-emote-extended-shrug-name
+  category: General
+  chatMessages: [chat-emote-extended-shrug-message]
+  chatTriggers: ["shrug"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: ExtendedProtect
+  sound:
+    path: /Audio/_DeepLagoon/Emotes/sound/voice/emperorprotects.ogg
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-extended-protect-name
+  category: Vocal
+  chatMessages: [chat-emote-extended-protect-message]
+  chatTriggers: ["protect"]
+  whitelist:
+    components:
+    - Vocal

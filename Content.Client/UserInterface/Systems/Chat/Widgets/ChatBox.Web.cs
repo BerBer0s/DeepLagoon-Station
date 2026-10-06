@@ -18,19 +18,27 @@ public partial class ChatBox
     private string? _lastWebHistoryPayload;
     public GameWebView? WebChat => _webChat;
 
-    public void EnableBlueMoonChat()
+    public void EnableTguiChat()
     {
+        _webChatRequested = true;
+        if (_useVanillaChat)
+        {
+            ChatInput.UseVanillaLayout();
+            return;
+        }
+        ChatInput.Visible = false;
         if (_webChat != null)
             return;
         _webChat = new GameWebView(chat: true, suspendWhenHidden: true)
         {
-            Name = "BlueMoonChat",
+            Name = "TguiChat",
             MinHeight = 120
         };
         _webPreferences = IoCManager.Resolve<IClientPreferencesManager>();
         _webPreferences.OnServerDataLoaded += RestoreWebSettings;
         _webChat.Message += (type, payload) =>
         {
+            if (type == "act/compose") { Focus(); return; }
             if (type is "act/emote" or "act/emote-pin")
             {
                 HandleEmoteShortcut(type, payload);
@@ -41,7 +49,7 @@ public partial class ChatBox
             var settings = ChatTabsSettings.Deserialize(_webPreferences.Preferences.ChatPanelSettings) ?? new();
             if (settings.Tabs.Count == 0)
                 settings.Tabs.Add(new ChatTabSettings { Name = Loc.GetString("chat-tabs-all"), Channels = (ChatChannel) uint.MaxValue });
-            // Keep native tabs/settings alongside the original BlueMoon JSON.
+            // Keep native tabs/settings alongside the original TGUI JSON.
             settings.WebState = payload;
             _webPreferences.UpdateChatPanelSettings(settings.Serialize());
         };
@@ -71,7 +79,7 @@ public partial class ChatBox
 
     private void UpdateWebEmotes(FrameEventArgs args)
     {
-        if (_webChat?.IsReady != true) return;
+        if (_useVanillaChat || _webChat?.IsReady != true) return;
         _emoteRefresh -= args.DeltaSeconds;
         if (_emoteRefresh > 0) return;
         _emoteRefresh = 0.75f;
@@ -123,7 +131,7 @@ public partial class ChatBox
 
     private void PushWebMessage(ChatMessage message)
     {
-        if (_webChat?.IsReady != true || _repopulatingWeb || message.HideChat)
+        if (_useVanillaChat || _webChat?.IsReady != true || _repopulatingWeb || message.HideChat)
             return;
         _webChat.Send("chat/message", WebChatMessageFormatter.BuildPayload(message));
         _lastWebHistoryPayload = null;
@@ -131,7 +139,7 @@ public partial class ChatBox
 
     private void PublishWebHistory(bool force = false)
     {
-        if (_webChat?.IsReady != true) return;
+        if (_useVanillaChat || _webChat?.IsReady != true) return;
         var payload = "[" + string.Join(',', _controller.History.Where(entry => !entry.Msg.HideChat)
             .Select(entry => WebChatMessageFormatter.BuildPayload(entry.Msg))) + "]";
         if (!force && payload == _lastWebHistoryPayload) return;

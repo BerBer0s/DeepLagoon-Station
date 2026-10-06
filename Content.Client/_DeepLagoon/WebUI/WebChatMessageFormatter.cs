@@ -4,7 +4,7 @@ using Robust.Shared.Utility;
 
 namespace Content.Client._DeepLagoon.WebUI;
 
-/// <summary>Maps SS14 channels and rich text to BlueMoon's existing message styles.</summary>
+/// <summary>Maps SS14 channels and rich text to TGUI's existing message styles.</summary>
 public static class WebChatMessageFormatter
 {
     // These classes come from tgui-panel/styles/goon/chat-dark.scss and chat-light.scss.
@@ -107,7 +107,7 @@ public static class WebChatMessageFormatter
         if (italic) style.Append("font-style:italic;");
         if (underline) style.Append("text-decoration:underline;");
         if (color != null) style.Append("color:").Append(color).Append(';');
-        // SS14 defaults to 12px. Relative sizing keeps BlueMoon's font-size setting effective.
+        // SS14 defaults to 12px. Relative sizing keeps TGUI's font-size setting effective.
         if (size != null) style.Append("font-size:").Append(size * 100 / 12).Append("%;");
         if (style.Length > 0 || name)
         {

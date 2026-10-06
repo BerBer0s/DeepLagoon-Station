@@ -1,8 +1,9 @@
-// Read-only comparison against a local BlueMoon checkout; never evaluates DM code.
+// Read-only comparison against a local upstream checkout; never evaluates DM code.
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '../..');
-const upstream = process.argv[2] || 'C:/old_disk/repos/MOLOT-BlueMoon-Station';
+const upstream = process.argv[2];
+if (!upstream) throw new Error('Pass the source repository path as the first argument.');
 const files = ['code/modules/mob/living/emote.dm', 'code/modules/mob/living/carbon/emote.dm',
   'code/modules/mob/living/carbon/human/emote.dm'];
 const records = new Map();

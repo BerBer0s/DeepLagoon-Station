@@ -60,6 +60,8 @@ public partial class ChatBox : UIWidget
         _cfg = IoCManager.Resolve<IConfigurationManager>();
         _coalescence = _cfg.GetCVar(CCVars.CoalesceIdenticalMessages); // i am uncomfortable calling repopulate on chatbox in its ctor, even though it worked in testing i'll still err on the side of caution
         _cfg.OnValueChanged(CCVars.CoalesceIdenticalMessages, UpdateCoalescence, false); // eplicitly false to underline the above comment
+        _cfg.OnValueChanged(Content.Shared._DeepLagoon.WebUI.WebUiCVars.VanillaChat, ApplyChatMode, false);
+        if (_cfg.GetCVar(Content.Shared._DeepLagoon.WebUI.WebUiCVars.VanillaChat)) ApplyChatMode(true);
         // WD EDIT END
     }
 
@@ -89,7 +91,7 @@ public partial class ChatBox : UIWidget
 
         // TGUI owns the visible messages. Native sound/read handling still runs,
         // but allocating and laying out hidden rich-text rows is wasted work.
-        if (_webChat != null)
+        if (_webChat != null && !_useVanillaChat)
             return;
 
         var color = msg.MessageColorOverride ?? msg.Channel.TextColor();
@@ -106,7 +108,8 @@ public partial class ChatBox : UIWidget
         {
             _lastLineRepeatCount++;
             AddLine(msg.WrappedMessage, color, _lastLineRepeatCount);
-            Contents.RemoveEntry(^2);
+            if (_useVanillaChat) _vanillaContents!.RemoveEntry(^2);
+            else Contents.RemoveEntry(^2);
         }
         else
         {
@@ -145,6 +148,7 @@ public partial class ChatBox : UIWidget
     {
         _repopulatingWeb = true;
         Contents.Clear();
+        _vanillaContents?.Clear();
         _lastLine = null;
         _lastLineRepeatCount = 0;
 
@@ -188,7 +192,7 @@ public partial class ChatBox : UIWidget
         var formatted = new FormattedMessage(4); // WD EDIT // specifying size beforehand smells like a useless microoptimisation, but i'll give them the benefit of doubt
         formatted.PushColor(color);
         var source = FormattedMessage.FromMarkupPermissive(message);
-        formatted.AddMessage(_tabs != null
+        formatted.AddMessage(_tabs != null && !_useVanillaChat
             ? ChatHighlight.Apply(source, _tabs.Appearance.HighlightWords, _tabs.Appearance.WholeWords,
                 Color.FromHex(_tabs.Appearance.HighlightColor), _searchText)
             : source);
@@ -202,11 +206,18 @@ public partial class ChatBox : UIWidget
                 ("size", 8 + sizeIncrease)
             ));
         } // WD EDIT END
-        Contents.AddMessage(formatted, tagsAllowed: null);
+        if (_useVanillaChat) _vanillaContents!.AddMessage(formatted, tagsAllowed: null);
+        else Contents.AddMessage(formatted, tagsAllowed: null);
     }
 
     public void Focus(ChatSelectChannel? channel = null)
     {
+        if (_webChatRequested && !_useVanillaChat)
+        {
+            if (channel != null) SafelySelectChannel(channel.Value);
+            OpenComposer();
+            return;
+        }
         var input = ChatInput.Input;
         var selectStart = Index.End;
 
@@ -290,7 +301,9 @@ public partial class ChatBox : UIWidget
 
     protected override void Dispose(bool disposing)
     {
+        CloseComposer();
         DisposeWebSettings();
+        _cfg.UnsubValueChanged(Content.Shared._DeepLagoon.WebUI.WebUiCVars.VanillaChat, ApplyChatMode);
         if (_settingsSaveDelay >= 0) FlushPanelSettings();
         if (_panelPreferences != null)
         {

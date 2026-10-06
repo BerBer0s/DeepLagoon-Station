@@ -1,0 +1,214 @@
+/**
+ * @file
+ * @copyright 2020 Aleksej Komarov
+ * @author Warlockd
+ * @license MIT
+ */
+
+import { KEY_ESCAPE, KEY_TAB } from 'common/keycodes';
+import { classes } from 'common/react';
+import { Component, createRef } from 'react';
+
+import { Box } from './Box';
+import { toInputValue } from './Input';
+
+export class TextArea extends Component {
+  constructor(props, context) {
+    super(props, context);
+    this.textareaRef = createRef();
+    this.fillerRef = createRef();
+    this.state = {
+      editing: false,
+    };
+    const {
+      dontUseTabForIndent = false,
+    } = props;
+    this.handleOnInput = e => {
+      const { editing } = this.state;
+      const { onInput } = this.props;
+      if (!editing) {
+        this.setEditing(true);
+      }
+      if (onInput) {
+        onInput(e, e.target.value);
+      }
+    };
+    this.handleKeyPress = e => {
+      const { editing } = this.state;
+      const { onKeyPress } = this.props;
+      if (!editing) {
+        this.setEditing(true);
+      }
+      if (onKeyPress) {
+        onKeyPress(e, e.target.value);
+      }
+    };
+    this.handleKeyDown = e => {
+      const { editing } = this.state;
+      const { onKeyDown } = this.props;
+      if (e.key === KEY_ESCAPE) {
+        this.setEditing(false);
+        e.target.value = toInputValue(this.props.value);
+        e.target.blur();
+        return;
+      }
+      if (!editing) {
+        this.setEditing(true);
+      }
+      if (!dontUseTabForIndent) {
+        if (e.key === KEY_TAB) {
+          e.preventDefault();
+          const { value, selectionStart, selectionEnd } = e.target;
+          e.target.value = (
+            value.substring(0, selectionStart) + "\t"
+              + value.substring(selectionEnd)
+          );
+          e.target.selectionEnd = selectionStart + 1;
+        }
+      }
+      if (onKeyDown) {
+        onKeyDown(e, e.target.value);
+      }
+    };
+    this.handleFocus = e => {
+      const { editing } = this.state;
+      if (!editing) {
+        this.setEditing(true);
+      }
+    };
+    // BYOND 516 WebView2 fix: explicitly handle paste to ensure the full
+    // clipboard content is inserted. Without this, large pastes may be
+    // silently truncated or injected in small chunks by the host browser.
+    this.handleOnPaste = e => {
+      const cb = e.clipboardData || window.clipboardData;
+      if (!cb) {
+        return;
+      }
+      const text = cb.getData('text');
+      if (!text) {
+        return;
+      }
+      e.preventDefault();
+      const ta = this.textareaRef.current;
+      if (!ta) {
+        return;
+      }
+      const start = ta.selectionStart !== null ? ta.selectionStart : ta.value.length;
+      const end = ta.selectionEnd !== null ? ta.selectionEnd : ta.value.length;
+      let newVal = ta.value.substring(0, start) + text + ta.value.substring(end);
+      const maxLen = this.props.maxLength;
+      if (maxLen && newVal.length > maxLen) {
+        newVal = newVal.substring(0, maxLen);
+      }
+      ta.value = newVal;
+      const newPos = Math.min(start + text.length, newVal.length);
+      ta.selectionStart = newPos;
+      ta.selectionEnd = newPos;
+      if (!this.state.editing) {
+        this.setEditing(true);
+      }
+      const { onInput } = this.props;
+      if (onInput) {
+        onInput(e, ta.value);
+      }
+    };
+    this.handleCompositionEnd = e => {
+      const { onInput } = this.props;
+      if (onInput) {
+        onInput(e, e.target.value);
+      }
+    };
+    this.handleBlur = e => {
+      const { editing } = this.state;
+      const { onChange } = this.props;
+      if (editing) {
+        this.setEditing(false);
+        if (onChange) {
+          onChange(e, e.target.value);
+        }
+      }
+    };
+  }
+
+  componentDidMount() {
+    const nextValue = this.props.value;
+    const input = this.textareaRef.current;
+    if (input) {
+      input.value = toInputValue(nextValue);
+    }
+    if (this.props.autoFocus) {
+      setTimeout(() => input.focus(), 1);
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    const { editing } = this.state;
+    const prevValue = prevProps.value;
+    const nextValue = this.props.value;
+    const input = this.textareaRef.current;
+    if (input && !editing && prevValue !== nextValue) {
+      input.value = toInputValue(nextValue);
+    }
+  }
+
+  setEditing(editing) {
+    this.setState({ editing });
+  }
+
+  getValue() {
+    return this.textareaRef.current && this.textareaRef.current.value;
+  }
+
+  render() {
+    // Input only props
+    const {
+      onChange,
+      onKeyDown,
+      onKeyPress,
+      onInput,
+      onFocus,
+      onBlur,
+      onEnter,
+      value,
+      maxLength,
+      placeholder,
+      scrollbar,
+      singleline,
+      noborder,
+      ...boxProps
+    } = this.props;
+    // Box props
+    const {
+      className,
+      fluid,
+      ...rest
+    } = boxProps;
+    return (
+      <Box
+        className={classes([
+          'TextArea',
+          fluid && 'TextArea--fluid',
+          noborder && 'TextArea--noborder',
+          className,
+        ])}
+        {...rest}>
+        <textarea
+          ref={this.textareaRef}
+          className={classes([
+            'TextArea__textarea',
+            scrollbar && 'TextArea__textarea--scrollable',
+            singleline && 'TextArea--singleline',
+          ])}
+          placeholder={placeholder}
+          onKeyDown={this.handleKeyDown}
+          onKeyPress={this.handleKeyPress}
+          onInput={this.handleOnInput}
+          onCompositionEnd={this.handleCompositionEnd}
+          onPaste={this.handleOnPaste}
+          onFocus={this.handleFocus}
+          onBlur={this.handleBlur}
+          maxLength={maxLength} />
+      </Box>
+    );
+  }
+}

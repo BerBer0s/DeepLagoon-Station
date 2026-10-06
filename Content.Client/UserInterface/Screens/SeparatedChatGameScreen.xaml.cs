@@ -32,7 +32,7 @@ public sealed partial class SeparatedChatGameScreen : InGameScreen
         }
         TopBar.AddChild(menuGrid);
         Chat.ChatInput.UseCompactLayout();
-        Chat.EnableBlueMoonChat();
+        Chat.EnableTguiChat();
         ChatTabsPanel.Visible = false;
         _chatWidth = Math.Clamp(_chatConfig.GetCVar(WebUiCVars.ChatPanelWidth), 0.15f, 0.55f);
         ScreenContainer.OnSplitResized += () =>

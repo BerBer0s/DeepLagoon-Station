@@ -317,3 +317,8 @@ Resources/MapImages
 *.lnk
 
 /.pnpm-store/
+
+# TGUI packages are source code, not NuGet restore output.
+!/TGUI/packages/
+!/TGUI/packages/**
+/TGUI/packages/**/node_modules/

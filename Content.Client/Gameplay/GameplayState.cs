@@ -46,6 +46,7 @@ namespace Content.Client.Gameplay
 
             LoadMainScreen();
             _configurationManager.OnValueChanged(CCVars.UILayout, ReloadMainScreenValueChange);
+            _configurationManager.OnValueChanged(Content.Shared._DeepLagoon.WebUI.WebUiCVars.VanillaChat, ReloadChatMode, false);
 
             // Add the hand-item overlay.
             _overlayManager.AddOverlay(new ShowHandItemOverlay());
@@ -86,12 +87,25 @@ namespace Content.Client.Gameplay
             _fpsCounter.Dispose();
             _uiManager.ClearWindows();
             _configurationManager.UnsubValueChanged(CCVars.UILayout, ReloadMainScreenValueChange);
+            _configurationManager.UnsubValueChanged(Content.Shared._DeepLagoon.WebUI.WebUiCVars.VanillaChat, ReloadChatMode);
             UnloadMainScreen();
         }
 
         private void ReloadMainScreenValueChange(string _)
         {
             ReloadMainScreen();
+        }
+
+        private void ReloadChatMode(bool _)
+        {
+            var draft = (_uiManager.ActiveScreen as InGameScreen)?.ChatBox.ChatInput.Input.Text;
+            var channel = (_uiManager.ActiveScreen as InGameScreen)?.ChatBox.SelectedChannel;
+            ReloadMainScreen();
+            if (draft != null && _uiManager.ActiveScreen is InGameScreen screen)
+            {
+                if (channel != null) screen.ChatBox.ChatInput.ChannelSelector.Select(channel.Value);
+                screen.ChatBox.ChatInput.Input.SetText(draft);
+            }
         }
 
         public void ReloadMainScreen()
@@ -114,6 +128,8 @@ namespace Content.Client.Gameplay
         private void LoadMainScreen()
         {
             var screenTypeString = _configurationManager.GetCVar(CCVars.UILayout);
+            if (_configurationManager.GetCVar(Content.Shared._DeepLagoon.WebUI.WebUiCVars.VanillaChat))
+                screenTypeString = nameof(ScreenType.Default);
             if (!Enum.TryParse(screenTypeString, out ScreenType screenType))
             {
                 screenType = default;

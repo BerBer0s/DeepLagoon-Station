@@ -69,7 +69,7 @@ public sealed class WebUiPreviewCommand : IConsoleCommand
         }
         if (args[0] == "chat")
         {
-            var preview = new FancyWindow { Title = "BlueMoon chat preview", SetSize = new Vector2(650, 500) };
+            var preview = new FancyWindow { Title = "TGUI chat preview", SetSize = new Vector2(650, 500) };
             preview.OnClose += preview.Dispose;
             var chat = new GameWebView(chat: true);
             preview.ContentsContainer.AddChild(chat);
