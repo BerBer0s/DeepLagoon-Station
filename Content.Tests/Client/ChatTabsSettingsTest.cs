@@ -8,6 +8,20 @@ namespace Content.Tests.Client;
 public sealed class ChatTabsSettingsTest
 {
     [Test]
+    public void WebSettingsSurviveWithoutReplacingNativeTabs()
+    {
+        var settings = new ChatTabsSettings
+        {
+            Tabs = new() { new() { Name = "Local", Channels = ChatChannel.Local } },
+            WebState = "{\"v\":1,\"settings\":{\"theme\":\"dark\"}}"
+        };
+        settings.PinnedEmotes.AddRange(new[] { "Smile", "Wave" });
+        var restored = ChatTabsSettings.Deserialize(settings.Serialize())!;
+        Assert.That(restored.WebState, Is.EqualTo(settings.WebState));
+        Assert.That(restored.Tabs[0].Channels, Is.EqualTo(ChatChannel.Local));
+        Assert.That(restored.PinnedEmotes, Is.EqualTo(new[] { "Smile", "Wave" }));
+    }
+    [Test]
     public void FiltersAndSelectedTabSurviveSaving()
     {
         var settings = new ChatTabsSettings

@@ -597,6 +597,7 @@ namespace Content.Client.Lobby.UI
             UpdateCompanyControls();
             UpdateInteractionPanelPreferences();
             IsDirty = false;
+            InitializeTguiEditor();
         }
 
         /// <summary>
@@ -1215,6 +1216,7 @@ namespace Content.Client.Lobby.UI
                 && previous.Loadouts.Count == Profile.Loadouts.Count
                 && previous.Loadouts.All(x => Profile.Loadouts.TryGetValue(x.Key, out var current) && x.Value.SelectedLoadouts.Count == current.SelectedLoadouts.Count && x.Value.SelectedLoadouts.All(g => current.SelectedLoadouts.TryGetValue(g.Key, out var items) && g.Value.SequenceEqual(items))))
             {
+                SetDirty();
                 ReloadProfilePreview();
                 _entManager.System<MetaDataSystem>().SetEntityName(PreviewDummy, Profile.Name);
                 return;
@@ -1291,6 +1293,7 @@ namespace Content.Client.Lobby.UI
             {
                 PreferenceUnavailableButton.SelectId((int)Profile.PreferenceUnavailable);
             }
+            PublishTguiProfile();
         }
 
         // Mono start
@@ -2109,7 +2112,7 @@ namespace Content.Client.Lobby.UI
             {
                 if (_markingManager.CanBeApplied(Profile.Species, Profile.Sex, facialHairProto, _prototypeManager))
                 {
-                    if (_markingManager.MustMatchSkin(Profile.Species, HumanoidVisualLayers.Hair, out var _, _prototypeManager))
+                    if (_markingManager.MustMatchSkin(Profile.Species, HumanoidVisualLayers.FacialHair, out var _, _prototypeManager))
                     {
                         facialHairColor = Profile.Appearance.SkinColor;
                     }

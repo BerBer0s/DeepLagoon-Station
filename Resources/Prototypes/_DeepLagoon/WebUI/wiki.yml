@@ -1,0 +1,17 @@
+# Only these documents may be displayed in the guidebook. Links to other pages are blocked.
+# Add a prototype per page, with an explicit path and the old guidebook IDs it replaces.
+- type: wikiPage
+  id: Rules
+  name: wiki-page-rules
+  path: /ru/rules
+  default: true
+  guideEntries:
+  - NewPlayer
+  - DefaultRuleset
+  - CoreRuleset
+  - StandardRuleset
+  - MRPRuleset
+  - CoreRules
+  - RoleplayRules
+  - SiliconRules
+  - MRPRules

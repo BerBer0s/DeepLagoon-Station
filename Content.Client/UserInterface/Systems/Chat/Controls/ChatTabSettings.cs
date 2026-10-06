@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Content.Shared.Chat;
 using Robust.Shared.Serialization.Markdown;
 using Robust.Shared.Serialization.Markdown.Mapping;
@@ -20,6 +21,8 @@ public sealed class ChatTabsSettings
     public List<ChatTabSettings> Tabs { get; set; } = new();
     public int SelectedIndex { get; set; }
     public ChatAppearanceSettings Appearance { get; set; } = new();
+    public string WebState { get; set; } = "";
+    public List<string> PinnedEmotes { get; set; } = new();
 
     public string Serialize()
     {
@@ -36,8 +39,12 @@ public sealed class ChatTabsSettings
         {
             { "SelectedIndex", SelectedIndex.ToString(CultureInfo.InvariantCulture) },
             { "Tabs", tabs },
-            { "Appearance", Appearance.ToYaml() }
+            { "Appearance", Appearance.ToYaml() },
+            { "WebState", WebState }
         };
+        var pinned = new YamlSequenceNode();
+        foreach (var id in PinnedEmotes.Take(24)) pinned.Add(id);
+        root.Add("PinnedEmotes", pinned);
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
         new YamlStream(new YamlDocument(root)).Save(writer, false);
         return writer.ToString();
@@ -58,6 +65,10 @@ public sealed class ChatTabsSettings
                 tabs.Sequence.Count is < 1 or > 16)
                 return null;
             var settings = new ChatTabsSettings();
+            if (root.TryGet<SequenceDataNode>("PinnedEmotes", out var pinned))
+                foreach (var node in pinned.Sequence.Take(24))
+                    if (node is ValueDataNode id && id.Value.Length is > 0 and <= 64 && !settings.PinnedEmotes.Contains(id.Value))
+                        settings.PinnedEmotes.Add(id.Value);
             foreach (var node in tabs.Sequence)
             {
                 if (node is not MappingDataNode tab ||
@@ -74,6 +85,8 @@ public sealed class ChatTabsSettings
             settings.SelectedIndex = Math.Clamp(settings.SelectedIndex, 0, settings.Tabs.Count - 1);
             if (root.TryGet<MappingDataNode>("Appearance", out var appearance))
                 settings.Appearance = ChatAppearanceSettings.FromYaml(appearance);
+            if (root.TryGet<ValueDataNode>("WebState", out var webState) && webState.Value.Length <= 8192)
+                settings.WebState = webState.Value;
             return settings;
         }
         catch (Exception)

@@ -1,4 +1,7 @@
 # MSbuild binlog files
+TGUI/node_modules/
+TGUI/.cache/
+webui-*-preview.png
 *.binlog
 
 ## Ignore Visual Studio temporary files, build results, and
@@ -313,3 +316,4 @@ Resources/MapImages
 # Link Files
 *.lnk
 
+/.pnpm-store/

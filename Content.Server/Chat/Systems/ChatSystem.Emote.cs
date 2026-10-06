@@ -6,6 +6,7 @@ using Content.Shared.Speech;
 using Robust.Shared.Audio;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
+using Content.Shared.Humanoid;
 
 namespace Content.Server.Chat.Systems;
 
@@ -145,20 +146,25 @@ public partial class ChatSystem
     /// <returns>True if emote sound was played.</returns>
     public bool TryPlayEmoteSound(EntityUid uid, EmoteSoundsPrototype? proto, string emoteId, AudioParams? audioParams = null)
     {
-        if (proto == null)
-            return false;
-
         // try to get specific sound for this emote
-        if (!proto.Sounds.TryGetValue(emoteId, out var sound))
+        SoundSpecifier? sound = null;
+        var explicitSound = false;
+        proto?.Sounds.TryGetValue(emoteId, out sound);
+        if (sound == null)
         {
-            // no specific sound - check fallback
-            sound = proto.FallbackSound;
+            if (_prototypeManager.TryIndex<EmotePrototype>(emoteId, out var emote))
+            {
+                var female = TryComp<HumanoidAppearanceComponent>(uid, out var appearance) && appearance.Sex == Sex.Female;
+                sound = (female ? emote.FemaleSound : emote.MaleSound) ?? emote.Sound;
+                explicitSound = sound != null;
+            }
+            sound ??= proto?.FallbackSound;
             if (sound == null)
                 return false;
         }
 
         // optional override params > general params for all sounds in set > individual sound params
-        var param = audioParams ?? proto.GeneralParams ?? sound.Params;
+        var param = audioParams ?? (explicitSound ? sound.Params : proto?.GeneralParams ?? sound.Params);
         _audio.PlayPvs(sound, uid, param);
         return true;
     }

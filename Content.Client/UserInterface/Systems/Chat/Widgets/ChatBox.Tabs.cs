@@ -117,6 +117,7 @@ public partial class ChatBox
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
+        UpdateWebEmotes(args);
         if (_settingsSaveDelay < 0) return;
         _settingsSaveDelay -= args.DeltaSeconds;
         if (_settingsSaveDelay <= 0) FlushPanelSettings();

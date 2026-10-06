@@ -1,0 +1,547 @@
+# Descriptive emotes adapted from MOLOT-BlueMoon-Station (AGPL-3.0).
+# Source/license and comparison: TGUI/EMOTES.md, TGUI/UPSTREAM-LICENSE.
+
+- type: emote
+  id: BlueMoonBlush
+  name: chat-emote-bluemoon-blush-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-blush-message]
+  chatTriggers: ["blush"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonBow
+  name: chat-emote-bluemoon-bow-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-bow-message]
+  chatTriggers: ["bow"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonChoke
+  maleSound:
+    collection: BlueMoonChokeMaleSound
+    params:
+      volume: -6
+      variation: 0.125
+  femaleSound:
+    collection: BlueMoonChokeFemaleSound
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-bluemoon-choke-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-choke-message]
+  chatTriggers: ["choke"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonCross
+  name: chat-emote-bluemoon-cross-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-cross-message]
+  chatTriggers: ["cross"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonDance
+  name: chat-emote-bluemoon-dance-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-dance-message]
+  chatTriggers: ["dance"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonDrool
+  name: chat-emote-bluemoon-drool-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-drool-message]
+  chatTriggers: ["drool"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonFrown
+  name: chat-emote-bluemoon-frown-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-frown-message]
+  chatTriggers: ["frown"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonGlare
+  name: chat-emote-bluemoon-glare-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-glare-message]
+  chatTriggers: ["glare"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonGrin
+  name: chat-emote-bluemoon-grin-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-grin-message]
+  chatTriggers: ["grin"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonGroan
+  sound:
+    path: /Audio/_DeepLagoon/BlueMoonEmotes/sound/voice/roar.ogg
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-bluemoon-groan-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-groan-message]
+  chatTriggers: ["groan"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonGrimace
+  name: chat-emote-bluemoon-grimace-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-grimace-message]
+  chatTriggers: ["grimace"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonKiss
+  name: chat-emote-bluemoon-kiss-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-kiss-message]
+  chatTriggers: ["kiss"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonLook
+  name: chat-emote-bluemoon-look-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-look-message]
+  chatTriggers: ["look"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonNod
+  name: chat-emote-bluemoon-nod-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-nod-message]
+  chatTriggers: ["nod"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonPoint
+  name: chat-emote-bluemoon-point-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-point-message]
+  chatTriggers: ["point"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonPout
+  name: chat-emote-bluemoon-pout-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-pout-message]
+  chatTriggers: ["pout"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonScowl
+  name: chat-emote-bluemoon-scowl-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-scowl-message]
+  chatTriggers: ["scowl"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonShake
+  name: chat-emote-bluemoon-shake-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-shake-message]
+  chatTriggers: ["shake"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonShiver
+  name: chat-emote-bluemoon-shiver-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-shiver-message]
+  chatTriggers: ["shiver"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonSmile
+  name: chat-emote-bluemoon-smile-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-smile-message]
+  chatTriggers: ["smile"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonSmirk
+  name: chat-emote-bluemoon-smirk-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-smirk-message]
+  chatTriggers: ["smirk"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonSmug
+  name: chat-emote-bluemoon-smug-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-smug-message]
+  chatTriggers: ["smug"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonSniff
+  maleSound:
+    path: /Audio/_DeepLagoon/BlueMoonEmotes/sound/voice/sniff_m1.ogg
+    params:
+      volume: -6
+      variation: 0.125
+  femaleSound:
+    path: /Audio/_DeepLagoon/BlueMoonEmotes/sound/voice/sniff_f1.ogg
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-bluemoon-sniff-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-sniff-message]
+  chatTriggers: ["sniff"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonStare
+  name: chat-emote-bluemoon-stare-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-stare-message]
+  chatTriggers: ["stare"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonStretch
+  name: chat-emote-bluemoon-stretch-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-stretch-message]
+  chatTriggers: ["stretch"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonSulk
+  name: chat-emote-bluemoon-sulk-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-sulk-message]
+  chatTriggers: ["sulk"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonSway
+  name: chat-emote-bluemoon-sway-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-sway-message]
+  chatTriggers: ["sway"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonTremble
+  name: chat-emote-bluemoon-tremble-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-tremble-message]
+  chatTriggers: ["tremble"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonTwitch
+  name: chat-emote-bluemoon-twitch-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-twitch-message]
+  chatTriggers: ["twitch"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonTwitchS
+  name: chat-emote-bluemoon-twitch-s-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-twitch-s-message]
+  chatTriggers: ["twitch_s"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonWave
+  name: chat-emote-bluemoon-wave-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-wave-message]
+  chatTriggers: ["wave"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonWsmile
+  name: chat-emote-bluemoon-wsmile-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-wsmile-message]
+  chatTriggers: ["wsmile"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonInhale
+  name: chat-emote-bluemoon-inhale-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-inhale-message]
+  chatTriggers: ["inhale"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonExhale
+  name: chat-emote-bluemoon-exhale-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-exhale-message]
+  chatTriggers: ["exhale"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonMedic
+  sound:
+    collection: BlueMoonMedicSound
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-bluemoon-medic-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-medic-message]
+  chatTriggers: ["medic"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonAirguitar
+  name: chat-emote-bluemoon-airguitar-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-airguitar-message]
+  chatTriggers: ["airguitar"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonBlink
+  name: chat-emote-bluemoon-blink-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-blink-message]
+  chatTriggers: ["blink"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonBlink3
+  name: chat-emote-bluemoon-blink3-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-blink3-message]
+  chatTriggers: ["blink3"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonMoan
+  maleSound:
+    collection: BlueMoonMoanMaleSound
+    params:
+      volume: -6
+      variation: 0.125
+  femaleSound:
+    collection: BlueMoonMoanFemaleSound
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-bluemoon-moan-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-moan-message]
+  chatTriggers: ["moan"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonScratch
+  name: chat-emote-bluemoon-scratch-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-scratch-message]
+  chatTriggers: ["scratch"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonWink
+  name: chat-emote-bluemoon-wink-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-wink-message]
+  chatTriggers: ["wink"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonGrumble
+  name: chat-emote-bluemoon-grumble-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-grumble-message]
+  chatTriggers: ["grumble"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonEyebrow
+  name: chat-emote-bluemoon-eyebrow-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-eyebrow-message]
+  chatTriggers: ["eyebrow"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonHandshake
+  name: chat-emote-bluemoon-handshake-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-handshake-message]
+  chatTriggers: ["handshake"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonHug
+  name: chat-emote-bluemoon-hug-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-hug-message]
+  chatTriggers: ["hug"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonMumble
+  name: chat-emote-bluemoon-mumble-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-mumble-message]
+  chatTriggers: ["mumble"]
+  whitelist:
+    components:
+    - Vocal
+
+- type: emote
+  id: BlueMoonPale
+  name: chat-emote-bluemoon-pale-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-pale-message]
+  chatTriggers: ["pale"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonRaise
+  name: chat-emote-bluemoon-raise-name
+  category: Hands
+  chatMessages: [chat-emote-bluemoon-raise-message]
+  chatTriggers: ["raise"]
+  whitelist:
+    components:
+    - Hands
+
+- type: emote
+  id: BlueMoonShrug
+  name: chat-emote-bluemoon-shrug-name
+  category: General
+  chatMessages: [chat-emote-bluemoon-shrug-message]
+  chatTriggers: ["shrug"]
+  whitelist:
+    components:
+    - HumanoidAppearance
+
+- type: emote
+  id: BlueMoonProtect
+  sound:
+    path: /Audio/_DeepLagoon/BlueMoonEmotes/sound/voice/emperorprotects.ogg
+    params:
+      volume: -6
+      variation: 0.125
+  name: chat-emote-bluemoon-protect-name
+  category: Vocal
+  chatMessages: [chat-emote-bluemoon-protect-message]
+  chatTriggers: ["protect"]
+  whitelist:
+    components:
+    - Vocal

@@ -72,6 +72,7 @@ public partial class ChatBox : UIWidget
 
     private void OnMessageAdded(ChatMessage msg)
     {
+        PushWebMessage(msg);
         Logger.GetSawmill("chat").Debug($"{msg.Channel}: {msg.Message}");
         if (!ChatInput.FilterButton.Popup.IsActive(msg.Channel))
         {
@@ -85,6 +86,11 @@ public partial class ChatBox : UIWidget
             _entManager.System<AudioSystem>().PlayGlobal(new ResolvedPathSpecifier(new ResPath(msg.AudioPath)), Filter.Local(), false, AudioParams.Default.WithVolume(msg.AudioVolume));
 
         msg.Read = true;
+
+        // TGUI owns the visible messages. Native sound/read handling still runs,
+        // but allocating and laying out hidden rich-text rows is wasted work.
+        if (_webChat != null)
+            return;
 
         var color = msg.MessageColorOverride ?? msg.Channel.TextColor();
 
@@ -137,6 +143,7 @@ public partial class ChatBox : UIWidget
 
     public void Repopulate()
     {
+        _repopulatingWeb = true;
         Contents.Clear();
         _lastLine = null;
         _lastLineRepeatCount = 0;
@@ -146,6 +153,8 @@ public partial class ChatBox : UIWidget
             OnMessageAdded(message.Item2);
         }
         if (_searchCount != null) _searchCount.Text = Loc.GetString("chat-panel-search-count", ("count", Contents.EntryCount));
+        _repopulatingWeb = false;
+        PublishWebHistory();
     }
 
     private void OnChannelFilter(ChatChannel channel, bool active)
@@ -281,6 +290,7 @@ public partial class ChatBox : UIWidget
 
     protected override void Dispose(bool disposing)
     {
+        DisposeWebSettings();
         if (_settingsSaveDelay >= 0) FlushPanelSettings();
         if (_panelPreferences != null)
         {

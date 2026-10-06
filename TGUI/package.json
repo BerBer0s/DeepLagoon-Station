@@ -1,0 +1,25 @@
+{
+  "name": "deeplagoon-tgui",
+  "private": true,
+  "scripts": {
+    "new:interface": "node tools/new-interface.cjs",
+    "dev": "vite --config vite.dev.config.mjs",
+    "build": "vite build --mode production --config vite.interface.config.cjs && vite build --mode production --config vite.chat.config.cjs"
+  },
+  "dependencies": {
+    "@popperjs/core": "2.11.8",
+    "dateformat": "5.0.3",
+    "dompurify": "3.3.1",
+    "js-yaml": "4.1.1",
+    "marked": "17.0.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "5.2.0",
+    "esbuild": "0.27.3",
+    "sass": "1.97.3",
+    "terser": "5.43.1",
+    "vite": "7.3.1"
+  }
+}

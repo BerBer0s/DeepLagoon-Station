@@ -12,11 +12,13 @@
     xmlns:inventory="clr-namespace:Content.Client.UserInterface.Systems.Inventory.Widgets"
     xmlns:targeting="clr-namespace:Content.Client._Shitmed.UserInterface.Systems.Targeting.Widgets"
     xmlns:userActions="clr-namespace:Content.Client._Shitcode.UserActions"
+    xmlns:web="clr-namespace:Content.Client._DeepLagoon.WebUI"
     Name="SeparatedChatHud"
     VerticalExpand="True"
     VerticalAlignment="Stretch"
     HorizontalAlignment="Stretch">
-    <LayoutContainer Name="ScreenContainer" HorizontalExpand="True" VerticalExpand="True">
+    <web:ChatSplitContainer Name="ScreenContainer" HorizontalExpand="True" VerticalExpand="True" Orientation="Horizontal">
+        <web:ChatSplitPane HorizontalExpand="True" VerticalExpand="True">
         <LayoutContainer Name="ViewportContainer" HorizontalExpand="True" VerticalExpand="True">
             <controls:MainViewport Name="MainViewport"/>
             <widgets:GhostGui Name="Ghost" Access="Protected" />
@@ -29,6 +31,8 @@
             </BoxContainer>
             <alerts:AlertsUI Name="Alerts" Access="Protected" />
         </LayoutContainer>
+        </web:ChatSplitPane>
+        <web:ChatSplitPane HorizontalExpand="True" VerticalExpand="True">
         <PanelContainer Name="SeparatedChatPanel" HorizontalExpand="True" RectClipContent="True">
             <PanelContainer.PanelOverride>
                 <graphics:StyleBoxFlat BackgroundColor="#2B2C3B" />
@@ -50,5 +54,6 @@
                 <chat:ChatBox VerticalExpand="True" HorizontalExpand="True" Name="Chat" Access="Protected" MinSize="0 0"/>
             </BoxContainer>
         </PanelContainer>
-    </LayoutContainer>
+        </web:ChatSplitPane>
+    </web:ChatSplitContainer>
 </screens:SeparatedChatGameScreen>

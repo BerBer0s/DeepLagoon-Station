@@ -1,0 +1,13 @@
+- type: entity
+  parent: BaseComputer
+  id: ComputerTguiDemo
+  name: TGUI demonstration console
+  description: A server-authoritative demonstration of the DeepLagoon web interface bridge.
+  components:
+  - type: WebUiDemo
+  - type: ActivatableUI
+    key: enum.WebUiKey.Key
+  - type: UserInterface
+    interfaces:
+      enum.WebUiKey.Key:
+        type: WebUiBoundUserInterface

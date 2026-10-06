@@ -22,7 +22,7 @@
                     <BoxContainer Name="PreviewSlotsRight" Orientation="Vertical" SeparationOverride="4" VerticalAlignment="Center" />
                 </BoxContainer>
                 <Button Name="ShowClothes" Pressed="True" ToggleMode="True" HorizontalExpand="True" Margin="0 16 0 10" Text="{Loc 'humanoid-profile-editor-clothing-show'}" />
-                <ui:HighlightedContainer HorizontalExpand="True" Margin="0 4 0 0">
+                <ui:HighlightedContainer Name="IdentityNative" HorizontalExpand="True" Margin="0 4 0 0">
                     <BoxContainer Orientation="Vertical" HorizontalExpand="True" SeparationOverride="2">
                         <BoxContainer HorizontalExpand="True">
                             <Label Text="{Loc 'humanoid-profile-editor-name-label'}" VerticalAlignment="Center" />

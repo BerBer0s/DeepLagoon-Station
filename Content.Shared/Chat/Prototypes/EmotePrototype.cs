@@ -2,6 +2,7 @@ using Content.Shared.Whitelist;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Serialization;
 using Robust.Shared.Utility;
+using Robust.Shared.Audio;
 
 namespace Content.Shared.Chat.Prototypes;
 
@@ -68,6 +69,16 @@ public sealed partial class EmotePrototype : IPrototype
     /// </summary>
     [DataField]
     public HashSet<string> ChatTriggers = new();
+
+    /// <summary>Explicit upstream audio variants, selected by the humanoid's sex.</summary>
+    [DataField]
+    public SoundSpecifier? MaleSound;
+    [DataField]
+    public SoundSpecifier? FemaleSound;
+
+    /// <summary>Optional positional sound when no actor-specific sound is provided.</summary>
+    [DataField]
+    public SoundSpecifier? Sound;
 
     // goob edit - animations
     [DataField]

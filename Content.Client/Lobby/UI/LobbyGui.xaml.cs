@@ -18,6 +18,11 @@ namespace Content.Client.Lobby.UI
             IoCManager.InjectDependencies(this);
             SetAnchorPreset(MainContainer, LayoutPreset.Wide);
             SetAnchorPreset(Background, LayoutPreset.Wide);
+            Chat.ChatInput.UseCompactLayout();
+            Chat.EnableBlueMoonChat();
+            // Keep chat usable on shorter windows even with loaded character
+            // details and a long server description. Those details can scroll.
+            RightSide.OnResized += () => LobbyInfoScroll.MaxHeight = Math.Max(80, RightSide.Height * 0.45f);
 
             LobbySong.SetMarkup(Loc.GetString("lobby-state-song-no-song-text"));
 

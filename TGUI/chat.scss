@@ -1,0 +1,17 @@
+// The separately compiled light theme also loads shared Sass dependencies.
+// State both theme defaults explicitly so that switching to dark cannot inherit
+// its black text. Message-specific BlueMoon colors and user customization remain.
+.theme-dark .Chat {
+  color: var(--chat-text, #abc6ec);
+}
+
+.theme-light .Chat {
+  color: var(--chat-text, #000000);
+}
+
+.EmoteBar { display: flex; flex-wrap: wrap; gap: 3px; }
+.EmoteBar__picker { padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+.EmoteBar__header { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.EmoteBar__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 136px), 1fr)); gap: 5px; max-height: min(250px, 40vh); overflow-y: auto; }
+.EmoteBar__row { display: flex; gap: 2px; min-width: 0; }
+.EmoteBar__row > :first-child { flex: 1; min-width: 0; white-space: normal; }
