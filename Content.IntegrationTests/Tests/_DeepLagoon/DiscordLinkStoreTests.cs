@@ -36,6 +36,50 @@ public sealed class DiscordLinkStoreTests
     }
 
     [Test]
+    public void BoostyTierDowngradesAndExpiresWhilePaletteSurvivesRestart()
+    {
+        const string discord = "1554565156657299597";
+        var colors = new[] { 0x112233, 0x223344, 0x334455, 0x445566 };
+        Guid uid;
+        using (var store = new DiscordLinkStore(_path, () => _now))
+        {
+            store.SetSupporter(discord, true, 3, colors);
+            uid = store.EnrollLauncher(discord).Uid;
+            Assert.That(store.BoostyStatus(uid), Is.EqualTo((3, 900)));
+            Assert.That(store.BoostRemaining(uid), Is.EqualTo(900));
+            Assert.That(store.SupporterColors(), Is.EqualTo(colors));
+        }
+        using (var store = new DiscordLinkStore(_path, () => _now))
+        {
+            Assert.That(store.BoostyStatus(uid), Is.EqualTo((3, 900)));
+            store.SetSupporter(discord, false, 1, colors);
+            Assert.That(store.BoostyStatus(uid), Is.EqualTo((1, 900)));
+            Assert.That(store.BoostRemaining(uid), Is.Zero);
+            _now += 901;
+            Assert.That(store.BoostyStatus(uid), Is.EqualTo((0, 0)));
+            Assert.That(store.SupporterColors(), Is.EqualTo(colors));
+            store.SetSupporter(discord, false, 2, colors);
+            store.Unlink(discord, uid);
+            Assert.That(store.BoostyStatus(uid), Is.EqualTo((0, 0)));
+        }
+    }
+
+    [Test]
+    public void InvalidSupporterPayloadCannotChangeExistingPrivileges()
+    {
+        using var store = new DiscordLinkStore(_path, () => _now);
+        const string discord = "1554565156657299597";
+        var uid = store.EnrollLauncher(discord).Uid;
+        var colors = new[] { 1, 2, 3, 4 };
+        store.SetSupporter(discord, false, 1, colors);
+        Assert.That(() => store.SetSupporter(discord, true, 4, colors), Throws.ArgumentException);
+        Assert.That(() => store.SetSupporter(discord, true, 3, new[] { -1, 2, 3, 4 }), Throws.ArgumentException);
+        Assert.That(() => store.SetSupporter(discord, true, 3, new[] { 1 }), Throws.ArgumentException);
+        Assert.That(store.BoostyStatus(uid), Is.EqualTo((1, 900)));
+        Assert.That(store.BoostRemaining(uid), Is.Zero);
+    }
+
+    [Test]
     public void BoostLeaseFollowsDiscordLinkAndExpiresWithoutRenewal()
     {
         const string discord = "1554565156657299597";

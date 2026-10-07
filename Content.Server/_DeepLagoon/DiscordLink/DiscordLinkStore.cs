@@ -26,6 +26,8 @@ public sealed class DiscordLinkStore : IDisposable
         _db.Open();
         Execute("""
             PRAGMA journal_mode=WAL;
+            CREATE TABLE IF NOT EXISTS discord_boosty (discord_id TEXT PRIMARY KEY, tier INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS discord_supporter_palette (id INTEGER PRIMARY KEY CHECK(id=1), boost INTEGER NOT NULL, tier1 INTEGER NOT NULL, tier2 INTEGER NOT NULL, tier3 INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS discord_boosts (discord_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS discord_links (
                 discord_id TEXT PRIMARY KEY, ss14_uid TEXT NOT NULL UNIQUE,
@@ -87,6 +89,38 @@ public sealed class DiscordLinkStore : IDisposable
             ("$uid", uid.ToString()));
         var expires = Convert.ToInt64(command.ExecuteScalar() ?? 0L);
         return (int) Math.Clamp(expires - _now(), 0, 900);
+    }
+
+    public void SetSupporter(string discordId, bool boostActive, int tier, int[] colors)
+    {
+        if (tier is < 0 or > 3 || colors.Length != 4 || colors.Any(c => c is < 0 or > 0xFFFFFF))
+            throw new ArgumentException("Invalid supporter state");
+        using var transaction = _db.BeginTransaction();
+        SetBoost(discordId, boostActive);
+        if (tier > 0)
+            Execute("INSERT INTO discord_boosty VALUES($id,$tier,$expires) ON CONFLICT(discord_id) DO UPDATE SET tier=excluded.tier,expires_at=excluded.expires_at",
+                ("$id", discordId), ("$tier", tier), ("$expires", _now() + 900));
+        else
+            Execute("DELETE FROM discord_boosty WHERE discord_id=$id", ("$id", discordId));
+        Execute("INSERT INTO discord_supporter_palette VALUES(1,$boost,$tier1,$tier2,$tier3) ON CONFLICT(id) DO UPDATE SET boost=excluded.boost,tier1=excluded.tier1,tier2=excluded.tier2,tier3=excluded.tier3",
+            ("$boost", colors[0]), ("$tier1", colors[1]), ("$tier2", colors[2]), ("$tier3", colors[3]));
+        transaction.Commit();
+    }
+
+    public (int Tier, int Remaining) BoostyStatus(Guid uid)
+    {
+        using var command = Command("SELECT b.tier,b.expires_at FROM discord_boosty b JOIN discord_links l ON l.discord_id=b.discord_id WHERE l.ss14_uid=$uid", ("$uid", uid.ToString()));
+        using var reader = command.ExecuteReader();
+        if (!reader.Read()) return (0, 0);
+        var remaining = (int) Math.Clamp(reader.GetInt64(1) - _now(), 0, 900);
+        return remaining > 0 ? (reader.GetInt32(0), remaining) : (0, 0);
+    }
+
+    public int[]? SupporterColors()
+    {
+        using var command = Command("SELECT boost,tier1,tier2,tier3 FROM discord_supporter_palette WHERE id=1");
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? new[] { reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetInt32(3) } : null;
     }
 
     /// <summary>Trusted OAuth backend only. Never grants whitelist or replaces an existing UID.</summary>

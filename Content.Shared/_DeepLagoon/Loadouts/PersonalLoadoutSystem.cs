@@ -33,6 +33,8 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
             reason = Loc.GetString("dl-loadout-disabled");
             return false;
         }
+        if (!CanUseDonor(prototype, session, out reason))
+            return false;
         var times = session == null ? new Dictionary<string, TimeSpan>() : _playtime.GetPlayTimes(session);
         foreach (var requirement in prototype.PersonalRequirements)
         {
@@ -43,6 +45,17 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
             }
         }
         return true;
+    }
+
+    public bool CanUseDonor(LoadoutPrototype prototype, ICommonSession? session, out string reason)
+    {
+        reason = string.Empty;
+        if (EntityManager.System<SharedDiscordBoostSystem>().CanUseDonorItem(prototype.PersonalDonor, prototype.PersonalDonorTier, session))
+            return true;
+        reason = prototype.PersonalDonor == DonorCategory.Boosty
+            ? Loc.GetString("dl-loadout-boosty-required", ("tier", prototype.PersonalDonorTier))
+            : Loc.GetString("dl-loadout-boost-required");
+        return false;
     }
 
     private string Describe(PersonalLoadoutRequirement r)
@@ -70,7 +83,7 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
             return false;
         var result = r.Kind switch
         {
-            "DiscordBoostRequirement" => EntityManager.System<SharedDiscordBoostSystem>().HasActiveBoost(session),
+            "DiscordBoostRequirement" => EntityManager.System<SharedDiscordBoostSystem>().HasDiscordRewardAccess(session),
             "CharacterJobRequirement" => r.Jobs.Contains(job),
             "CharacterDepartmentRequirement" => _prototypes.EnumeratePrototypes<DepartmentPrototype>().Any(d => r.Departments.Contains(d.ID) && d.Roles.Any(j => j.Id == job)),
             "CharacterSpeciesRequirement" => r.Species.Contains(profile.Species.Id),

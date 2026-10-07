@@ -1,5 +1,11 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
+using System.Numerics;
+using Content.Client.Lobby.UI.Loadouts;
+using Robust.Client.UserInterface;
+using Robust.Client.UserInterface.Controls;
+using Robust.Client.Graphics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -27,6 +33,22 @@ public sealed class DiscordBoostLoadoutTests
           id: TestDiscordBoosterLoadout
           personalRequirements:
           - kind: DiscordBoostRequirement
+
+        - type: loadout
+          id: TestBoostyTier1
+          personalDonor: Boosty
+          personalDonorTier: 1
+          personalItems: [ClothingUniformJumpsuitColorGrey]
+        - type: loadout
+          id: TestBoostyTier2
+          personalDonor: Boosty
+          personalDonorTier: 2
+          personalItems: [ClothingUniformJumpsuitColorGrey]
+        - type: loadout
+          id: TestBoostyTier3
+          personalDonor: Boosty
+          personalDonorTier: 3
+          personalItems: [ClothingUniformJumpsuitColorGrey]
         """;
 
     [Test]
@@ -80,6 +102,24 @@ public sealed class DiscordBoostLoadoutTests
                 store.SetBoost(discord, false);
                 Assert.That(loadouts.CanUse(prototype, profile, "Passenger", session, out var reason), Is.False);
                 Assert.That(reason, Does.Contain("Discord"));
+                var supporters = systems.GetEntitySystem<SharedDiscordBoostSystem>();
+                var prototypes = server.ResolveDependency<IPrototypeManager>();
+                var colors = new[] { 0x112233, 0x223344, 0x334455, 0x445566 };
+                foreach (var tier in new[] { 3, 2, 1, 0 })
+                {
+                    store.SetSupporter(discord, false, tier, colors);
+                    Assert.That(supporters.HasActiveBoost(session), Is.False, "Boosty must not fabricate a Discord boost");
+                    Assert.That(loadouts.CanUse(prototype, profile, "Passenger", session, out _), Is.EqualTo(tier > 0));
+                    for (var required = 1; required <= 3; required++)
+                    {
+                        var id = new Robust.Shared.Prototypes.ProtoId<LoadoutPrototype>("TestBoostyTier" + required);
+                        var item = prototypes.Index(id);
+                        Assert.That(loadouts.CanUse(item, profile, "Passenger", session, out _), Is.EqualTo(tier >= required));
+                    }
+                }
+                store.SetSupporter(discord, true, 0, colors);
+                Assert.That(loadouts.CanUse(prototypes.Index(new Robust.Shared.Prototypes.ProtoId<LoadoutPrototype>("TestBoostyTier1")), profile, "Passenger", session, out _), Is.False);
+                Assert.That(supporters.GetDonorColor(DonorCategory.Boosty, 1).ToHex(), Does.StartWith("#223344"));
             });
         }
         finally
@@ -91,6 +131,55 @@ public sealed class DiscordBoostLoadoutTests
             });
             await server.RemoveDummySession(session);
         }
+        // Exercise delivery of tier and palette data over the real test connection.
+        var network = server.ResolveDependency<IEntityManager>().EntityNetManager!;
+        await server.WaitPost(() =>
+        {
+            var realSession = server.ResolveDependency<Robust.Server.Player.IPlayerManager>().Sessions.Single();
+            network.SendSystemNetworkMessage(new DiscordBoostStatusEvent(0, 2, 900, new[] { 0x112233, 0x223344, 0x334455, 0x445566 }), realSession.Channel);
+        });
+        await pair.RunTicksSync(5);
+        await pair.Client.WaitAssertion(() =>
+        {
+            var local = pair.Client.ResolveDependency<Robust.Client.Player.IPlayerManager>().LocalSession;
+            var clientSystems = pair.Client.ResolveDependency<IEntitySystemManager>();
+            var supporters = clientSystems.GetEntitySystem<SharedDiscordBoostSystem>();
+            Assert.That(supporters.GetBoostyTier(local), Is.EqualTo(2));
+            Assert.That(supporters.HasActiveBoost(local), Is.False);
+            var editor = new PersonalLoadoutEditor();
+            var editorType = typeof(PersonalLoadoutEditor);
+            editorType.GetField("_profile", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(editor, HumanoidCharacterProfile.DefaultWithSpecies());
+            editorType.GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(editor, local);
+            var prototypes = pair.Client.ResolveDependency<IPrototypeManager>();
+            var items = Enumerable.Range(1, 3).Select(tier => prototypes.Index(new ProtoId<LoadoutPrototype>("TestBoostyTier" + tier))).ToList();
+            var list = (Control) editorType.GetMethod("MakeList", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(editor,
+                new object?[] { items, new RoleLoadout(PersonalLoadoutSystem.Role), new Dictionary<string, Loadout>(), 0, null })!;
+            list.Measure(new Vector2(640, 480));
+            list.Arrange(new Robust.Shared.Maths.UIBox2(0, 0, 640, 480));
+            var buttons = Descendants(list).OfType<Button>().Where(b => b.ToolTip?.Contains("Boosty") == true).ToArray();
+            Assert.That(buttons.Length, Is.EqualTo(3));
+            for (var tier = 1; tier <= 3; tier++)
+            {
+                var button = buttons.Single(b => b.ToolTip!.Contains("tier " + tier));
+                Assert.That(button.Disabled, Is.EqualTo(tier == 3));
+                Assert.That(Descendants(button).OfType<TextureRect>().Count(), Is.EqualTo(tier == 3 ? 2 : 1), "Locked tiles keep the item image and add a lock");
+                var style = (StyleBoxFlat) button.StyleBoxOverride!;
+                Assert.That(style.BorderColor, Is.EqualTo(supporters.GetDonorColor(DonorCategory.Boosty, tier)));
+                Assert.That(button.Size.X, Is.EqualTo(156).Within(2), "Tier labels must fit within the tile");
+            }
+            list.Dispose();
+            editor.Dispose();
+        });
         await pair.CleanReturnAsync();
     }
+    private static IEnumerable<Control> Descendants(Control root)
+    {
+        foreach (var child in root.Children)
+        {
+            yield return child;
+            foreach (var descendant in Descendants(child))
+                yield return descendant;
+        }
+    }
+
 }

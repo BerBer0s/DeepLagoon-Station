@@ -39,29 +39,37 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
     private DiscordLinkStore? _store;
     private string _token = "";
     private DateTime _nextBoostUpdate;
-    private readonly Dictionary<ICommonSession, long> _boostPublished = new();
+    private readonly Dictionary<ICommonSession, string> _boostPublished = new();
 
     public override bool HasActiveBoost(ICommonSession? session)
         => session != null && session.Channel.AuthType == LoginType.LoggedIn &&
            _enabled && (_store?.BoostRemaining(session.UserId.UserId) ?? 0) > 0;
 
+    public override int GetBoostyTier(ICommonSession? session)
+        => session != null && session.Channel.AuthType == LoginType.LoggedIn && _enabled
+            ? _store?.BoostyStatus(session.UserId.UserId).Tier ?? 0 : 0;
+
+    public override int[] RoleColors => _store?.SupporterColors() ?? DefaultRoleColors;
+
     private void PublishBoosts()
     {
+        var palette = _store?.SupporterColors();
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         foreach (var session in _players.Sessions)
         {
             if (session.Status != SessionStatus.InGame)
                 continue;
             var remaining = HasActiveBoost(session) ? _store!.BoostRemaining(session.UserId.UserId) : 0;
-            // New connections start without privileges; only positive leases
-            // and subsequent revocations need a message.
-            if (remaining == 0 && !_boostPublished.ContainsKey(session))
+            var tier = GetBoostyTier(session);
+            var boostyRemaining = tier > 0 ? _store!.BoostyStatus(session.UserId.UserId).Remaining : 0;
+            if (remaining == 0 && tier == 0 && palette == null && !_boostPublished.ContainsKey(session))
                 continue;
-            // Publish renewals and revocations, without sending every frame.
-            var expiry = remaining > 0 ? DateTimeOffset.UtcNow.ToUnixTimeSeconds() + remaining : 0;
-            if (_boostPublished.TryGetValue(session, out var previous) && Math.Abs(previous - expiry) <= 1)
+            var colors = palette ?? DefaultRoleColors;
+            var fingerprint = $"{(remaining > 0 ? now + remaining : 0)}/{tier}/{(boostyRemaining > 0 ? now + boostyRemaining : 0)}/{string.Join(',', colors)}";
+            if (_boostPublished.TryGetValue(session, out var previous) && previous == fingerprint)
                 continue;
-            _boostPublished[session] = expiry;
-            RaiseNetworkEvent(new DiscordBoostStatusEvent(remaining), session);
+            _boostPublished[session] = fingerprint;
+            RaiseNetworkEvent(new DiscordBoostStatusEvent(remaining, tier, boostyRemaining, colors), session);
         }
     }
 
@@ -217,7 +225,7 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             return false;
         context.ResponseHeaders["Cache-Control"] = "no-store";
         if (context.RequestMethod != HttpMethod.Post ||
-            path is not ("/deeplagoon/discord/boost" or "/deeplagoon/discord/restore_discord" or "/deeplagoon/discord/reassign_discord" or "/deeplagoon/discord/enroll_launcher" or "/deeplagoon/discord/link" or "/deeplagoon/discord/lookup" or "/deeplagoon/discord/whitelist" or "/deeplagoon/discord/remove_whitelist" or "/deeplagoon/discord/unlink_discord"))
+            path is not ("/deeplagoon/discord/supporter" or "/deeplagoon/discord/boost" or "/deeplagoon/discord/restore_discord" or "/deeplagoon/discord/reassign_discord" or "/deeplagoon/discord/enroll_launcher" or "/deeplagoon/discord/link" or "/deeplagoon/discord/lookup" or "/deeplagoon/discord/whitelist" or "/deeplagoon/discord/remove_whitelist" or "/deeplagoon/discord/unlink_discord"))
         {
             await context.RespondErrorAsync(HttpStatusCode.NotFound);
             return true;
@@ -268,6 +276,15 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
                     return new ApiResult(HttpStatusCode.ServiceUnavailable, new { error = "unavailable" });
                 try
                 {
+                    if (path.EndsWith("/supporter", StringComparison.Ordinal))
+                    {
+                        if (request.BoostActive == null || request.BoostyTier is not (>= 0 and <= 3) ||
+                            request.RoleColors is not { Length: 4 } || request.RoleColors.Any(c => c is < 0 or > 0xFFFFFF))
+                            return new ApiResult(HttpStatusCode.BadRequest, new { error = "invalid_request" });
+                        _store.SetSupporter(request.DiscordId, request.BoostActive.Value, request.BoostyTier.Value, request.RoleColors);
+                        PublishBoosts();
+                        return new ApiResult(HttpStatusCode.OK, new { boost_active = request.BoostActive.Value, boosty_tier = request.BoostyTier.Value });
+                    }
                     if (path.EndsWith("/boost", StringComparison.Ordinal))
                     {
                         if (request.BoostActive == null)
@@ -462,6 +479,8 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
         [property: System.Text.Json.Serialization.JsonPropertyName("username")] string? Username = null,
         [property: System.Text.Json.Serialization.JsonPropertyName("expected_revision")] long? ExpectedRevision = null,
         [property: System.Text.Json.Serialization.JsonPropertyName("discord_username")] string? DiscordUsername = null,
-        [property: System.Text.Json.Serialization.JsonPropertyName("boost_active")] bool? BoostActive = null);
+        [property: System.Text.Json.Serialization.JsonPropertyName("boost_active")] bool? BoostActive = null,
+        [property: System.Text.Json.Serialization.JsonPropertyName("boosty_tier")] int? BoostyTier = null,
+        [property: System.Text.Json.Serialization.JsonPropertyName("role_colors")] int[]? RoleColors = null);
     private sealed record ApiResult(HttpStatusCode Status, object Body);
 }

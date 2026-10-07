@@ -11,6 +11,8 @@ using Content.Shared._DeepLagoon.Loadouts;
 using Content.Shared.Preferences;
 using Content.Shared.Preferences.Loadouts;
 using Robust.Client.GameObjects;
+using Robust.Client.Graphics;
+using Robust.Client.ResourceManagement;
 using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controls;
 using Robust.Shared.Player;
@@ -23,6 +25,7 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
 {
     [Dependency] private readonly IPrototypeManager _prototypes = default!;
     [Dependency] private readonly IEntityManager _entities = default!;
+    [Dependency] private readonly IResourceCache _resources = default!;
     private readonly Label _points = new();
     private readonly ProgressBar _bar = new() { MaxHeight = 8, Margin = new Thickness(0, 5) };
     private readonly Button _showUnavailable = new() { ToggleMode = true, Text = Loc.GetString("dl-loadout-show-unavailable") };
@@ -69,15 +72,21 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         _removeUnavailable.OnPressed += _ => RemoveUnavailable();
     }
 
-    private bool _hadBoost;
+    private bool _hadDiscordRewards;
+    private int _lastBoostyTier;
+    private readonly int[] _donorColors = new int[4];
 
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
-        var boosted = _entities.System<SharedDiscordBoostSystem>().HasActiveBoost(_session);
-        if (boosted == _hadBoost)
+        var supporters = _entities.System<SharedDiscordBoostSystem>();
+        var discordRewards = supporters.HasDiscordRewardAccess(_session);
+        var boostyTier = supporters.GetBoostyTier(_session);
+        if (discordRewards == _hadDiscordRewards && boostyTier == _lastBoostyTier && _donorColors.SequenceEqual(supporters.RoleColors))
             return;
-        _hadBoost = boosted;
+        _hadDiscordRewards = discordRewards;
+        _lastBoostyTier = boostyTier;
+        Array.Copy(supporters.RoleColors, _donorColors, 4);
         Rebuild();
     }
 
@@ -140,7 +149,7 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         _bar.MaxValue = Math.Max(1, system.Points);
         _bar.Value = Math.Max(0, system.Points - spent);
         var all = _prototypes.EnumeratePrototypes<LoadoutPrototype>().Where(x => x.PersonalItems.Count > 0).ToList();
-        var filtered = all.Where(x => _slotFilter == null || FitsSlot(x, _slotFilter)).Where(x => _showUnavailable.Pressed || selected.ContainsKey(x.ID) || system.CanUse(x, _profile, _job, _session, out _))
+        var filtered = all.Where(x => _slotFilter == null || FitsSlot(x, _slotFilter)).Where(x => _showUnavailable.Pressed || DonorCategoryOf(x) != DonorCategory.None || selected.ContainsKey(x.ID) || system.CanUse(x, _profile, _job, _session, out _))
             .Where(x => string.IsNullOrWhiteSpace(_search.Text) || x.ID.Contains(_search.Text, StringComparison.OrdinalIgnoreCase) || _prototypes.Index(x.PersonalItems[0]).Name.Contains(_search.Text, StringComparison.OrdinalIgnoreCase)).ToList();
         if (!string.IsNullOrWhiteSpace(_search.Text))
         {
@@ -213,11 +222,37 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
             var pressed = selected.TryGetValue(prototype.ID, out var selection);
             var savedColor = selection?.Customization?.Color is { } savedHex && Color.TryFromHex(savedHex) is {} parsedColor ? parsedColor : Color.White;
             var title = _prototypes.Index(prototype.PersonalItems[0]).Name;
-            var card = new BoxContainer { Orientation = LayoutOrientation.Vertical, SetWidth = 156 };
-            var button = new Button { ToggleMode = true, Pressed = pressed, HorizontalExpand = true, MinHeight = 124, Disabled = !pressed && (!usable || spent + prototype.PersonalCost > system.Points), ToolTip = string.IsNullOrEmpty(reason) ? title : title + "\n" + reason };
+            var donor = DonorCategoryOf(prototype);
+            var donorLabel = donor == DonorCategory.Boosty
+                ? Loc.GetString("dl-loadout-donor-boosty", ("tier", prototype.PersonalDonorTier))
+                : donor == DonorCategory.DiscordBoost ? Loc.GetString("dl-loadout-donor-discord") : string.Empty;
+            var tooltip = string.Join("\n", new[] { title, donorLabel, reason }.Where(x => !string.IsNullOrEmpty(x)));
+            var card = new BoxContainer { Orientation = LayoutOrientation.Vertical, SetWidth = 156, ToolTip = tooltip };
+            var button = new Button { ToggleMode = true, Pressed = pressed, HorizontalExpand = true, MinHeight = 124, Disabled = !pressed && (!usable || spent + prototype.PersonalCost > system.Points), ToolTip = tooltip };
+            if (donor != DonorCategory.None)
+            {
+                var accent = _entities.System<SharedDiscordBoostSystem>().GetDonorColor(donor, prototype.PersonalDonorTier);
+                button.StyleBoxOverride = new StyleBoxFlat
+                {
+                    BackgroundColor = Color.InterpolateBetween(new Color(0.08f, 0.09f, 0.12f), accent, usable ? 0.25f : 0.12f),
+                    BorderColor = pressed && usable ? Color.White : accent,
+                    BorderThickness = new Thickness(pressed && usable ? 2 : 1),
+                };
+            }
             var content = new BoxContainer { Orientation = LayoutOrientation.Vertical, Margin = new Thickness(4), MouseFilter = MouseFilterMode.Ignore };
-            var icon = new TextureRect { Texture = sprites.GetPrototypeIcon(prototype.PersonalItems[0]).Default, SetSize = new Vector2(48, 48), HorizontalAlignment = HAlignment.Center, Stretch = TextureRect.StretchMode.KeepAspectCentered, Modulate = savedColor, MouseFilter = MouseFilterMode.Ignore };
-            content.AddChild(icon);
+            var icon = new TextureRect { Texture = sprites.GetPrototypeIcon(prototype.PersonalItems[0]).Default, SetSize = new Vector2(48, 48), HorizontalAlignment = HAlignment.Center, Stretch = TextureRect.StretchMode.KeepAspectCentered, Modulate = usable ? savedColor : savedColor.WithAlpha(0.4f), MouseFilter = MouseFilterMode.Ignore };
+            var iconHolder = new Control { SetSize = new Vector2(56, 48), HorizontalAlignment = HAlignment.Center, MouseFilter = MouseFilterMode.Ignore };
+            iconHolder.AddChild(icon);
+            if (!usable)
+                iconHolder.AddChild(new TextureRect
+                {
+                    Texture = _resources.GetResource<TextureResource>("/Textures/Interface/Nano/lock.svg.192dpi.png").Texture,
+                    SetSize = new Vector2(22, 22), HorizontalAlignment = HAlignment.Right, VerticalAlignment = VAlignment.Bottom,
+                    Stretch = TextureRect.StretchMode.KeepAspectCentered, MouseFilter = MouseFilterMode.Ignore,
+                });
+            content.AddChild(iconHolder);
+            if (donor != DonorCategory.None)
+                content.AddChild(new Label { Text = donorLabel, MouseFilter = MouseFilterMode.Ignore });
             content.AddChild(new RichTextLabel { Text = title, HorizontalExpand = true, MinHeight = 36, MaxWidth = 140, MouseFilter = MouseFilterMode.Ignore });
             var footer = new BoxContainer { HorizontalExpand = true, MouseFilter = MouseFilterMode.Ignore };
             footer.AddChild(new Label { Text = Loc.GetString("dl-loadout-item-cost", ("cost", prototype.PersonalCost)), HorizontalExpand = true, MouseFilter = MouseFilterMode.Ignore });
@@ -225,7 +260,7 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
             button.AddChild(content);
             button.OnPressed += _ => Select(prototype, button.Pressed);
             card.AddChild(button);
-            if (pressed && selection != null)
+            if (pressed && usable && selection != null)
             {
                 var customize = new Button { Text = "\u2699", ToolTip = Loc.GetString("dl-loadout-customize"), ToggleMode = true, Pressed = _customizeId == prototype.ID, SetWidth = 28 };
                 customize.OnToggled += args => { _customizeId = args.Pressed ? prototype.ID : null; Rebuild(); };
@@ -235,10 +270,14 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         }
         if (grid.ChildCount == 0)
             grid.AddChild(new Label { Text = Loc.GetString("dl-loadout-no-items") });
-        if (_customizeId != null && selected.TryGetValue(_customizeId, out var focused) && loadouts.FirstOrDefault(x => x.ID == _customizeId) is { } focusedPrototype)
+        if (_customizeId != null && selected.TryGetValue(_customizeId, out var focused) && loadouts.FirstOrDefault(x => x.ID == _customizeId) is { } focusedPrototype && system.CanUse(focusedPrototype, _profile!, _job, _session, out _))
             container.AddChild(MakeCustomization(focusedPrototype, focused));
         return container;
     }
+
+    private static DonorCategory DonorCategoryOf(LoadoutPrototype prototype)
+        => prototype.PersonalDonor != DonorCategory.None ? prototype.PersonalDonor
+            : prototype.PersonalRequirements.Any(r => r.Kind == "DiscordBoostRequirement") ? DonorCategory.DiscordBoost : DonorCategory.None;
 
     private Control MakeCustomization(LoadoutPrototype prototype, Loadout selection)
     {

@@ -9,27 +9,46 @@ public sealed class DiscordBoostSystem : SharedDiscordBoostSystem
     [Dependency] private readonly Robust.Client.Player.IPlayerManager _players = default!;
     [Dependency] private readonly IBaseClient _client = default!;
     private DateTime _expiresAt;
+    private DateTime _boostyExpiresAt;
+    private int _boostyTier;
+    public override int[] RoleColors { get; } = (int[]) DefaultRoleColors.Clone();
 
     public override void Initialize()
     {
         base.Initialize();
         _client.RunLevelChanged += OnRunLevelChanged;
         SubscribeNetworkEvent<DiscordBoostStatusEvent>(args =>
-            _expiresAt = DateTime.UtcNow.AddSeconds(Math.Max(0, args.RemainingSeconds)));
+        {
+            _expiresAt = DateTime.UtcNow.AddSeconds(Math.Clamp(args.RemainingSeconds, 0, 900));
+            _boostyExpiresAt = DateTime.UtcNow.AddSeconds(Math.Clamp(args.BoostyRemainingSeconds, 0, 900));
+            _boostyTier = Math.Clamp(args.BoostyTier, 0, 3);
+            if (args.RoleColors.Length == 4)
+                Array.Copy(args.RoleColors, RoleColors, 4);
+        });
     }
 
     public override bool HasActiveBoost(ICommonSession? session)
         => session != null && session == _players.LocalSession && DateTime.UtcNow < _expiresAt;
 
+    public override int GetBoostyTier(ICommonSession? session)
+        => session != null && session == _players.LocalSession && DateTime.UtcNow < _boostyExpiresAt ? _boostyTier : 0;
+
+    private void Reset()
+    {
+        _expiresAt = _boostyExpiresAt = default;
+        _boostyTier = 0;
+        Array.Copy(DefaultRoleColors, RoleColors, 4);
+    }
+
     private void OnRunLevelChanged(object? sender, RunLevelChangedEventArgs args)
     {
         if (args.NewLevel == ClientRunLevel.Initialize)
-            _expiresAt = default;
+            Reset();
     }
 
     public override void Shutdown()
     {
-        _expiresAt = default;
+        Reset();
         _client.RunLevelChanged -= OnRunLevelChanged;
         base.Shutdown();
     }
