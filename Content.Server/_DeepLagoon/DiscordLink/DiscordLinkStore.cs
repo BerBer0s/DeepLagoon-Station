@@ -26,6 +26,7 @@ public sealed class DiscordLinkStore : IDisposable
         _db.Open();
         Execute("""
             PRAGMA journal_mode=WAL;
+            CREATE TABLE IF NOT EXISTS discord_boosts (discord_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS discord_links (
                 discord_id TEXT PRIMARY KEY, ss14_uid TEXT NOT NULL UNIQUE,
                 username TEXT NOT NULL, linked_at INTEGER NOT NULL);
@@ -68,6 +69,24 @@ public sealed class DiscordLinkStore : IDisposable
         using var command = Command("SELECT ss14_uid, username FROM discord_links WHERE discord_id=$id", ("$id", discordId));
         using var reader = command.ExecuteReader();
         return reader.Read() ? new Link(Guid.Parse(reader.GetString(0)), reader.GetString(1)) : null;
+    }
+
+    // A short renewable lease prevents permanent privileges after bot outages.
+    public void SetBoost(string discordId, bool active)
+    {
+        if (active)
+            Execute("INSERT INTO discord_boosts VALUES($id,$expires) ON CONFLICT(discord_id) DO UPDATE SET expires_at=excluded.expires_at",
+                ("$id", discordId), ("$expires", _now() + 900));
+        else
+            Execute("DELETE FROM discord_boosts WHERE discord_id=$id", ("$id", discordId));
+    }
+
+    public int BoostRemaining(Guid uid)
+    {
+        using var command = Command("SELECT b.expires_at FROM discord_boosts b JOIN discord_links l ON l.discord_id=b.discord_id WHERE l.ss14_uid=$uid",
+            ("$uid", uid.ToString()));
+        var expires = Convert.ToInt64(command.ExecuteScalar() ?? 0L);
+        return (int) Math.Clamp(expires - _now(), 0, 900);
     }
 
     /// <summary>Trusted OAuth backend only. Never grants whitelist or replaces an existing UID.</summary>

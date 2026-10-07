@@ -1,4 +1,5 @@
 using System.IO;
+using Content.Shared._DeepLagoon.DiscordLink;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -22,7 +23,7 @@ using Robust.Shared.Player;
 
 namespace Content.Server._DeepLagoon.DiscordLink;
 
-public sealed partial class DiscordLinkSystem : EntitySystem
+public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
 {
     [Dependency] private readonly IPlayerManager _players = default!;
     [Dependency] private readonly EuiManager _euis = default!;
@@ -37,6 +38,33 @@ public sealed partial class DiscordLinkSystem : EntitySystem
     private readonly HashSet<ICommonSession> _admitted = new();
     private DiscordLinkStore? _store;
     private string _token = "";
+    private DateTime _nextBoostUpdate;
+    private readonly Dictionary<ICommonSession, long> _boostPublished = new();
+
+    public override bool HasActiveBoost(ICommonSession? session)
+        => session != null && session.Channel.AuthType == LoginType.LoggedIn &&
+           _enabled && (_store?.BoostRemaining(session.UserId.UserId) ?? 0) > 0;
+
+    private void PublishBoosts()
+    {
+        foreach (var session in _players.Sessions)
+        {
+            if (session.Status != SessionStatus.InGame)
+                continue;
+            var remaining = HasActiveBoost(session) ? _store!.BoostRemaining(session.UserId.UserId) : 0;
+            // New connections start without privileges; only positive leases
+            // and subsequent revocations need a message.
+            if (remaining == 0 && !_boostPublished.ContainsKey(session))
+                continue;
+            // Publish renewals and revocations, without sending every frame.
+            var expiry = remaining > 0 ? DateTimeOffset.UtcNow.ToUnixTimeSeconds() + remaining : 0;
+            if (_boostPublished.TryGetValue(session, out var previous) && Math.Abs(previous - expiry) <= 1)
+                continue;
+            _boostPublished[session] = expiry;
+            RaiseNetworkEvent(new DiscordBoostStatusEvent(remaining), session);
+        }
+    }
+
     private readonly bool _developmentBuild = CCVars.DiscordAdmissionDevelopment;
     public bool AdmissionRequired => !_developmentBuild && _config.GetCVar(CCVars.DiscordLinkEnabled);
     private bool _enabled;
@@ -103,6 +131,11 @@ public sealed partial class DiscordLinkSystem : EntitySystem
     public override void Update(float frameTime)
     {
         base.Update(frameTime);
+        if (DateTime.UtcNow >= _nextBoostUpdate)
+        {
+            _nextBoostUpdate = DateTime.UtcNow.AddSeconds(5);
+            PublishBoosts();
+        }
         if (!_enabled || _checkingPrompts || _prompts.Count == 0 || DateTime.UtcNow < _nextPromptCheck)
             return;
         _nextPromptCheck = DateTime.UtcNow.AddSeconds(3);
@@ -162,6 +195,7 @@ public sealed partial class DiscordLinkSystem : EntitySystem
     {
         if (args.NewStatus is SessionStatus.Disconnected or SessionStatus.Zombie)
         {
+            _boostPublished.Remove(args.Session);
             _prompts.Remove(args.Session);
             _admitted.Remove(args.Session);
             return;
@@ -183,7 +217,7 @@ public sealed partial class DiscordLinkSystem : EntitySystem
             return false;
         context.ResponseHeaders["Cache-Control"] = "no-store";
         if (context.RequestMethod != HttpMethod.Post ||
-            path is not ("/deeplagoon/discord/restore_discord" or "/deeplagoon/discord/reassign_discord" or "/deeplagoon/discord/enroll_launcher" or "/deeplagoon/discord/link" or "/deeplagoon/discord/lookup" or "/deeplagoon/discord/whitelist" or "/deeplagoon/discord/remove_whitelist" or "/deeplagoon/discord/unlink_discord"))
+            path is not ("/deeplagoon/discord/boost" or "/deeplagoon/discord/restore_discord" or "/deeplagoon/discord/reassign_discord" or "/deeplagoon/discord/enroll_launcher" or "/deeplagoon/discord/link" or "/deeplagoon/discord/lookup" or "/deeplagoon/discord/whitelist" or "/deeplagoon/discord/remove_whitelist" or "/deeplagoon/discord/unlink_discord"))
         {
             await context.RespondErrorAsync(HttpStatusCode.NotFound);
             return true;
@@ -234,6 +268,14 @@ public sealed partial class DiscordLinkSystem : EntitySystem
                     return new ApiResult(HttpStatusCode.ServiceUnavailable, new { error = "unavailable" });
                 try
                 {
+                    if (path.EndsWith("/boost", StringComparison.Ordinal))
+                    {
+                        if (request.BoostActive == null)
+                            return new ApiResult(HttpStatusCode.BadRequest, new { error = "invalid_request" });
+                        _store.SetBoost(request.DiscordId, request.BoostActive.Value);
+                        PublishBoosts();
+                        return new ApiResult(HttpStatusCode.OK, new { boost_active = request.BoostActive.Value });
+                    }
                     DiscordLinkStore.Link? link;
                     var merged = false;
                     if (path.EndsWith("/enroll_launcher", StringComparison.Ordinal))
@@ -306,6 +348,7 @@ public sealed partial class DiscordLinkSystem : EntitySystem
                         _store.Unlink(request.DiscordId, link.Uid);
                         existing = true;
                     }
+                    PublishBoosts();
                     await RefreshUid(link.Uid);
                     return new ApiResult(HttpStatusCode.OK, new { uid = link.Uid, username = link.Username, existing, merged });
                 }
@@ -418,6 +461,7 @@ public sealed partial class DiscordLinkSystem : EntitySystem
         [property: System.Text.Json.Serialization.JsonPropertyName("expected_linked_at")] long? ExpectedLinkedAt = null,
         [property: System.Text.Json.Serialization.JsonPropertyName("username")] string? Username = null,
         [property: System.Text.Json.Serialization.JsonPropertyName("expected_revision")] long? ExpectedRevision = null,
-        [property: System.Text.Json.Serialization.JsonPropertyName("discord_username")] string? DiscordUsername = null);
+        [property: System.Text.Json.Serialization.JsonPropertyName("discord_username")] string? DiscordUsername = null,
+        [property: System.Text.Json.Serialization.JsonPropertyName("boost_active")] bool? BoostActive = null);
     private sealed record ApiResult(HttpStatusCode Status, object Body);
 }

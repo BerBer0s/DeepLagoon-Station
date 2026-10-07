@@ -1,4 +1,6 @@
 using System.Linq;
+using Content.Shared._DeepLagoon.DiscordLink;
+using Robust.Shared.Timing;
 using System.Numerics;
 using Content.Client.UserInterface.Controls;
 using Content.Client.Inventory;
@@ -65,6 +67,18 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         _showUnavailable.OnToggled += _ => Rebuild();
         _search.OnTextChanged += _ => Rebuild();
         _removeUnavailable.OnPressed += _ => RemoveUnavailable();
+    }
+
+    private bool _hadBoost;
+
+    protected override void FrameUpdate(FrameEventArgs args)
+    {
+        base.FrameUpdate(args);
+        var boosted = _entities.System<SharedDiscordBoostSystem>().HasActiveBoost(_session);
+        if (boosted == _hadBoost)
+            return;
+        _hadBoost = boosted;
+        Rebuild();
     }
 
     public void Refresh(HumanoidCharacterProfile? profile, string job, ICommonSession? session)

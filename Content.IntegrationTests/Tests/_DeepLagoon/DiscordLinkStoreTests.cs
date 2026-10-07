@@ -36,6 +36,37 @@ public sealed class DiscordLinkStoreTests
     }
 
     [Test]
+    public void BoostLeaseFollowsDiscordLinkAndExpiresWithoutRenewal()
+    {
+        const string discord = "1554565156657299597";
+        Guid uid;
+        using (var store = new DiscordLinkStore(_path, () => _now))
+        {
+            store.SetBoost(discord, true); // Boost can arrive before account linking.
+            uid = store.EnrollLauncher(discord).Uid;
+            Assert.That(store.BoostRemaining(uid), Is.EqualTo(900));
+        }
+        using (var store = new DiscordLinkStore(_path, () => _now))
+        {
+            _now += 300;
+            Assert.That(store.BoostRemaining(uid), Is.EqualTo(600));
+            store.SetBoost(discord, true);
+            _now += 901;
+            Assert.That(store.BoostRemaining(uid), Is.Zero);
+            store.SetBoost(discord, true);
+            store.SetBoost(discord, false);
+            Assert.That(store.BoostRemaining(uid), Is.Zero);
+            store.SetBoost(discord, true);
+            store.Unlink(discord, uid);
+            Assert.That(store.BoostRemaining(uid), Is.Zero);
+            store.RestoreDiscord(discord, uid, "Player");
+            Assert.That(store.BoostRemaining(uid), Is.EqualTo(900));
+            store.ReassignDiscord(discord, "1554565156657299598", uid, _now);
+            Assert.That(store.BoostRemaining(uid), Is.Zero);
+        }
+    }
+
+    [Test]
     public void LauncherEnrollmentPreservesUidAndCannotRecreateRevokedIdentity()
     {
         using var store = new DiscordLinkStore(_path, () => _now);

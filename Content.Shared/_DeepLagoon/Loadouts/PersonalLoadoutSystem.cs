@@ -1,4 +1,5 @@
 using System.Linq;
+using Content.Shared._DeepLagoon.DiscordLink;
 using Content.Shared.CCVar;
 using Content.Shared.Players.PlayTimeTracking;
 using Content.Shared.Preferences;
@@ -35,7 +36,7 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
         var times = session == null ? new Dictionary<string, TimeSpan>() : _playtime.GetPlayTimes(session);
         foreach (var requirement in prototype.PersonalRequirements)
         {
-            if (!Check(requirement, profile, job, times))
+            if (!Check(requirement, profile, job, times, session))
             {
                 reason = Loc.GetString("dl-loadout-requirement", ("requirement", Describe(requirement)));
                 return false;
@@ -46,8 +47,11 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
 
     private string Describe(PersonalLoadoutRequirement r)
     {
+        if (r.Kind == "DiscordBoostRequirement" && !r.Inverted)
+            return Loc.GetString("dl-loadout-boost-required");
         var values = r.Kind switch
         {
+            "DiscordBoostRequirement" => new List<string> { Loc.GetString("dl-loadout-boost-required") },
             "CharacterJobRequirement" => r.Jobs,
             "CharacterDepartmentRequirement" => r.Departments,
             "CharacterSpeciesRequirement" => r.Species,
@@ -60,12 +64,13 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
         return $"{r.Kind}: {(r.Inverted ? "! " : "")}{string.Join(", ", values)}";
     }
 
-    private bool Check(PersonalLoadoutRequirement r, HumanoidCharacterProfile profile, string job, IReadOnlyDictionary<string, TimeSpan> times, int depth = 0)
+    private bool Check(PersonalLoadoutRequirement r, HumanoidCharacterProfile profile, string job, IReadOnlyDictionary<string, TimeSpan> times, ICommonSession? session, int depth = 0)
     {
         if (depth > 16)
             return false;
         var result = r.Kind switch
         {
+            "DiscordBoostRequirement" => EntityManager.System<SharedDiscordBoostSystem>().HasActiveBoost(session),
             "CharacterJobRequirement" => r.Jobs.Contains(job),
             "CharacterDepartmentRequirement" => _prototypes.EnumeratePrototypes<DepartmentPrototype>().Any(d => r.Departments.Contains(d.ID) && d.Roles.Any(j => j.Id == job)),
             "CharacterSpeciesRequirement" => r.Species.Contains(profile.Species.Id),
@@ -80,9 +85,9 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
             "OverallTimeRequirement" => InRange(times.GetValueOrDefault("Overall", TimeSpan.Zero).TotalSeconds, r),
             "CharacterPlaytimeRequirement" => InRange(times.GetValueOrDefault(r.Tracker, TimeSpan.Zero).TotalSeconds, r),
             "CharacterDepartmentTimeRequirement" => InRange(_prototypes.EnumeratePrototypes<DepartmentPrototype>().Where(d => d.ID == r.Department).SelectMany(d => d.Roles).Select(j => j.Id).Distinct().Sum(j => times.GetValueOrDefault("Job" + j, TimeSpan.Zero).TotalSeconds), r),
-            "CharacterLogicOrRequirement" => r.Requirements.Any(child => Check(child, profile, job, times, depth + 1)),
-            "CharacterLogicAndRequirement" => r.Requirements.All(child => Check(child, profile, job, times, depth + 1)),
-            "CharacterLogicXorRequirement" => r.Requirements.Count(child => Check(child, profile, job, times, depth + 1)) == 1,
+            "CharacterLogicOrRequirement" => r.Requirements.Any(child => Check(child, profile, job, times, session, depth + 1)),
+            "CharacterLogicAndRequirement" => r.Requirements.All(child => Check(child, profile, job, times, session, depth + 1)),
+            "CharacterLogicXorRequirement" => r.Requirements.Count(child => Check(child, profile, job, times, session, depth + 1)) == 1,
             _ => false,
         };
         return result != r.Inverted;
