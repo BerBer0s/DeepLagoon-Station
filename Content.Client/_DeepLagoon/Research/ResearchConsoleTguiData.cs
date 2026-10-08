@@ -45,6 +45,11 @@ public sealed class ResearchConsoleTguiData
         "dl-research-details-hide",
         "dl-research-details-show",
         "dl-research-tabs-all",
+        "dl-research-search-placeholder",
+        "dl-research-search-clear",
+        "dl-research-search-empty",
+        "dl-research-search-recipe",
+        "dl-research-search-more",
     ];
 
     /// <summary>Marks an icon key of the page as a lathe recipe; any other key is a technology id.</summary>

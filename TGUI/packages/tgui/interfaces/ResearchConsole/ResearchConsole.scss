@@ -18,6 +18,7 @@ $dim-lines: 0.12;
 $dim-lines-far: 0.04;
 $panel-icon-size: 56px;
 $recipe-icon-size: 32px;
+$result-icon-size: 32px;
 
 .ResearchConsole {
   --rc-border: #68788a;
@@ -111,6 +112,110 @@ $recipe-icon-size: 32px;
   &--active {
     border-color: var(--discipline, var(--rc-accent));
     background: color-mix(in srgb, var(--discipline, var(--rc-accent)) 35%, transparent);
+  }
+}
+
+.SearchBox {
+  position: relative;
+  display: flex;
+  flex: 0 1 220px;
+  align-items: center;
+  gap: $space * 0.75;
+  min-width: 120px;
+  height: 28px;
+  padding: 0 $space;
+  box-sizing: border-box;
+  border: 1px solid var(--rc-border);
+  border-radius: $radius;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+  }
+
+  &:focus-within {
+    border-color: var(--rc-accent);
+  }
+
+  &__clear {
+    display: flex;
+    padding: 0;
+    border: none;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  // Right-aligned under the field: the field sits at the right end of the header.
+  &__list {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 5;
+    box-sizing: border-box;
+    width: 340px;
+    max-width: calc(100vw - #{$space * 2});
+    padding: 4px;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius;
+    background: var(--player-surface);
+  }
+
+  &__empty,
+  &__more {
+    padding: 4px $space;
+    font-size: 12px;
+    opacity: 0.75;
+  }
+}
+
+.SearchResult {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: $space;
+  width: 100%;
+  padding: 3px $space 3px 3px;
+  border: none;
+  border-left: 4px solid var(--discipline, var(--rc-border));
+  border-radius: $radius * 0.6;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+
+  &--current {
+    background: color-mix(in srgb, var(--rc-accent) 22%, transparent);
+  }
+
+  &__icon {
+    flex: 0 0 $result-icon-size;
+    width: $result-icon-size;
+    height: $result-icon-size;
+  }
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__name {
+    font-weight: bold;
+    overflow-wrap: anywhere;
+  }
+
+  &__recipe {
+    font-size: 12px;
+    opacity: 0.8;
+    overflow-wrap: anywhere;
   }
 }
 

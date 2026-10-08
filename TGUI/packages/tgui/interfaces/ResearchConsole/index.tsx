@@ -2,13 +2,14 @@ import {
   type CSSProperties,
   type SyntheticEvent,
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 
-import { useBackend } from '../../backend';
+import { sendMessage, useBackend } from '../../backend';
 import { Button } from '../../components';
 import { playerTheme } from '../../components/PlayerTheme';
 import { DetailsPanel, PANEL_STRIP_WIDTH, PANEL_WIDTH } from './DetailsPanel';
@@ -21,6 +22,8 @@ import {
   type WireData,
 } from './model';
 import './ResearchConsole.scss';
+import { buildSearchIndex, searchTechs } from './search';
+import { SearchBox } from './SearchBox';
 import { type CameraCommand, type CameraTarget, TechTree } from './TechTree';
 import { Tips } from './Tips';
 import { useResearchFx } from './useResearchFx';
@@ -89,16 +92,24 @@ export const ResearchConsole = () => {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | null>(null);
   const [activeDiscipline, setActiveDiscipline] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   const selectedTech = selectedId ? techById.get(selectedId) : undefined;
   const selectedHubs = useMemo(
     () => new Set(selectedId ? tree.hubParents.get(selectedId) : undefined),
     [tree, selectedId],
   );
-  const highlight = useMemo(
-    () => (activeDiscipline ? new Set(techIdsByDiscipline.get(activeDiscipline)) : null),
-    [activeDiscipline, techIdsByDiscipline],
-  );
+  // The results follow the typing a little behind it, so that typing itself stays quick.
+  const searchIndex = useMemo(() => buildSearchIndex(techs), [techs]);
+  const searchQuery = useDeferredValue(query);
+  const results = useMemo(() => searchTechs(searchIndex, searchQuery), [searchIndex, searchQuery]);
+  // While a search has results, the technologies it found stay bright; otherwise the tab's discipline.
+  const highlight = useMemo(() => {
+    if (results.length > 0) {
+      return new Set(results.map((result) => result.id));
+    }
+    return activeDiscipline ? new Set(techIdsByDiscipline.get(activeDiscipline)) : null;
+  }, [results, activeDiscipline, techIdsByDiscipline]);
   // The panel lies over the right edge of the tree; the toolbar moves aside for it.
   const panelWidth = selectedTech ? (panelCollapsed ? PANEL_STRIP_WIDTH : PANEL_WIDTH) : 0;
 
@@ -106,9 +117,9 @@ export const ResearchConsole = () => {
   // it. The callbacks read the latest values from a ref so that the nodes keep their props.
   const [attention, setAttention] = useState(0);
   const lastRequest = useRef<Request | null>(null);
-  const latest = useRef({ selectedId, stateById, hasAccess: data.hasAccess === true });
+  const latest = useRef({ selectedId, query, stateById, hasAccess: data.hasAccess === true });
   useEffect(() => {
-    latest.current = { selectedId, stateById, hasAccess: data.hasAccess === true };
+    latest.current = { selectedId, query, stateById, hasAccess: data.hasAccess === true };
   });
 
   // The selection is also written to the ref at once: a second click that arrives before React has
@@ -152,13 +163,21 @@ export const ResearchConsole = () => {
     setCameraCommand((previous) => ({ serial: (previous?.serial ?? 0) + 1, target }));
   }, []);
 
-  // Selecting a technology from the panel also brings it into view.
+  // Selecting a technology from the panel or from a search also brings it into view.
   const navigate = useCallback(
     (id: string) => {
       select(id);
       moveCamera({ kind: 'node', id });
     },
     [moveCamera, select],
+  );
+
+  const pickResult = useCallback(
+    (id: string) => {
+      setQuery('');
+      navigate(id);
+    },
+    [navigate],
   );
 
   // A tab narrows the tree to a discipline and brings it into view; the active one clears it.
@@ -173,9 +192,18 @@ export const ResearchConsole = () => {
   );
 
   useEffect(() => {
+    // Escape steps back: the search text, then the selection, then the window. The embedded browser
+    // takes the key from the game while it has the focus, so closing is asked for here.
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key !== 'Escape' || event.isComposing) {
+        return;
+      }
+      if (latest.current.query !== '') {
+        setQuery('');
+      } else if (latest.current.selectedId) {
         select(null);
+      } else {
+        sendMessage({ type: 'close' });
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -207,6 +235,15 @@ export const ResearchConsole = () => {
           active={activeDiscipline}
           labels={labels}
           onSelect={onTab}
+        />
+        <SearchBox
+          query={query}
+          results={results}
+          techs={techById}
+          disciplineColors={disciplineColors}
+          labels={labels}
+          onChange={setQuery}
+          onPick={pickResult}
         />
         <Button onClick={() => act('servers')}>{labels['dl-research-servers']}</Button>
       </header>
