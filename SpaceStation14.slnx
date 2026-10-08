@@ -12,6 +12,11 @@
   </Folder>
   <Folder Name="/Build/">
     <File Path="Tools/generate_hashes.ps1" />
+    <Project Path="TGUI/DeepLagoon.TGUI.csproj">
+      <BuildType Solution="DebugOpt|*" Project="Debug" />
+      <BuildType Solution="Release|*" Project="Debug" />
+      <BuildType Solution="Tools|*" Project="Debug" />
+    </Project>
   </Folder>
   <Folder Name="/Project Files/">
     <File Path=".editorconfig" />

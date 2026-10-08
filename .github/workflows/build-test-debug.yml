@@ -37,6 +37,16 @@ jobs:
         cd RobustToolbox/
         git submodule update --init --recursive
 
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 11.25.0
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: 'pnpm'
+        cache-dependency-path: TGUI/pnpm-lock.yaml
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v4.1.0
       with:

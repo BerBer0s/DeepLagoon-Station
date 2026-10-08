@@ -42,8 +42,9 @@ own logic. The transport, request policy and native window are shared.
 
 1. Add `packages/tgui/interfaces/MyInterface.tsx`. Export a component named
    `MyInterface`; see `DeepLagoonDemo.tsx` for `useBackend`, `data`, and `act`.
-2. In this directory, run `pnpm install --frozen-lockfile` and `pnpm build`.
-   Commit the changed source, lockfile, and bundles in `Resources/Web/DeepLagoon`.
+2. Build any DeepLagoon content project or the solution; TGUI is rebuilt automatically.
+   Commit the changed source and lockfile. Generated bundles in
+   `Resources/Web/DeepLagoon` are ignored by Git.
    Clients do not need Node.js. The bundles are distributed as game resources.
 3. Register `WebUiBoundUserInterface` under a UI key on the entity's
    `UserInterface` component, and open it through the normal `UserInterfaceSystem`.
@@ -61,6 +62,22 @@ registry or separate client window class. For client-owned screens, instantiate
 `OnAction`. `TguiActionData.TryParse` provides sandbox-compatible scalar argument
 parsing; the consumer still validates field ranges and permissions. Use distinct
 UI keys when one entity has multiple independent bound interfaces.
+
+## Automatic builds
+
+Every normal build of a DeepLagoon content project (including server, client,
+packaging and tools) rebuilds the interface and chat production bundles. The
+shared `DeepLagoon.TGUI.csproj` dependency prevents concurrent bundle writes
+within a parallel solution build. Debug, DebugOpt, Release, Rebuild and Publish
+use the same production bundles. IDE design-time checks do not run pnpm.
+
+Install Node.js 24 and pnpm 11.25.0 on build machines. JavaScript dependencies
+are installed with `pnpm install --frozen-lockfile` on the first build and when
+`package.json` or `pnpm-lock.yaml` changes. Any install or bundle error fails the
+normal build. To use a pnpm executable outside PATH, pass
+`-p:TguiPackageManager="/path/to/pnpm"` (quote the executable path inside the
+property value if it contains spaces). `pnpm build` remains available for a
+standalone web build. `--no-build` commands reuse existing bundles.
 
 ## Dev Server and hot reload
 
