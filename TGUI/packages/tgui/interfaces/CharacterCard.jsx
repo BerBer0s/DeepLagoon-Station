@@ -1,4 +1,5 @@
 import {useBackend} from '../backend';
+import {useState} from 'react';
 import {Button} from '../components';
 import {playerTheme} from '../components/PlayerTheme';
 import {CharacterText} from '../components/CharacterText';
@@ -6,8 +7,10 @@ import './CharacterEditor.scss';
 const statuses=['Запрещено','Спросить','Разрешено'];
 export const CharacterCard=()=>{
  const {data,act}=useBackend();const theme=playerTheme(data.chatState);
+ const [imageIndex,setImageIndex]=useState(0),images=data.headshots||[];
  return <div className={'CharacterCard Chat '+theme.className} style={theme.style}>
-  <aside>{data.headshot&&<img className="CharacterCard__headshot" src={data.headshot} alt={'Headshot '+data.name}/>}
+  <aside>{(images.length>0||data.headshot)&&<img className="CharacterCard__headshot" src={images[imageIndex%images.length]?.image||data.headshot} alt={'Headshot '+data.name}/>}
+   {images.length>1&&<div className="CharacterCard__imageNavigation"><Button onClick={()=>setImageIndex((imageIndex+images.length-1)%images.length)}>◀</Button><span>{imageIndex%images.length+1} / {images.length}</span><Button onClick={()=>setImageIndex((imageIndex+1)%images.length)}>▶</Button></div>}
    <div className="CharacterCard__model"/>
    {['erp','noncon','vore'].map((key,i)=><div key={key} className={'CharacterCard__consent consent-'+data[key]}><strong>{['Эротические взаимодействия','Взаимодействия без согласия','Vore'][i]}</strong><span>{statuses[data[key]]}</span></div>)}
   </aside>

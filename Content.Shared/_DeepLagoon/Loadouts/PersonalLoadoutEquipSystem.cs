@@ -25,6 +25,18 @@ public sealed class PersonalLoadoutEquipSystem : EntitySystem
     [Dependency] private readonly SharedAppearanceSystem _appearance = default!;
     [Dependency] private readonly MetaDataSystem _metadata = default!;
 
+    public void Customize(EntityUid item, PersonalLoadoutCustomization? data)
+    {
+        if (data?.Name != null) _metadata.SetEntityName(item, data.Name);
+        if (data?.Description != null) _metadata.SetEntityDescription(item, data.Description);
+        if (data?.Color != null && Color.TryFromHex(data.Color) is {} color)
+        {
+            EnsureComp<PersonalLoadoutVisualsComponent>(item);
+            EnsureComp<AppearanceComponent>(item);
+            _appearance.SetData(item, PersonalLoadoutVisuals.Color, color);
+        }
+    }
+
     public List<EntityUid> Apply(EntityUid character, HumanoidCharacterProfile profile, string job, ICommonSession? session, bool preview = false)
     {
         var failed = new List<EntityUid>();
@@ -32,7 +44,7 @@ public sealed class PersonalLoadoutEquipSystem : EntitySystem
             return failed;
         var role = saved.Clone();
         role.EnsureValid(profile, session, IoCManager.Instance!);
-        var remaining = _loadouts.Points;
+        var remaining = _loadouts.GetPoints(session);
         foreach (var selected in role.SelectedLoadouts.OrderBy(x => x.Key.Id).SelectMany(x => x.Value))
         {
             if (!_prototypes.TryIndex(selected.Prototype, out var prototype) || prototype.PersonalItems.Count == 0 || !_loadouts.CanUse(prototype, profile, job, session, out _))

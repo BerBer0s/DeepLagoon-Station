@@ -31,16 +31,21 @@ public sealed partial class HumanoidProfileEditor
     private HumanoidCharacterProfile? _publishedTguiProfile;
     private bool _publishedTguiDirty;
     private bool _publishedTguiClothes;
+    private int _publishedSupporterBonus = -1;
     private float _tguiRefresh;
     private readonly TguiSpriteImages _tguiImages = new();
     private readonly Dictionary<int, (string Id, string Image, string Status)> _headshotPreviews = new();
     private readonly Dictionary<int, Guid> _headshotReads = new();
     private string _tguiMode = "appearance";
+    private readonly Control _editorSettingsTab = new();
+    private CharacterEditorAppearance _editorAppearance = new();
     private readonly Dictionary<string, string> _companyWebImages = new();
 
     private void InitializeTguiEditor()
     {
-        _profileWeb = new TguiPanel(suspendWhenHidden: true) { Name = "CharacterTgui" };
+        _editorAppearance.Load(_resManager);
+        TabContainer.AddChild(_editorSettingsTab);
+        _profileWeb = new TguiPanel(suspendWhenHidden: true, inheritChatAppearance: false) { Name = "CharacterTgui" };
         _profileWeb.OnAction += (action, payload) => HandleTguiProfileAction(action, payload);
         _personalLoadoutEditor.TguiMode = true;
         // One browser owns every editor control and the shared animated background.
@@ -62,6 +67,7 @@ public sealed partial class HumanoidProfileEditor
     private string TguiTabMode(int tab)
     {
         var child = TabContainer.GetChild(tab);
+        if (child == _editorSettingsTab) return "settings";
         if (child == _personalLoadoutEditor) return "equipment";
         if (child == _savedItemsTab) return "saved";
         if (child == _flavorText) return "flavor";
@@ -84,16 +90,20 @@ public sealed partial class HumanoidProfileEditor
         if (_tguiRefresh > 0 || _profileWeb == null || !_profileWeb.VisibleInTree) return;
         _tguiRefresh = 0.2f;
         if (_profileWeb.Web.IsReady) _personalLoadoutEditor.WarmTguiImages();
-        if (!ReferenceEquals(Profile, _publishedTguiProfile) || IsDirty != _publishedTguiDirty || ShowClothes.Pressed != _publishedTguiClothes)
+        var bonus = _entManager.System<Content.Shared._DeepLagoon.DiscordLink.SharedDiscordBoostSystem>().GetLoadoutPointBonus(_playerManager.LocalSession);
+        if (!ReferenceEquals(Profile, _publishedTguiProfile) || IsDirty != _publishedTguiDirty || ShowClothes.Pressed != _publishedTguiClothes || bonus != _publishedSupporterBonus)
             PublishTguiProfile();
     }
 
     private void PublishTguiProfile()
     {
         if (_profileWeb == null) return;
+        if (_libraryWindow != null)
+            _libraryWindow.Panel.SetState("CharacterHeadshotLibrary", CreateTguiProfileState("flavor").ToString());
         _publishedTguiProfile = Profile;
         _publishedTguiDirty = IsDirty;
         _publishedTguiClothes = ShowClothes.Pressed;
+        _publishedSupporterBonus = _entManager.System<Content.Shared._DeepLagoon.DiscordLink.SharedDiscordBoostSystem>().GetLoadoutPointBonus(_playerManager.LocalSession);
         if (_tguiMode != "native")
             _profileWeb.SetState("CharacterEditor", CreateTguiProfileState(_tguiMode).ToString());
     }
@@ -102,12 +112,15 @@ public sealed partial class HumanoidProfileEditor
     public TguiData CreateTguiProfileState(string mode)
     {
         var data = new TguiData().String("mode", mode).Bool("available", Profile != null)
-            .Bool("dirty", IsDirty).Bool("showClothes", ShowClothes.Pressed);
+            .Bool("dirty", IsDirty).Bool("showClothes", ShowClothes.Pressed).Bool("libraryOpen", _libraryWindow != null);
+        data.Object("appearance", _editorAppearance.Data());
+        data.String("previewFloor", _tguiImages.Frame(new SpriteSpecifier.Texture(new ResPath("Tiles/steel.png"))));
+        data.Bool("extendedHeadshot", _entManager.System<Content.Shared._DeepLagoon.DiscordLink.SharedDiscordBoostSystem>().GetSupporterTier(_playerManager.LocalSession) >= 2);
         if (SetupState != null) data.Object("setup", SetupState());
         if (Profile is not { } p) return data;
         data.Array("previewSlots", _personalLoadoutEditor.CreateTguiSlots(PreviewDummy));
         data.Array("tabs", Enumerable.Range(0, TabContainer.ChildCount).Select(i => new TguiData().Number("id", i)
-            .String("name", TguiTabMode(i) switch { "appearance" => "Внешность", "jobs" => "Профессии", "traits" => "Черты", "company" => "Компания", "markings" => "Особенности", "equipment" => "Снаряжение", "saved" => "Сохранённые предметы", _ => "Описание" })
+            .String("name", TguiTabMode(i) switch { "settings" => "Настройки", "appearance" => "Основное", "jobs" => "Профессии", "traits" => "Черты", "company" => "Компания", "markings" => "Маркинги", "equipment" => "Снаряжение", "saved" => "Сохранённые предметы", _ => "Описание" })
             .String("mode", TguiTabMode(i))));
         if (mode == "saved") data.Array("savedItems", _savedItemEntities.Where(_entManager.EntityExists).Select(entity =>
             new TguiData().String("name", _entManager.GetComponent<MetaDataComponent>(entity).EntityName)
@@ -118,6 +131,7 @@ public sealed partial class HumanoidProfileEditor
             EnsureHeadshotPreview(headshotSlot, p.HeadshotId);
             var preview = _headshotPreviews[headshotSlot];
             data.String("headshot", preview.Image).String("headshotStatus", preview.Status);
+            data.Object("gallery", GalleryState(headshotSlot));
         }
         if (mode == "equipment") data.Object("equipment", _personalLoadoutEditor.CreateTguiState());
         if (mode == "markings")
@@ -174,7 +188,9 @@ public sealed partial class HumanoidProfileEditor
         else if (mode == "company")
         {
             var companies = _prototypeManager.EnumeratePrototypes<CompanyPrototype>().Where(c => !c.Disabled && _companyManager.IsAllowed(c.ID));
-            data.Array("companyOptions", companies.OrderBy(c => c.ID == "None" ? "" : c.Name).Select(c => Choice(c.ID, c.Name)));
+            data.Array("companyOptions", companies.OrderBy(c => c.ID == "None" ? "" : c.Name).Select(c => Choice(c.ID, c.Name)
+                .String("descriptionHtml", WebChatMessageFormatter.ToHtml(FormattedMessage.FromMarkupPermissive(string.IsNullOrEmpty(c.Description) ? "" : Loc.GetString(c.Description))))
+                .String("image", CompanyDataImage(c)).String("wikiUrl", c.WikiUrl)));
             if (_prototypeManager.TryIndex<CompanyPrototype>(p.Company, out var company))
                 data.String("companyDescriptionHtml", WebChatMessageFormatter.ToHtml(FormattedMessage.FromMarkupPermissive(
                         string.IsNullOrEmpty(company.Description) ? "" : Loc.GetString(company.Description))))
@@ -204,7 +220,8 @@ public sealed partial class HumanoidProfileEditor
             if (Disposed || !_headshotReads.TryGetValue(slot, out var currentRequest) || currentRequest != request)
                 return;
 
-            _headshotReads.Remove(slot);
+            // Keep this generation while the image is selected: Read can first
+            // return a local preview, then deliver a replacement after hash validation.
             _headshotPreviews[slot] = (id,
                 error.Length == 0 && bytes.Length > 0 && returnedId == id ? HeadshotImage(bytes, mime) : "",
                 error);
@@ -263,8 +280,9 @@ public sealed partial class HumanoidProfileEditor
     /// <summary>All web actions edit the same draft and use the existing save/import/export handlers.</summary>
     public bool HandleTguiProfileAction(string action, string payload)
     {
-        if (Profile == null || !TguiActionData.TryParse(payload, out var args)) return false;
+        if (!TguiActionData.TryParse(payload, out var args)) return false;
         if (action.StartsWith("setup/", StringComparison.Ordinal)) { var accepted = SetupAction?.Invoke(action[6..], args!) ?? false; PublishTguiProfile(); return accepted; }
+        if (Profile == null) return false;
         var value = args!.String("value") ?? "";
         var species = _prototypeManager.Index(Profile.Species);
         var valid = true;
@@ -276,12 +294,29 @@ public sealed partial class HumanoidProfileEditor
         }
         switch (action)
         {
+            case "headshot-library":
+                ToggleHeadshotLibrary(); break;
+            case "headshot-library-close":
+                CloseHeadshotLibrary(); break;
+            case "company-wiki":
+                if (!_prototypeManager.TryIndex<CompanyPrototype>(value, out var wikiCompany) || !_companyManager.IsAllowed(wikiCompany.ID) ||
+                    wikiCompany.WikiUrl is not {} wikiUrl || !wikiUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return false;
+                IoCManager.Resolve<Robust.Client.UserInterface.IUriOpener>().OpenUri(wikiUrl); break;
+            case "appearance-setting":
+                if (!_editorAppearance.Update(args.String("field") ?? "", value)) return false;
+                _editorAppearance.Save(_resManager); break;
+            case "appearance-reset":
+                _editorAppearance = new CharacterEditorAppearance();
+                _editorAppearance.Save(_resManager); break;
             case "select-tab":
                 if (!args.TryInt("value", out var selectedTab) || selectedTab < 0 || selectedTab >= TabContainer.ChildCount) return false;
                 TabContainer.CurrentTab = selectedTab; break;
             case "character-card":
                 Content.Client._DeepLagoon.CharacterInfo.CharacterCardWindow.Open(PreviewDummy, Profile.Name, Profile.FlavorText, Profile.OocNotes, (byte)Profile.ERPConsent, (byte)Profile.NonConConsent, (byte)Profile.VoreConsent, CharacterSlot ?? -1); break;
-            case "headshot-upload":
+            case "headshot-gallery":
+                if (CharacterSlot is not {} gallerySlot || args.String("operation") is not {} operation || operation is not ("toggle" or "primary" or "delete")) return false;
+                RefreshGallery(gallerySlot, operation, value); break;
+            case "headshot-upload": case "headshot-add":
                 if (CharacterSlot is not {} slot) return false;
                 EnsureHeadshotPreview(slot, Profile.HeadshotId);
                 var existingPreview = _headshotPreviews[slot];
@@ -289,6 +324,7 @@ public sealed partial class HumanoidProfileEditor
                 _entManager.System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Upload(slot, (bytes, mime, id, error) =>
                 {
                     if (Disposed) return;
+                    if (error.Length == 0 && id.Length > 0) RefreshGallery(slot);
                     var status = error.Length > 0 ? error : id.Length > 0 ? "Изображение сохранено на сервере." : "Загрузка отменена.";
                     if (error.Length == 0 && id.Length > 0) _headshotReads.Remove(slot);
                     _headshotPreviews[slot] = error.Length == 0 && id.Length > 0
@@ -299,7 +335,7 @@ public sealed partial class HumanoidProfileEditor
                         if (Profile != null && id.Length > 0) Profile = Profile.WithHeadshotId(id);
                         PublishTguiProfile();
                     }
-                }); break;
+                }, action == "headshot-add", value); break;
             case "headshot-download":
                 if (CharacterSlot is not {} downloadSlot) return false;
                 _entManager.System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Download(downloadSlot); break;
@@ -329,7 +365,7 @@ public sealed partial class HumanoidProfileEditor
             case "clothes": ShowClothes.SetClickPressed(!ShowClothes.Pressed); ReloadPreview(); break;
             case "rotate":
                 if (!args.TryInt("value", out var turn) || turn is not (-1 or 1)) return false;
-                _previewRotation = turn < 0 ? _previewRotation.TurnCw() : _previewRotation.TurnCcw();
+                _previewRotation = (Direction)(((int)_previewRotation + (turn < 0 ? 6 : 2)) % 8);
                 SetPreviewRotation(_previewRotation); break;
             case "preview-slot":
                 if (!_personalLoadoutEditor.SelectTguiSlot(PreviewDummy, value)) return false;

@@ -29,7 +29,7 @@ namespace Content.Shared.Preferences
     {
         private static readonly Regex RestrictedNameRegex = new(@"[^A-Za-z0-9 '\-]");
         private static readonly Regex ICNameCaseRegex = new(@"^(?<word>\w)|\b(?<word>\w)(?=\w*$)");
-        private static readonly Regex RestrictedNameCharactersRegex = new(@"[^\u0041-\u005A,\u0061-\u007A,\u00C0-\u00D6,\u00D8-\u00F6,\u00F8-\u00FF,\u0100-\u017F, -]");
+        private static readonly Regex RestrictedNameCharactersRegex = new(@"[^\u0041-\u005A,\u0061-\u007A,\u00C0-\u00D6,\u00D8-\u00F6,\u00F8-\u00FF,\u0100-\u017F,\u0400-\u04FF, -]");
 
         public const int MaxNameLength = 32;
         public const int MaxLoadoutNameLength = 32;
@@ -647,6 +647,7 @@ namespace Content.Shared.Preferences
                  * 00D8-00F6  Latin-1 Supplement: Letters II
                  * 00F8-00FF  Latin-1 Supplement: Letters III
                  * 0100-017F  Latin Extended A: European Latin
+                 * 0400-04FF  Cyrillic, including Russian Ё/ё
                  */
             }
 

@@ -40,9 +40,9 @@ public sealed class TguiEditorHost : Container
         _panel.Arrange(UIBox2.FromDimensions(Vector2.Zero, finalSize));
         // Match CharacterEditor.scss: small viewports give all space to the
         // form, keeping the native sprite from covering browser controls.
-        _sprite.Visible = finalSize.X >= 700 && finalSize.Y >= 420;
+        _sprite.Visible = finalSize.X >= 700 && finalSize.Y >= 520;
         if (_sprite.Visible)
-            _sprite.Arrange(UIBox2.FromDimensions(new Vector2(94, 62 + Math.Max(0, (finalSize.Y - 72 - 320) / 2 - 30)), new Vector2(232, 320)));
+            _sprite.Arrange(UIBox2.FromDimensions(new Vector2(94, 62 + 48), new Vector2(232, 320)));
         return finalSize;
     }
 }

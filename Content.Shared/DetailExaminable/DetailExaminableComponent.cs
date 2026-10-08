@@ -14,4 +14,5 @@ public sealed partial class DetailExaminableComponent : Component
     [DataField, AutoNetworkedField] public byte Vore;
     // The storage identifier stays on the server. Clients request by examined entity.
     [DataField] public string HeadshotId = string.Empty;
+    [DataField] public List<string> HeadshotImages = new();
 }

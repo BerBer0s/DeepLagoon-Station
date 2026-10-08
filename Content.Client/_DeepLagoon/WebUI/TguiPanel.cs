@@ -25,9 +25,11 @@ public sealed class TguiPanel : Control
     private bool _dragging;
     private string _chatState = "";
     private float _appearanceRefresh;
+    private readonly bool _inheritChatAppearance;
 
-    public TguiPanel(bool suspendWhenHidden = false)
+    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true)
     {
+        _inheritChatAppearance = inheritChatAppearance;
         Web = new GameWebView(suspendWhenHidden: suspendWhenHidden);
         HorizontalExpand = VerticalExpand = true;
         AddChild(Web);
@@ -86,7 +88,7 @@ public sealed class TguiPanel : Control
             FloatingWindow() is not { } window) return;
         var pointer = _input.MouseScreenPosition;
         // Color wheels, sliders, selections and scrollbars own drags in the body.
-        if (pointer.Position.Y / UIScale - GlobalPosition.Y > 32) return;
+        if (pointer.Position.Y / UIScale - GlobalPosition.Y > 52) return;
         for (var hit = UserInterfaceManager.MouseGetControl(pointer); hit != null; hit = hit.Parent)
         {
             if (hit != this) continue;
@@ -154,7 +156,7 @@ public sealed class TguiPanel : Control
     {
         base.FrameUpdate(args);
         _appearanceRefresh -= args.DeltaSeconds;
-        if (_appearanceRefresh <= 0)
+        if (_inheritChatAppearance && _appearanceRefresh <= 0)
         {
             _appearanceRefresh = 0.2f;
             var preferences = IoCManager.Resolve<Content.Client.Lobby.IClientPreferencesManager>();

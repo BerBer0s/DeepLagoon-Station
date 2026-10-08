@@ -1,0 +1,95 @@
+using System.Linq;
+using System.Numerics;
+using System.Reflection;
+using System.Text.Json;
+using Content.Client.Lobby;
+using Content.Client.Lobby.UI;
+using Robust.Client.UserInterface;
+using Robust.Shared.ContentPack;
+
+namespace Content.IntegrationTests.Tests._DeepLagoon;
+
+[TestFixture, NonParallelizable]
+public sealed class CharacterEditorWindowTests
+{
+    [Test]
+    public async Task FloatingEditorKeepsDraftAndIsolatesAppearanceFromChat()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, InLobby = true });
+        await pair.Client.WaitAssertion(() =>
+        {
+            var ui = pair.Client.ResolveDependency<IUserInterfaceManager>();
+            var lobby = ui.GetUIController<LobbyUIController>();
+            lobby.OpenCharacterEditor();
+            var window = ui.WindowRoot.Children.OfType<CharacterEditorWindow>().Single();
+            Assert.That(window.IsOpen, Is.True);
+            var editor = (HumanoidProfileEditor)typeof(LobbyUIController).GetField("_profileEditor", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lobby)!;
+            var preferences = pair.Client.ResolveDependency<IClientPreferencesManager>();
+            var chatBefore = preferences.Preferences!.ChatPanelSettings;
+            var settings = JsonDocument.Parse(editor.CreateTguiProfileState("settings").ToString());
+            Assert.That(settings.RootElement.GetProperty("tabs").EnumerateArray().Any(tab => tab.GetProperty("mode").GetString() == "settings"), Is.True);
+            Assert.That(settings.RootElement.GetProperty("previewFloor").GetString(), Does.StartWith("data:image/png;base64,"));
+
+            var host = (TguiEditorHost)typeof(HumanoidProfileEditor).GetField("_tguiHost", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(editor)!;
+            var sprite = host.Children.OfType<Robust.Client.UserInterface.Controls.SpriteView>().Single();
+            foreach (var direction in new[] { Robust.Shared.Maths.Direction.West, Robust.Shared.Maths.Direction.North, Robust.Shared.Maths.Direction.East, Robust.Shared.Maths.Direction.South })
+            {
+                Assert.That(editor.HandleTguiProfileAction("rotate", "{\"value\":-1}"), Is.True);
+                Assert.That(sprite.OverrideDirection, Is.EqualTo(direction));
+            }
+
+            Assert.That(editor.HandleTguiProfileAction("name", "{\"value\":\"Семён Ёлкин\"}"), Is.True);
+            var draft = editor.Profile;
+            lobby.OpenCharacterEditor();
+            Assert.That(editor.Profile, Is.SameAs(draft), "Opening the existing window must not discard a draft");
+            Assert.That(editor.HandleTguiProfileAction("appearance-setting", "{\"field\":\"chatBgColor\",\"value\":\"#123456\"}"), Is.True);
+            Assert.That(editor.Profile, Is.SameAs(draft));
+            Assert.That(preferences.Preferences.ChatPanelSettings, Is.EqualTo(chatBefore));
+            var appearance = new CharacterEditorAppearance();
+            appearance.Load(pair.Client.ResolveDependency<IResourceManager>());
+            using var stored = JsonDocument.Parse(appearance.Data().ToString());
+            Assert.That(stored.RootElement.GetProperty("chatBgColor").GetString(), Is.EqualTo("#123456"));
+            editor.HandleTguiProfileAction("headshot-library", "{}");
+            var library = ui.WindowRoot.Children.OfType<CharacterAuxiliaryWindow>().Single();
+            Assert.That(library.IsOpen, Is.True);
+            Assert.That(typeof(Content.Client._DeepLagoon.WebUI.TguiPanel).GetField("_inheritChatAppearance", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(library.Panel), Is.False);
+            using (var state = JsonDocument.Parse(editor.CreateTguiProfileState("flavor").ToString()))
+                Assert.That(state.RootElement.GetProperty("libraryOpen").GetBoolean(), Is.True);
+            editor.HandleTguiProfileAction("headshot-library", "{}");
+            Assert.That(library.IsOpen, Is.False);
+            editor.HandleTguiProfileAction("headshot-library", "{}");
+            library = ui.WindowRoot.Children.OfType<CharacterAuxiliaryWindow>().Single();
+            library.Close();
+            using (var state = JsonDocument.Parse(editor.CreateTguiProfileState("flavor").ToString()))
+                Assert.That(state.RootElement.GetProperty("libraryOpen").GetBoolean(), Is.False);
+
+            window.Measure(new Vector2(1220, 860));
+            window.Arrange(new Robust.Shared.Maths.UIBox2(Vector2.Zero, new Vector2(1220, 860)));
+            var drag = typeof(CharacterEditorWindow).GetMethod("GetDragModeFor", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            Assert.That(drag.Invoke(window, [new Vector2(window.Size.X - 2, window.Size.Y - 2)])!.ToString(), Does.Contain("Right").And.Contain("Bottom"));
+            Assert.That(drag.Invoke(window, [window.Size / 2])!.ToString(), Is.EqualTo("None"));
+
+            Assert.That(editor.HandleTguiProfileAction("appearance-reset", "{}"), Is.True);
+
+            window.Close();
+            Assert.That(window.IsOpen, Is.True, "Dirty close must leave the editor open for the save/discard decision");
+            var savePanel = ui.WindowRoot.Children.OfType<CharacterSetupGuiSavePanel>().Single();
+            Assert.That(savePanel.IsOpen, Is.True);
+            Assert.That(savePanel, Is.Not.InstanceOf<Robust.Client.UserInterface.CustomControls.DefaultWindow>());
+            Assert.That(typeof(Content.Client._DeepLagoon.WebUI.TguiPanel).GetField("_inheritChatAppearance", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(savePanel.Panel), Is.False);
+            savePanel.Close();
+            Assert.That(window.IsOpen, Is.True, "Cancel leaves the draft open");
+            editor.HandleTguiProfileAction("headshot-library", "{}");
+            library = ui.WindowRoot.Children.OfType<CharacterAuxiliaryWindow>().Single();
+            editor.HandleTguiProfileAction("reset", "{}");
+            window.Close();
+            Assert.That(window.IsOpen, Is.False);
+            Assert.That(library.IsOpen, Is.False, "Closing the editor also closes its library");
+            lobby.OpenCharacterEditor();
+            Assert.That(ui.WindowRoot.Children.OfType<CharacterEditorWindow>().Single(), Is.SameAs(window));
+            window.CloseConfirmed();
+        });
+        await pair.CleanReturnAsync();
+    }
+}
+

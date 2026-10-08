@@ -7,6 +7,7 @@ using Content.Shared.Preferences;
 using Content.Shared.Preferences.Loadouts;
 using Content.Shared.Roles;
 using Content.Shared.Inventory;
+using Content.Shared._NF.Bank;
 
 namespace Content.Client.Lobby.UI.Loadouts;
 
@@ -48,10 +49,14 @@ public sealed partial class PersonalLoadoutEditor
     private string? _cachedTguiJob;
     private SlotDefinition? _cachedTguiSlot;
     private TguiData? _cachedTguiState;
+    private int _cachedTguiPoints;
 
     public TguiData CreateTguiState()
     {
-        if (_cachedTguiState != null && ReferenceEquals(_profile, _cachedTguiProfile) && _job == _cachedTguiJob && ReferenceEquals(_slotFilter, _cachedTguiSlot)) return _cachedTguiState;
+        var system = _entities.System<PersonalLoadoutSystem>();
+        var points = system.GetPoints(_session);
+        if (_cachedTguiPoints == points && _cachedTguiState != null && ReferenceEquals(_profile, _cachedTguiProfile) && _job == _cachedTguiJob && ReferenceEquals(_slotFilter, _cachedTguiSlot)) return _cachedTguiState;
+        _cachedTguiPoints = points;
         _cachedTguiProfile = _profile;
         _cachedTguiJob = _job;
         _cachedTguiSlot = _slotFilter;
@@ -59,12 +64,14 @@ public sealed partial class PersonalLoadoutEditor
         if (_profile == null) return data;
         PrepareJobCatalog();
         var role = GetRole();
-        var system = _entities.System<PersonalLoadoutSystem>();
         var selected = role.SelectedLoadouts.Values.SelectMany(group => group).ToDictionary(item => item.Prototype.Id);
         var spent = selected.Values.Sum(item => _prototypes.Index(item.Prototype).PersonalCost);
         data.String("job", _job).String("roleName", _jobRole?.EntityName).Bool("customRoleName", _roleName.Visible)
-            .String("balance", _jobBalance.Text).String("cost", _jobCost.Text)
-            .Number("points", Math.Max(0, system.Points - spent)).Number("maxPoints", system.Points)
+            .String("balance", BankSystemExtensions.ToSpesoString(_profile.BankBalance))
+            .String("savings", BankSystemExtensions.ToSpesoString(_coins.GetLastKnownBalance()))
+            .String("cost", BankSystemExtensions.ToSpesoString(_jobRole?.SelectedLoadouts.Values.SelectMany(items => items)
+                .Sum(item => _prototypes.TryIndex(item.Prototype, out var proto) ? proto.Price : 0) ?? 0))
+            .Number("points", Math.Max(0, system.GetPoints(_session) - spent)).Number("maxPoints", system.GetPoints(_session))
             .String("slot", _slotFilter == null ? "" : SlotLabel(_slotFilter))
             .Array("jobs", _equipmentJobs.Select(id => new TguiData().String("id", id).String("name", _prototypes.Index<JobPrototype>(id).LocalizedName)))
             .Array("categories", _prototypes.EnumeratePrototypes<PersonalLoadoutCategoryPrototype>().Select(category =>
@@ -75,27 +82,31 @@ public sealed partial class PersonalLoadoutEditor
                 {
                     var allowed = system.CanUse(item, _profile, _job, _session, out var reason);
                     selected.TryGetValue(item.ID, out var choice);
+                    var custom = choice?.Customization ?? role.Customizations.GetValueOrDefault(item.ID);
                     var donor = DonorCategoryOf(item);
                     var donorText = donor == DonorCategory.Boosty ? Loc.GetString("dl-loadout-donor-boosty", ("tier", item.PersonalDonorTier))
                         : donor == DonorCategory.DiscordBoost ? Loc.GetString("dl-loadout-donor-discord") : "";
                     return new TguiData().String("id", item.ID).String("name", _prototypes.Index(item.PersonalItems[0]).Name)
                         .String("category", item.PersonalCategory).Bool("selected", choice != null).Bool("allowed", allowed)
-                        .Bool("canSelect", choice != null || allowed && spent + item.PersonalCost <= system.Points)
+                        .Bool("canSelect", choice != null || allowed && CanAffordPersonal(item, role))
                         .String("reason", reason).String("donor", donorText).Number("cost", item.PersonalCost)
-                        .Bool("canPaint", item.PersonalCustomColor).Bool("canRename", item.PersonalCustomName).Bool("canDescribe", item.PersonalCustomDescription)
+                        .Bool("canPaint", true).Bool("canRename", true).Bool("canDescribe", true)
                         .Bool("canHeirloom", item.PersonalHeirloom).Bool("heirloom", choice?.Customization?.Heirloom ?? false)
-                        .String("color", choice?.Customization?.Color).String("customName", choice?.Customization?.Name).String("description", choice?.Customization?.Description)
+                        .String("color", custom?.Color).String("customName", custom?.Name).String("description", custom?.Description)
                         .Array("images", _images.Item(item.PersonalItems[0].Id));
                 }))
             .Array("jobItems", _jobEntries.Where(entry => _slotFilter == null || FitsJobSlot(entry.Item, _slotFilter)).Select(entry =>
             {
                 var item = entry.Item;
-                var valid = _jobRole!.IsValid(_profile, _session, item.ID, IoCManager.Instance!, out var reason);
+                var valid = _jobRole!.IsValid(system.RemovePersonalConflicts(_profile, item), _session, item.ID, IoCManager.Instance!, out var reason);
                 var chosen = _jobRole.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(choice => choice.Prototype.Id == item.ID);
                 var entity = item.PreviewEntity ?? item.DummyEntity ?? _entities.System<LoadoutSystem>().GetFirstOrNull(item);
+                var custom = _jobRole.Customizations.GetValueOrDefault(item.ID) ?? _jobRole.SelectedLoadouts.Values.SelectMany(items => items).FirstOrDefault(choice => choice.Prototype.Id == item.ID)?.Customization;
                 return new TguiData().String("id", item.ID).String("group", entry.Group.ID).String("groupName", Loc.GetString(entry.Group.Name))
                     .String("name", JobItemName(item)).String("category", entry.Category).Bool("selected", chosen).Bool("allowed", valid).Bool("canSelect", valid || chosen)
                     .String("reason", reason?.ToString()).Number("cost", item.Price).Number("min", entry.Group.MinLimit).Number("max", entry.Group.MaxLimit)
+                    .Bool("canPaint", true).Bool("canRename", true).Bool("canDescribe", true)
+                    .String("color", custom?.Color).String("customName", custom?.Name).String("description", custom?.Description)
                     .Array("images", entity is {} id ? _images.Item(id.Id) : Enumerable.Empty<TguiData>());
             }));
         _cachedTguiState = data;
@@ -119,19 +130,42 @@ public sealed partial class PersonalLoadoutEditor
             _jobRole.EntityName = name; RoleNameChanged?.Invoke(_jobRole); return true;
         }
         if (args.String("id") is not {} id) return false;
+        if (action is "paint" or "rename" or "heirloom")
+        {
+            var jobItem = args.String("jobItem") == "true";
+            var entry = _jobEntries.FirstOrDefault(entry => entry.Item.ID == id && entry.Group.ID == args.String("group"));
+            if (!_prototypes.TryIndex<LoadoutPrototype>(id, out var item) || (jobItem ? entry == null || _jobRole == null : item.PersonalItems.Count == 0)) return false;
+            var target = jobItem ? _jobRole!.Clone() : GetRole();
+            var custom = target.Customizations.GetValueOrDefault(id) ?? target.SelectedLoadouts.Values.SelectMany(items => items).FirstOrDefault(choice => choice.Prototype.Id == id)?.Customization ?? new PersonalLoadoutCustomization();
+            var color = action == "paint" ? args.String("value") : custom.Color;
+            if (!string.IsNullOrEmpty(color) && Color.TryFromHex(color) == null) return false;
+            var updatedCustom = _entities.System<PersonalLoadoutSystem>().Sanitize(item, new PersonalLoadoutCustomization
+            {
+                Color = color, Name = action == "rename" ? args.String("name") : custom.Name,
+                Description = action == "rename" ? args.String("description") : custom.Description,
+                Heirloom = action == "heirloom" ? !custom.Heirloom : custom.Heirloom,
+            })!;
+            target.Customizations[id] = updatedCustom;
+            foreach (var group in target.SelectedLoadouts.Values)
+                for (var i = 0; i < group.Count; i++)
+                    if (group[i].Prototype.Id == id) group[i] = new Loadout { Prototype = id, Customization = updatedCustom };
+            ProfileChanged?.Invoke(_profile.WithLoadout(target)); return true;
+        }
         if (action == "job-select")
         {
             var entry = _jobEntries.FirstOrDefault(entry => entry.Item.ID == id && entry.Group.ID == args.String("group"));
             if (entry == null || _jobRole == null) return false;
             var role = _jobRole.Clone();
+            var profile = _profile;
             var chosen = role.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(choice => choice.Prototype.Id == id);
             if (chosen) role.RemoveLoadout(entry.Group.ID, id, _prototypes);
             else
             {
-                if (!role.IsValid(_profile, _session, id, IoCManager.Instance!, out _)) return false;
+                profile = _entities.System<PersonalLoadoutSystem>().RemovePersonalConflicts(profile, entry.Item);
+                if (!role.IsValid(profile, _session, id, IoCManager.Instance!, out _)) return false;
                 role.AddLoadout(entry.Group.ID, id, _prototypes);
             }
-            SelectionChanged?.Invoke(role); return true;
+            ProfileChanged?.Invoke(profile.WithLoadout(role)); return true;
         }
         if (!_prototypes.TryIndex<LoadoutPrototype>(id, out var prototype) || prototype.PersonalItems.Count == 0) return false;
         var updated = GetRole();
@@ -140,27 +174,9 @@ public sealed partial class PersonalLoadoutEditor
         if (action == "select")
         {
             if (selected == null && (!system.CanUse(prototype, _profile, _job, _session, out _) ||
-                updated.SelectedLoadouts.Values.SelectMany(group => group).Sum(item => _prototypes.Index(item.Prototype).PersonalCost) + prototype.PersonalCost > system.Points)) return false;
+                !CanAffordPersonal(prototype, updated))) return false;
             Select(prototype, selected == null); return true;
         }
-        if (selected == null || !system.CanUse(prototype, _profile, _job, _session, out _)) return false;
-        var customization = selected.Customization ?? new PersonalLoadoutCustomization();
-        if (action == "paint")
-        {
-            if (!prototype.PersonalCustomColor) return false;
-            var color = args.String("value");
-            if (!string.IsNullOrEmpty(color) && Color.TryFromHex(color) == null) return false;
-            customization = new PersonalLoadoutCustomization { Name = customization.Name, Description = customization.Description, Color = string.IsNullOrEmpty(color) ? null : color, Heirloom = customization.Heirloom };
-        }
-        else if (action == "rename")
-            customization = new PersonalLoadoutCustomization { Name = args.String("name"), Description = args.String("description"), Color = customization.Color, Heirloom = customization.Heirloom };
-        else if (action == "heirloom" && prototype.PersonalHeirloom)
-            customization = new PersonalLoadoutCustomization { Name = customization.Name, Description = customization.Description, Color = customization.Color, Heirloom = !customization.Heirloom };
-        else return false;
-        foreach (var group in updated.SelectedLoadouts.Values)
-            for (var i = 0; i < group.Count; i++)
-                if (group[i].Prototype.Id == id) group[i] = new Loadout { Prototype = id, Customization = system.Sanitize(prototype, customization) };
-        SelectionChanged?.Invoke(updated);
-        return true;
+        return false;
     }
 }

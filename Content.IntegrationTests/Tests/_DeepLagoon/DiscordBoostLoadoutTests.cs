@@ -1,3 +1,5 @@
+using Content.Server.Administration.Managers;
+using Content.Shared.Administration;
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -66,6 +68,12 @@ public sealed class DiscordBoostLoadoutTests
         var enabledField = typeof(DiscordLinkSystem).GetField("_enabled", BindingFlags.Instance | BindingFlags.NonPublic)!;
         await server.WaitPost(() =>
         {
+            var admins = server.ResolveDependency<IAdminManager>();
+            foreach (var player in server.ResolveDependency<Robust.Server.Player.IPlayerManager>().Sessions)
+            {
+                if (admins.GetAdminData(player, true) is {} admin) admin.Flags &= ~AdminFlags.Host;
+                admins.GetType().GetMethod("UpdateAdminStatus", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(admins, [player]);
+            }
             config.SetCVar(CCVars.AutoVoteEnabled, false);
             config.SetCVar(CCVars.MapAutoVoteEnabled, false);
             config.SetCVar(CCVars.PresetAutoVoteEnabled, false);
@@ -84,6 +92,9 @@ public sealed class DiscordBoostLoadoutTests
         {
             await server.WaitAssertion(() =>
             {
+                // Ordinary supporter tests must not inherit the local integration HOST override.
+                if (server.ResolveDependency<IAdminManager>().GetAdminData(session, true) is {} admin)
+                    admin.Flags &= ~AdminFlags.Host;
                 // Exercise the authenticated production path with the test transport.
                 var auth = session.GetType().GetProperty("AuthType")!;
                 auth.SetValue(session, LoginType.LoggedIn);
@@ -94,6 +105,7 @@ public sealed class DiscordBoostLoadoutTests
                 Assert.That(systems.GetEntitySystem<SharedDiscordBoostSystem>(), Is.SameAs(linking));
                 Assert.That(loadouts.CanUse(prototype, profile, "Passenger", session, out _), Is.False);
                 store.SetBoost(discord, true);
+                Assert.That(loadouts.GetPoints(session), Is.EqualTo(loadouts.Points + 3));
                 Assert.That(loadouts.CanUse(prototype, profile, "Passenger", session, out _), Is.True);
                 Assert.That(loadouts.CanUse(prototype, profile, "Passenger", null, out _), Is.False);
                 auth.SetValue(session, LoginType.GuestAssigned);
@@ -108,6 +120,10 @@ public sealed class DiscordBoostLoadoutTests
                 foreach (var tier in new[] { 3, 2, 1, 0 })
                 {
                     store.SetSupporter(discord, false, tier, colors);
+                    Assert.That(loadouts.GetPoints(session), Is.EqualTo(loadouts.Points + (tier > 0 ? 3 * (tier + 1) : 0)));
+                    var headshots = systems.GetEntitySystem<Content.Server._DeepLagoon.CharacterInfo.HeadshotSystem>();
+                    var extended = (bool)headshots.GetType().GetMethod("Extended", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(headshots, new object[] { session })!;
+                    Assert.That(extended, Is.EqualTo(tier >= 2), "GIF and 5 MB are available only from Boosty level 2");
                     Assert.That(supporters.HasActiveBoost(session), Is.False, "Boosty must not fabricate a Discord boost");
                     Assert.That(loadouts.CanUse(prototype, profile, "Passenger", session, out _), Is.EqualTo(tier > 0));
                     for (var required = 1; required <= 3; required++)

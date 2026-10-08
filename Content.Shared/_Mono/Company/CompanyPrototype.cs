@@ -9,6 +9,7 @@ namespace Content.Shared._Mono.Company;
 [Prototype]
 public sealed partial class CompanyPrototype : IPrototype
 {
+    [DataField] public string? WikiUrl { get; private set; }
     /// <inheritdoc/>
     [IdDataField]
     public string ID { get; private set; } = default!;
