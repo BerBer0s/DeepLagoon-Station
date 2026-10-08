@@ -12,6 +12,8 @@ const MAX_GAP = 360;
 const CHANNEL_PAD = 24;
 const CHANNEL_PITCH = 10;
 const CORNER_RADIUS = 10;
+const HUB_CURVE_MIN = 60;
+const HUB_CURVE_MAX = 420;
 const ARROW_LENGTH = 11;
 const ARROW_HALF_WIDTH = 6;
 const FLAT_EPSILON = 0.5;
@@ -27,6 +29,8 @@ export type RoutedUnit = {
   y1: number;
   /** Indices into `Layout.edges` of the technology edges this piece belongs to. */
   uses: number[];
+  /** A whole edge from a hub, drawn as one curve; the pieces of the other edges are `false`. */
+  hub: boolean;
 };
 
 export type Routing = {
@@ -148,7 +152,32 @@ export const routeLayout = (layout: Layout): Routing => {
       x1: Math.max(...points.map(([x]) => x)),
       y1: Math.max(...points.map(([, y]) => y)),
       uses: unit.uses,
+      hub: false,
     };
+  });
+
+  // A hub edge is one curve from the hub to its technology; it is not routed between the nodes.
+  layout.edges.forEach((edge, index) => {
+    const source = layout.nodeItems.get(edge.from);
+    const target = layout.nodeItems.get(edge.to);
+    if (!layout.hubEdge[index] || !source || !target) {
+      return;
+    }
+    const x0 = columnX[source.layer] + NODE_WIDTH;
+    const x1 = columnX[target.layer];
+    const reach = Math.min(HUB_CURVE_MAX, Math.max(HUB_CURVE_MIN, (x1 - x0) / 2));
+    units.push({
+      d:
+        `M${round(x0)} ${round(source.y)}C${round(x0 + reach)} ${round(source.y)} ` +
+        `${round(x1 - reach)} ${round(target.y)} ${round(x1)} ${round(target.y)}`,
+      arrow: arrowHead(x1, target.y),
+      x0: Math.min(x0, x1),
+      y0: Math.min(source.y, target.y),
+      x1: Math.max(x0, x1),
+      y1: Math.max(source.y, target.y),
+      uses: [index],
+      hub: true,
+    });
   });
 
   return {
