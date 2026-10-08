@@ -76,6 +76,7 @@ export const DetailsPanel = memo(function DetailsPanel({
       <aside className="Details Details--collapsed" style={{ width: PANEL_STRIP_WIDTH }}>
         <Button
           aria-label={labels['dl-research-details-show']}
+          data-tip={labels['dl-research-details-show']}
           icon="chevron-left"
           onClick={onToggle}
         />
@@ -126,6 +127,7 @@ export const DetailsPanel = memo(function DetailsPanel({
         </div>
         <Button
           aria-label={labels['dl-research-details-hide']}
+          data-tip={labels['dl-research-details-hide']}
           icon="chevron-right"
           onClick={onToggle}
         />

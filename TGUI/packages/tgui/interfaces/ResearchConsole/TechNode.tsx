@@ -57,6 +57,7 @@ export const TechNode = memo(function TechNode({
         (fx ? ' TechNode--' + fx : '')
       }
       data-id={tech.id}
+      data-tip={tech.name}
       style={style}
     >
       <TechIcon id={tech.id} className="TechNode__icon" />
@@ -73,7 +74,7 @@ export const TechNode = memo(function TechNode({
               <span
                 key={origin.id}
                 className="TechNode__origin"
-                title={origin.name}
+                data-tip={origin.name}
                 style={{ borderColor: origin.color }}
               >
                 <TechIcon id={origin.id} className="TechNode__icon--fill" />

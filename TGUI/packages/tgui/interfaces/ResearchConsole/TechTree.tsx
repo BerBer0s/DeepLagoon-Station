@@ -232,12 +232,14 @@ export const TechTree = ({
         </Button>
         <Button
           aria-label={labels['dl-research-zoom-out']}
+          data-tip={labels['dl-research-zoom-out']}
           onClick={() => camera.zoomBy(1 / ZOOM_STEP)}
         >
           <Icon name="minus" />
         </Button>
         <Button
           aria-label={labels['dl-research-zoom-in']}
+          data-tip={labels['dl-research-zoom-in']}
           onClick={() => camera.zoomBy(ZOOM_STEP)}
         >
           <Icon name="plus" />

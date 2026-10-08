@@ -21,6 +21,7 @@ import {
 } from './model';
 import './ResearchConsole.scss';
 import { type CameraCommand, TechTree } from './TechTree';
+import { Tips } from './Tips';
 import { useResearchFx } from './useResearchFx';
 import { buildTree } from './tree';
 
@@ -217,6 +218,7 @@ export const ResearchConsole = () => {
           />
         )}
       </div>
+      <Tips />
     </div>
   );
 };

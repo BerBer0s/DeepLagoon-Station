@@ -439,6 +439,20 @@ $recipe-icon-size: 32px;
   }
 }
 
+.Tip {
+  position: fixed;
+  z-index: 10;
+  box-sizing: border-box;
+  max-width: 260px;
+  padding: 4px $space;
+  border: 1px solid var(--rc-border);
+  border-radius: $radius;
+  font-size: 12px;
+  line-height: 1.25;
+  pointer-events: none;
+  background: var(--player-surface);
+}
+
 .Details {
   position: absolute;
   top: 0;
