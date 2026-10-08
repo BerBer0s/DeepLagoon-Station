@@ -43,6 +43,8 @@ type TechNodeProps = {
   tech: Tech;
   state: TechState;
   selected: boolean;
+  /** Part of the chain of the focused technology. */
+  inChain: boolean;
   canResearch: boolean;
   color: string;
   labels: Record<string, string>;
@@ -55,6 +57,7 @@ export const TechNode = memo(function TechNode({
   tech,
   state,
   selected,
+  inChain,
   canResearch,
   color,
   labels,
@@ -71,8 +74,11 @@ export const TechNode = memo(function TechNode({
   return (
     <div
       className={
-        `TechNode TechNode--${state}` + (selected ? ' TechNode--selected' : '')
+        `TechNode TechNode--${state}` +
+        (selected ? ' TechNode--selected' : '') +
+        (inChain ? ' TechNode--chain' : '')
       }
+      data-id={tech.id}
       style={style}
       onClick={() => onSelect(tech.id)}
     >

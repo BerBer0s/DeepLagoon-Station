@@ -12,11 +12,15 @@ const MAX_GAP = 360;
 const CHANNEL_PAD = 24;
 const CHANNEL_PITCH = 10;
 const CORNER_RADIUS = 10;
+const ARROW_LENGTH = 11;
+const ARROW_HALF_WIDTH = 6;
 const FLAT_EPSILON = 0.5;
 
 export type RoutedUnit = {
   /** Path data with rounded corners. */
   d: string;
+  /** A closed triangle at the end of a piece that enters a technology, else empty. */
+  arrow: string;
   x0: number;
   y0: number;
   x1: number;
@@ -65,6 +69,10 @@ const orderChannels = (sources: Source[]) => {
 };
 
 const round = (value: number) => Math.round(value * 10) / 10;
+
+const arrowHead = (x: number, y: number) =>
+  `M${round(x)} ${round(y)}L${round(x - ARROW_LENGTH)} ${round(y - ARROW_HALF_WIDTH)}` +
+  `L${round(x - ARROW_LENGTH)} ${round(y + ARROW_HALF_WIDTH)}Z`;
 
 const roundedPath = (points: [number, number][]) => {
   let d = `M${round(points[0][0])} ${round(points[0][1])}`;
@@ -134,6 +142,7 @@ export const routeLayout = (layout: Layout): Routing => {
         : [[x0, from.y], [channel, from.y], [channel, to.y], [x1, to.y]];
     return {
       d: roundedPath(points),
+      arrow: to.nodeId === null ? '' : arrowHead(x1, to.y),
       x0: Math.min(...points.map(([x]) => x)),
       y0: Math.min(...points.map(([, y]) => y)),
       x1: Math.max(...points.map(([x]) => x)),

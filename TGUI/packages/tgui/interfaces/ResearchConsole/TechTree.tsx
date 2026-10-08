@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button, Icon } from '../../components';
 import { rectsIntersect, type Rect, ZOOM_STEP } from './camera';
+import { chainOf } from './chain';
+import { EdgeLayer } from './EdgeLayer';
 import { fitCamera, homeCamera, recenterCamera } from './focus';
 import type { Tech, TechState } from './model';
 import { TechNode } from './TechNode';
-import { type EdgeState, type TreeModel, unitStates } from './tree';
+import { type TreeModel, unitStates, visibleEdges } from './tree';
 import { useTreeCamera } from './useTreeCamera';
 
 type TechTreeProps = {
@@ -65,31 +67,42 @@ export const TechTree = ({
     [tree, rendered],
   );
 
+  // Hovering a node previews its chain; otherwise the selected node's chain is shown.
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const focusId = hoveredId ?? selectedId;
+  const chain = useMemo(
+    () => (focusId && tree.nodeById.has(focusId) ? chainOf(tree, focusId) : null),
+    [tree, focusId],
+  );
+
   const edgeStates = useMemo(() => unitStates(tree, states), [tree, states]);
-  const edgePaths = useMemo(() => {
-    const parts: Record<EdgeState, string[]> = { locked: [], open: [], done: [] };
-    tree.units.forEach((unit, index) => {
-      if (rendered && rectsIntersect(unit, rendered)) {
-        parts[edgeStates[index]].push(unit.d);
-      }
-    });
-    return {
-      locked: parts.locked.join(''),
-      open: parts.open.join(''),
-      done: parts.done.join(''),
-    };
-  }, [tree, edgeStates, rendered]);
+  const edges = useMemo(
+    () => visibleEdges(tree, edgeStates, rendered, chain?.units ?? null),
+    [tree, edgeStates, rendered, chain],
+  );
+
+  const onPointerOver = (event: PointerEvent<HTMLDivElement>) => {
+    if (camera.isDragging()) {
+      return;
+    }
+    const id =
+      (event.target as Element).closest<HTMLElement>('.TechNode')?.dataset.id ?? null;
+    setHoveredId((current) => (current === id ? current : id));
+  };
 
   return (
     <div
       ref={camera.viewportRef}
       className="ResearchTree"
       {...camera.viewportProps}
+      onPointerOver={onPointerOver}
+      onPointerLeave={() => setHoveredId(null)}
     >
       <div
         ref={camera.worldRef}
         className="ResearchTree__world"
         data-lod="near"
+        data-focus={chain !== null}
         style={{ width: tree.width, height: tree.height }}
       >
         <svg
@@ -97,18 +110,8 @@ export const TechTree = ({
           width={tree.width}
           height={tree.height}
         >
-          <path
-            className="ResearchTree__edge ResearchTree__edge--locked"
-            d={edgePaths.locked}
-          />
-          <path
-            className="ResearchTree__edge ResearchTree__edge--open"
-            d={edgePaths.open}
-          />
-          <path
-            className="ResearchTree__edge ResearchTree__edge--done"
-            d={edgePaths.done}
-          />
+          <EdgeLayer className="ResearchTree__lines" parts={edges.all} />
+          {chain && <EdgeLayer className="ResearchTree__chain" parts={edges.chain} />}
         </svg>
         {visibleNodes.map((node) => {
           const tech = techs.get(node.id);
@@ -120,6 +123,7 @@ export const TechTree = ({
                 tech={tech}
                 state={states.get(node.id) ?? 'locked'}
                 selected={node.id === selectedId}
+                inChain={chain?.nodes.has(node.id) === true}
                 canResearch={canResearch}
                 color={disciplineColors.get(tech.discipline) ?? '#888888'}
                 labels={labels}

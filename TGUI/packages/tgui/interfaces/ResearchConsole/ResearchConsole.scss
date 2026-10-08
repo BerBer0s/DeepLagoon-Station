@@ -3,6 +3,9 @@ $radius: 6px;
 $icon-size: 64px;
 $badge-size: 20px;
 $fade-duration: 0.12s;
+$dim-nodes: 0.3;
+$dim-lines: 0.12;
+$dim-lines-far: 0.04;
 
 .ResearchConsole {
   --rc-border: #68788a;
@@ -85,6 +88,8 @@ $fade-duration: 0.12s;
     pointer-events: none;
   }
 
+  // The state of a line shows in its width and style as well as its color: done is thick and
+  // solid, open is medium, locked is thin and faint. Arrowheads point at the dependent technology.
   &__edge {
     fill: none;
     stroke-linecap: round;
@@ -105,6 +110,57 @@ $fade-duration: 0.12s;
       stroke: var(--rc-good);
       stroke-width: 3.5;
     }
+  }
+
+  &__arrow {
+    stroke: none;
+
+    &--locked {
+      fill: color-mix(in srgb, currentcolor 35%, transparent);
+    }
+
+    &--open {
+      fill: var(--rc-accent);
+    }
+
+    &--done {
+      fill: var(--rc-good);
+    }
+  }
+
+  // The chain of the focused technology is drawn again on top, thicker; a closed part is dashed.
+  &__chain &__edge {
+    &--locked {
+      stroke: color-mix(in srgb, currentcolor 70%, transparent);
+      stroke-width: 2.5;
+      stroke-dasharray: 7 6;
+    }
+
+    &--open {
+      stroke-width: 4;
+    }
+
+    &--done {
+      stroke-width: 5;
+    }
+  }
+
+  &__chain &__arrow--locked {
+    fill: color-mix(in srgb, currentcolor 70%, transparent);
+  }
+
+  &__world[data-focus='true'] &__lines {
+    opacity: $dim-lines;
+  }
+
+  &__world[data-focus='true'][data-lod='far'] &__lines,
+  &__world[data-focus='true'][data-lod='tiny'] &__lines {
+    opacity: $dim-lines-far;
+  }
+
+  &__world[data-lod='far'] &__arrow,
+  &__world[data-lod='tiny'] &__arrow {
+    display: none;
   }
 
   &__toolbar {
@@ -159,6 +215,14 @@ $fade-duration: 0.12s;
   &--selected {
     outline: 3px solid var(--rc-select);
     outline-offset: 3px;
+  }
+
+  .ResearchTree__world[data-focus='true'] &:not(&--chain) {
+    opacity: $dim-nodes;
+  }
+
+  .ResearchTree__world[data-focus='true'] &--chain#{&}--locked {
+    opacity: 0.85;
   }
 
   &__icon {
