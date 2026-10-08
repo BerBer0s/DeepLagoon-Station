@@ -214,9 +214,7 @@ export const ResearchConsole = () => {
   }, [select]);
 
   const theme = playerTheme(data.chatState);
-  // playerTheme also returns the chat's animated-background class. That animation never ends and
-  // repaints the whole window on every frame, so only the light/dark class is taken from it.
-  const rootClass = `ResearchConsole ${theme.className.split(' ')[0]}`;
+  const rootClass = `ResearchConsole ${theme.className}`;
 
   if (!labels || !wireTechs) {
     return <div className={rootClass} style={theme.style} />;
