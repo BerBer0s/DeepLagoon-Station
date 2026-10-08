@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import { Button, Icon } from '../../components';
 import { rectsIntersect, type Rect, ZOOM_STEP } from './camera';
-import { fitCamera, homeCamera } from './focus';
+import { fitCamera, homeCamera, recenterCamera } from './focus';
 import type { Tech, TechState } from './model';
 import { TechNode } from './TechNode';
 import { type EdgeState, type TreeModel, unitStates } from './tree';
@@ -44,8 +44,10 @@ export const TechTree = ({
   onResearch,
 }: TechTreeProps) => {
   const statesRef = useRef(states);
+  const selectedRef = useRef(selectedId);
   useEffect(() => {
     statesRef.current = states;
+    selectedRef.current = selectedId;
   });
 
   const camera = useTreeCamera({
@@ -132,7 +134,13 @@ export const TechTree = ({
         <Button
           onClick={() =>
             camera.moveTo(
-              homeCamera(tree, statesRef.current, camera.getSize()),
+              recenterCamera(
+                tree,
+                statesRef.current,
+                camera.getSize(),
+                camera.getCamera(),
+                selectedRef.current,
+              ),
               true,
             )
           }
