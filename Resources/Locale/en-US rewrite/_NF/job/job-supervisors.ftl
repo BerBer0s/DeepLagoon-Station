@@ -1,0 +1,13 @@
+job-supervisors-sr = the Overseer
+job-supervisors-sheriff = the Colonel
+job-supervisors-bailiff = the Captain
+job-supervisors-sergeant = the Fireteam Leaders
+job-supervisors-cadet = all higher ranking TSFMC personnel
+job-supervisors-prisoner = all TSFMC personnel
+job-supervisors-nfsd = Fireteam Leaders, and the Colonel
+job-supervisors-pirate = the PDV Denasvar and above
+job-supervisors-pdv-denasvar = the PDV Asvaran and Grand Vizier
+job-supervisors-pdv-civ = the Imperial Vanguard
+job-supervisors-pirate-first-mate = the PDV Grand Vizier
+job-supervisors-nobody = literally nobody
+job-supervisors-ws = Winter Solstice
