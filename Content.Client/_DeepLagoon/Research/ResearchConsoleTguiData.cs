@@ -6,6 +6,7 @@ using Content.Shared.Research.Components;
 using Content.Shared.Research.Prototypes;
 using Robust.Shared.Localization;
 using Robust.Shared.Prototypes;
+using Robust.Shared.Utility;
 
 namespace Content.Client._DeepLagoon.Research;
 
@@ -35,7 +36,18 @@ public sealed class ResearchConsoleTguiData
         "dl-research-zoom-out",
         "dl-research-confirm",
         "dl-research-hint-locked",
+        "dl-research-details-requires",
+        "dl-research-details-opens",
+        "dl-research-details-recipes",
+        "dl-research-details-effects",
+        "dl-research-details-hub",
+        "dl-research-details-outside",
+        "dl-research-details-hide",
+        "dl-research-details-show",
     ];
+
+    /// <summary>Marks an icon key of the page as a lathe recipe; any other key is a technology id.</summary>
+    public const string RecipeIconPrefix = "recipe:";
 
     // Shared by every console window, so reopening the console does no image work.
     private static TguiSpriteImages _images = new();
@@ -101,12 +113,26 @@ public sealed class ResearchConsoleTguiData
             .ToString();
     }
 
-    /// <summary>Icons for the requested technologies, as a payload the page merges into its icon store.</summary>
-    public string BuildIcons(IEnumerable<string> technologyIds)
+    /// <summary>Ids of the recipes the given technologies unlock.</summary>
+    public HashSet<string> RecipeIds(IEnumerable<string> technologyIds)
     {
-        var icons = technologyIds.Select(id => new TguiData()
-            .String("id", id)
-            .Array("layers", Icon(_prototypes.Index<TechnologyPrototype>(id))));
+        return technologyIds
+            .SelectMany(id => _prototypes.Index<TechnologyPrototype>(id).RecipeUnlocks)
+            .Select(id => id.Id)
+            .ToHashSet();
+    }
+
+    /// <summary>
+    /// Icons for the requested keys (a technology id, or a recipe id behind <see cref="RecipeIconPrefix"/>),
+    /// as a payload the page merges into its icon store.
+    /// </summary>
+    public string BuildIcons(IEnumerable<string> keys)
+    {
+        var icons = keys.Select(key => new TguiData()
+            .String("id", key)
+            .Array("layers", key.StartsWith(RecipeIconPrefix, StringComparison.Ordinal)
+                ? RecipeIcon(_prototypes.Index<LatheRecipePrototype>(key[RecipeIconPrefix.Length..]))
+                : Icon(_prototypes.Index<TechnologyPrototype>(key))));
         return "{\"data\":" + new TguiData().Object("iconBatch", new TguiData().Array("icons", icons)) + "}";
     }
 
@@ -118,8 +144,29 @@ public sealed class ResearchConsoleTguiData
             .String("discipline", tech.Discipline)
             .Number("tier", tech.Tier)
             .Number("cost", tech.Cost)
-            .Array("prerequisites", tech.TechnologyPrerequisites.Select(id => new TguiData().String("id", id)))
-            .Array("recipes", tech.RecipeUnlocks.Select(id => new TguiData().String("name", _lathe.GetRecipeName(id))));
+            .Array("prerequisites", tech.TechnologyPrerequisites.Select(id => new TguiData()
+                .String("id", id)
+                .String("name", Loc.GetString(_prototypes.Index(id).Name))))
+            .Array("recipes", tech.RecipeUnlocks.Select(id => new TguiData()
+                .String("id", id)
+                .String("name", _lathe.GetRecipeName(id))))
+            .Array("effects", tech.GenericUnlocks.Select(unlock => new TguiData()
+                .String("text", Loc.GetString(unlock.UnlockDescription))));
+    }
+
+    private IEnumerable<TguiData> RecipeIcon(LatheRecipePrototype recipe)
+    {
+        switch (recipe.Icon)
+        {
+            case SpriteSpecifier.EntityPrototype entity when _prototypes.HasIndex<EntityPrototype>(entity.EntityPrototypeId):
+                return _images.Item(entity.EntityPrototypeId);
+            case { } icon:
+                return [new TguiData().String("url", _images.Frame(icon)).String("color", "#ffffff")];
+        }
+
+        if (recipe.Result is { } result && _prototypes.HasIndex<EntityPrototype>(result))
+            return _images.Item(result);
+        return [];
     }
 
     private IEnumerable<TguiData> Icon(TechnologyPrototype tech)

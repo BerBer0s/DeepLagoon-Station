@@ -16,6 +16,8 @@ $wake-duration: 0.2s;
 $dim-nodes: 0.3;
 $dim-lines: 0.12;
 $dim-lines-far: 0.04;
+$panel-icon-size: 56px;
+$recipe-icon-size: 32px;
 
 .ResearchConsole {
   --rc-border: #68788a;
@@ -50,6 +52,13 @@ $dim-lines-far: 0.04;
     border-bottom: 1px solid var(--rc-border);
   }
 
+  &__body {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
   &__notice {
     flex: 0 0 auto;
     margin: $space ($space * 2) 0;
@@ -63,6 +72,7 @@ $dim-lines-far: 0.04;
 .ResearchTree {
   position: relative;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   cursor: grab;
@@ -191,9 +201,26 @@ $dim-lines-far: 0.04;
   &__toolbar {
     position: absolute;
     top: $space;
-    right: $space;
+    // Beside the details panel, which lies over the right edge of the tree.
+    right: calc(var(--rc-inset, 0px) + #{$space});
     display: flex;
     gap: $space * 0.5;
+  }
+}
+
+// An icon is one or more stacked images that fill the box their user gives it.
+.TechIcon {
+  position: relative;
+
+  img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    -webkit-user-drag: none;
+    pointer-events: none;
   }
 }
 
@@ -291,21 +318,9 @@ $dim-lines-far: 0.04;
   }
 
   &__icon {
-    position: relative;
     flex: 0 0 $icon-size;
     width: $icon-size;
     height: $icon-size;
-
-    img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      image-rendering: pixelated;
-      -webkit-user-drag: none;
-      pointer-events: none;
-    }
   }
 
   // Which hub opens the technology; the hub is a node with a lot of children and no line by default.
@@ -421,6 +436,183 @@ $dim-lines-far: 0.04;
 
   &--unaffordable &__badge {
     background: var(--rc-warn);
+  }
+}
+
+.Details {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: $space;
+  padding: $space * 1.5;
+  border-left: 1px solid var(--rc-border);
+  background: var(--player-surface);
+
+  &--collapsed {
+    align-items: center;
+    padding: $space * 0.5;
+  }
+
+  &__head {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    gap: $space;
+  }
+
+  &__icon {
+    flex: 0 0 $panel-icon-size;
+    width: $panel-icon-size;
+    height: $panel-icon-size;
+    border-radius: $radius;
+    border-left: 4px solid var(--discipline);
+    box-sizing: border-box;
+  }
+
+  &__title {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px $space;
+    margin-top: 4px;
+  }
+
+  &__discipline {
+    font-weight: bold;
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 5px;
+      border-radius: 2px;
+      background: var(--discipline);
+    }
+  }
+
+  &__reason {
+    flex: 0 0 auto;
+    font-size: 12px;
+    text-align: center;
+    opacity: 0.8;
+  }
+
+  &__scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    margin-right: -$space * 0.5;
+    padding-right: $space * 0.5;
+  }
+
+  &__section {
+    margin-bottom: $space * 1.5;
+
+    h3 {
+      margin: 0 0 $space * 0.5;
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+  }
+
+  &__effects,
+  &__recipes {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__effects li {
+    margin-bottom: 4px;
+  }
+
+  &__recipes li {
+    display: flex;
+    align-items: center;
+    gap: $space;
+    padding: 2px 0;
+  }
+
+  &__recipeIcon {
+    flex: 0 0 $recipe-icon-size;
+    width: $recipe-icon-size;
+    height: $recipe-icon-size;
+    box-sizing: border-box;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius * 0.6;
+  }
+}
+
+.DetailsLink {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: $space;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 5px $space;
+  border: 1px solid var(--rc-border);
+  border-left: 4px solid var(--discipline, var(--rc-border));
+  border-radius: $radius;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+
+  &:is(button) {
+    cursor: pointer;
+
+    &:hover {
+      background: color-mix(in srgb, currentcolor 10%, transparent);
+    }
+  }
+
+  &--researched .fas {
+    color: var(--rc-good);
+  }
+
+  &--available .fas {
+    color: var(--rc-accent);
+  }
+
+  &--unaffordable .fas {
+    color: var(--rc-warn);
+  }
+
+  &--locked {
+    opacity: 0.7;
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__tag {
+    flex: 0 0 auto;
+    padding: 0 $space * 0.75;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius;
+    font-size: 11px;
   }
 }
 

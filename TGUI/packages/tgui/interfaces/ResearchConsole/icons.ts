@@ -5,6 +5,10 @@ import { selectBackend, sendAct } from '../../backend';
 import type { IconLayer, WireData } from './model';
 
 const MAX_IDS_PER_REQUEST = 100;
+// Tells the host that an icon key is a lathe recipe and not a technology; the same prefix is on the host side.
+const RECIPE_KEY_PREFIX = 'recipe:';
+
+export const recipeIconKey = (recipeId: string) => RECIPE_KEY_PREFIX + recipeId;
 
 // common/redux is untyped JavaScript; this is the part of the store used here.
 type Store = {
@@ -66,7 +70,7 @@ const requestIcon = (id: string) => {
   }
 };
 
-/** Returns a technology's icon layers and asks the host for them the first time it is shown. */
+/** Returns the icon layers of a technology or recipe and asks the host for them the first time they are shown. */
 export const useTechIcon = (id: string): IconLayer[] => {
   const subscribe = useCallback(
     (listener: () => void) => {

@@ -34,6 +34,7 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
     private string _staticJson = string.Empty;
     private string? _staticKey;
     private HashSet<string> _knownTechnologies = new();
+    private HashSet<string> _knownRecipes = new();
 
     protected override void Open()
     {
@@ -106,6 +107,7 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
         {
             _staticKey = staticKey;
             _knownTechnologies = new HashSet<string>(state.Researches.Keys);
+            _knownRecipes = _data.RecipeIds(_knownTechnologies);
             _staticJson = _data.BuildStatic(_knownTechnologies, staticKey);
             SendStatic();
         }
@@ -155,11 +157,19 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
         }
 
         var requested = ids.Split(',')
-            .Where(_knownTechnologies.Contains)
+            .Where(IsKnownIcon)
             .Distinct()
             .Take(MaxIconRequest)
             .ToList();
         if (requested.Count > 0)
             _window.Panel.Web.Send("update", _data.BuildIcons(requested));
+    }
+
+    private bool IsKnownIcon(string key)
+    {
+        if (!key.StartsWith(ResearchConsoleTguiData.RecipeIconPrefix, StringComparison.Ordinal))
+            return _knownTechnologies.Contains(key);
+
+        return _knownRecipes.Contains(key[ResearchConsoleTguiData.RecipeIconPrefix.Length..]);
     }
 }

@@ -6,10 +6,14 @@ import { chainOf } from './chain';
 import { EdgeLayer } from './EdgeLayer';
 import { fitCamera, homeCamera, recenterCamera } from './focus';
 import type { Tech, TechState } from './model';
-import { type Hint, type Origin, TechNode } from './TechNode';
+import { describeTech } from './status';
+import { type Origin, TechNode } from './TechNode';
 import type { ResearchFx } from './fx';
 import { collectEdges, type TreeModel, unitStates } from './tree';
 import { useTreeCamera } from './useTreeCamera';
+
+/** Asks the tree to bring a technology into view; a new `serial` is a new request. */
+export type CameraCommand = { serial: number; id: string };
 
 type TechTreeProps = {
   tree: TreeModel;
@@ -22,6 +26,7 @@ type TechTreeProps = {
   fx: ResearchFx | null;
   canResearch: boolean;
   labels: Record<string, string>;
+  command: CameraCommand | null;
   onSelect: (id: string | null) => void;
   onActivate: (id: string) => void;
 };
@@ -33,33 +38,6 @@ const nodeFx = (fx: ResearchFx | null, id: string) => {
     return 'snap';
   }
   return fx?.woken.has(id) ? 'wake' : null;
-};
-
-const describeSelected = (
-  tech: Tech,
-  state: TechState,
-  points: number,
-  canResearch: boolean,
-  labels: Record<string, string>,
-): Hint => {
-  switch (state) {
-    case 'researched':
-      return { text: labels['dl-research-researched'], armed: false };
-    case 'locked':
-      return { text: labels['dl-research-hint-locked'], armed: false };
-    case 'unaffordable':
-      return {
-        text: `${labels['dl-research-unaffordable']}: ${tech.cost - points}`,
-        armed: false,
-      };
-    case 'available':
-      return canResearch
-        ? {
-            text: `${labels['dl-research-confirm']} · ${tech.cost}`,
-            armed: true,
-          }
-        : { text: labels['dl-research-no-access'], armed: false };
-  }
 };
 
 const nodeRect = (node: {
@@ -85,6 +63,7 @@ export const TechTree = ({
   fx,
   canResearch,
   labels,
+  command,
   onSelect,
   onActivate,
 }: TechTreeProps) => {
@@ -101,6 +80,15 @@ export const TechTree = ({
     onClick: (id) => (id ? onActivate(id) : onSelect(null)),
   });
   const { rendered } = camera;
+
+  useEffect(() => {
+    if (command) {
+      camera.moveTo(
+        recenterCamera(tree, statesRef.current, camera.getSize(), camera.getCamera(), command.id),
+        true,
+      );
+    }
+  }, [command]);
 
   const visibleNodes = useMemo(
     () =>
@@ -157,7 +145,7 @@ export const TechTree = ({
   const selectedHint = useMemo(() => {
     const tech = selectedId ? techs.get(selectedId) : undefined;
     return tech
-      ? describeSelected(tech, states.get(tech.id) ?? 'locked', points, canResearch, labels)
+      ? describeTech(tech, states.get(tech.id) ?? 'locked', points, canResearch, labels)
       : null;
   }, [selectedId, techs, states, points, canResearch, labels]);
 

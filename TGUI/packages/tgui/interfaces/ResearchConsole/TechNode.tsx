@@ -1,49 +1,10 @@
 import { type CSSProperties, memo } from 'react';
 
 import { Icon } from '../../components';
-import { TintedSprite } from '../../components/PlayerTheme';
-import { useTechIcon } from './icons';
 import type { Tech, TechState } from './model';
+import { type Hint, STATE_ICON, STATE_LABEL } from './status';
+import { TechIcon } from './TechIcon';
 import type { TreeNode } from './tree';
-
-const WHITE = '#ffffff';
-
-// A state is shown by its border style and badge as well as by color.
-const STATE_ICON: Record<TechState, string> = {
-  researched: 'check',
-  available: 'circle-dot',
-  unaffordable: 'coins',
-  locked: 'lock',
-};
-
-const STATE_LABEL: Record<TechState, string> = {
-  researched: 'dl-research-researched',
-  available: 'dl-research-research',
-  unaffordable: 'dl-research-unaffordable',
-  locked: 'dl-research-locked',
-};
-
-/** What the selected technology says about researching it. */
-export type Hint = {
-  text: string;
-  /** The next click researches it. */
-  armed: boolean;
-};
-
-const TechIcon = ({ id, className = '' }: { id: string; className?: string }) => {
-  const layers = useTechIcon(id);
-  return (
-    <div className={`TechNode__icon ${className}`}>
-      {layers.map((layer, index) =>
-        layer.color.toLowerCase() === WHITE ? (
-          <img key={index} src={layer.url} alt="" draggable={false} />
-        ) : (
-          <TintedSprite key={index} image={layer.url} color={layer.color} />
-        ),
-      )}
-    </div>
-  );
-};
 
 /** A hub that opens a technology directly. Its line is only drawn on hover or selection. */
 export type Origin = { id: string; name: string; color: string };
@@ -98,7 +59,7 @@ export const TechNode = memo(function TechNode({
       data-id={tech.id}
       style={style}
     >
-      <TechIcon id={tech.id} />
+      <TechIcon id={tech.id} className="TechNode__icon" />
       <div className="TechNode__text">
         <div className="TechNode__name">{tech.name}</div>
         <div className="TechNode__foot">
