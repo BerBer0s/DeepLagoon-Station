@@ -71,9 +71,12 @@ shared `DeepLagoon.TGUI.csproj` dependency prevents concurrent bundle writes
 within a parallel solution build. Debug, DebugOpt, Release, Rebuild and Publish
 use the same production bundles. IDE design-time checks do not run pnpm.
 
-Install Node.js 24 and pnpm 11.25.0 on build machines. JavaScript dependencies
+Install Node.js 22.13+ and pnpm 11.25.0 on build machines. JavaScript dependencies
 are installed with `pnpm install --frozen-lockfile` on the first build and when
-`package.json` or `pnpm-lock.yaml` changes. Any install or bundle error fails the
+`package.json`, `pnpm-lock.yaml` or `pnpm-workspace.yaml` changes. The workspace
+configuration permits install scripts only for the pinned esbuild and
+@parcel/watcher versions; no interactive `pnpm approve-builds` step is needed.
+Any install or bundle error fails the
 normal build. To use a pnpm executable outside PATH, pass
 `-p:TguiPackageManager="/path/to/pnpm"` (quote the executable path inside the
 property value if it contains spaces). `pnpm build` remains available for a
@@ -81,7 +84,7 @@ standalone web build. `--no-build` commands reuse existing bundles.
 
 ## Dev Server and hot reload
 
-From `TGUI` with Node.js 20.19+ or 22.12+ and pnpm installed:
+From `TGUI` with Node.js 22.13+ and pnpm 11.25.0 installed:
 
 ```text
 pnpm install --frozen-lockfile

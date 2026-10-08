@@ -7,10 +7,10 @@
     <TguiPackageManager Condition="'$(TguiPackageManager)' == ''">pnpm</TguiPackageManager>
   </PropertyGroup>
 
-  <!-- Restore JS dependencies on the first build and after manifest/lock changes.
+  <!-- Restore JS dependencies on the first build and after manifest/lock/config changes.
        The marker is inside node_modules so deleting dependencies also invalidates it. -->
   <Target Name="RestoreTguiDependencies"
-          Inputs="$(MSBuildProjectDirectory)/package.json;$(MSBuildProjectDirectory)/pnpm-lock.yaml"
+          Inputs="$(MSBuildProjectDirectory)/package.json;$(MSBuildProjectDirectory)/pnpm-lock.yaml;$(MSBuildProjectDirectory)/pnpm-workspace.yaml"
           Outputs="$(MSBuildProjectDirectory)/node_modules/.deeplagoon-restore">
     <Exec Command="$(TguiPackageManager) install --frozen-lockfile" WorkingDirectory="$(MSBuildProjectDirectory)" />
     <Touch Files="$(MSBuildProjectDirectory)/node_modules/.deeplagoon-restore" AlwaysCreate="true" />
