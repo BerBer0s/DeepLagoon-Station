@@ -93,6 +93,14 @@
 
 - Flags: ADMIN
   Commands:
+  - addcomp
+  - addcompc
+  - rmcomp
+  - rmcompc
+  - vv
+  - vvread
+  - vvwrite
+  - vvinvoke
   - listplayers
   - tp
   - tpto
@@ -123,6 +131,14 @@
 
 - Flags: HOST
   Commands:
+  - addcomp
+  - addcompc
+  - rmcomp
+  - rmcompc
+  - vv
+  - vvread
+  - vvwrite
+  - vvinvoke
   - gc_mode
   - gc
   - saveconfig

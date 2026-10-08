@@ -1,3 +1,6 @@
+using System.IO;
+using Robust.Shared.ContentPack;
+using Robust.Shared.Utility;
 using System.Linq;
 using System.Numerics;
 using Content.Client.UserInterface.Controls;
@@ -15,10 +18,15 @@ public sealed class WikiGuidebookWindow : FancyWindow
     private readonly List<WikiPagePrototype> _pages;
     private readonly Label _status = new() { Text = Loc.GetString("wiki-loading") };
     private float _loadSeconds;
+    private float _treeRefresh;
+    private bool _ensureViewport;
+    private readonly string _treeScript;
     public string? LastPage { get; private set; }
 
     public WikiGuidebookWindow()
     {
+        using (var stream = IoCManager.Resolve<IResourceManager>().ContentFileRead(new ResPath("/Web/DeepLagoon/wiki-tree.js")))
+        using (var reader = new StreamReader(stream)) _treeScript = reader.ReadToEnd();
         Title = Loc.GetString("wiki-window-title");
         SetSize = new Vector2(1000, 750);
         MinSize = new Vector2(400, 300);
@@ -57,6 +65,7 @@ public sealed class WikiGuidebookWindow : FancyWindow
             return;
         }
         _web.Visible = true;
+        _ensureViewport = true;
         _loadSeconds = 0;
         _status.Text = Loc.GetString("wiki-loading");
         LastPage = page.ID;
@@ -68,7 +77,7 @@ public sealed class WikiGuidebookWindow : FancyWindow
         if (guideId == null)
             ShowPage(LastPage ?? _pages.FirstOrDefault(p => p.Default)?.ID);
         else
-            ShowPage(_pages.FirstOrDefault(p => p.GuideEntries.Contains(guideId))?.ID);
+            ShowPage(_pages.FirstOrDefault(p => p.GuideEntries.Contains(guideId))?.ID ?? "InGame");
     }
 
     private void BeforeBrowse(IBeforeBrowseContext context)
@@ -79,6 +88,7 @@ public sealed class WikiGuidebookWindow : FancyWindow
 
     private void ResourceRequest(IRequestHandlerContext context)
     {
+        if (!context.IsDownload && !context.IsNavigation && context.Method == "POST" && WikiNavigationPolicy.IsTreeRequest(context.Url)) return;
         if (context.IsDownload || context.Method != "GET" ||
             (context.IsNavigation ? !WikiNavigationPolicy.IsPage(context.Url, _paths) :
                 !WikiNavigationPolicy.IsAsset(context.Url) && !WikiNavigationPolicy.IsPage(context.Url, _paths)))
@@ -91,6 +101,15 @@ public sealed class WikiGuidebookWindow : FancyWindow
         if (_web.Visible)
         {
             _loadSeconds += args.DeltaSeconds;
+            if (_ensureViewport && !_web.IsLoading && _loadSeconds >= 1)
+            {
+                // CEF can finish creating its initial 1x1 surface after layout.
+                _web.Arrange(UIBox2.FromDimensions(Vector2.Zero, _web.Size + Vector2.One));
+                InvalidateArrange();
+                _ensureViewport = false;
+            }
+            _treeRefresh -= args.DeltaSeconds;
+            if (!_web.IsLoading && _treeRefresh <= 0) { _treeRefresh = 1; _web.ExecuteJavaScript(_treeScript); }
             _status.Text = Loc.GetString(_web.IsLoading
                 ? (_loadSeconds >= 30 ? "wiki-load-timeout" : "wiki-loading")
                 : "wiki-load-hint");

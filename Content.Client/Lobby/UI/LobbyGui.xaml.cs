@@ -12,6 +12,8 @@ namespace Content.Client.Lobby.UI
     {
         [Dependency] private IClientConsoleHost _consoleHost = default!;
 
+        private string _lastLobbyState = "";
+
         public LobbyGui()
         {
             RobustXamlLoader.Load(this);
@@ -20,14 +22,30 @@ namespace Content.Client.Lobby.UI
             SetAnchorPreset(Background, LayoutPreset.Wide);
             Chat.ChatInput.UseCompactLayout();
             Chat.EnableTguiChat();
-            // Keep chat usable on shorter windows even with loaded character
-            // details and a long server description. Those details can scroll.
-            RightSide.OnResized += () => LobbyInfoScroll.MaxHeight = Math.Max(80, RightSide.Height * 0.45f);
+            LobbyActions.Orphan();
+            TopLeft.AddChild(LobbyActions);
+            ServerInfo.Orphan();
+            TopLeft.AddChild(ServerInfo);
+            HeaderContainer.Visible = LobbyInfoScroll.Visible = StartTime.Visible = false;
 
             LobbySong.SetMarkup(Loc.GetString("lobby-state-song-no-song-text"));
 
             LeaveButton.OnPressed += _ => _consoleHost.ExecuteCommand("disconnect");
             OptionsButton.OnPressed += _ => UserInterfaceManager.GetUIController<OptionsUIController>().ToggleWindow();
+        }
+
+        protected override void FrameUpdate(Robust.Shared.Timing.FrameEventArgs args)
+        {
+            base.FrameUpdate(args);
+            HeaderContainer.Visible = LobbyInfoScroll.Visible = StartTime.Visible = Chat.WebChat == null;
+            var state = new Content.Client._DeepLagoon.WebUI.TguiData().String("server", ServerName.Text)
+                .String("time", StationTime.Text).String("status", StartTime.Text).ToString();
+            if (Chat.WebChat?.IsReady == true && state != _lastLobbyState)
+            {
+                _lastLobbyState = state;
+                Chat.WebChat.Send("deeplagoon/lobby-status", state);
+            }
+            if (Chat.WebChat?.IsReady != true) _lastLobbyState = "";
         }
 
         public void SwitchState(LobbyGuiState state)

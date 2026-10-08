@@ -23,6 +23,7 @@ public sealed class GameWebView : Control
     private readonly Queue<string> _outgoing = new();
     private bool _ready;
     private bool _disposed;
+    private float _browserScale;
     private bool _messageDispatchPending;
     private bool _explicitTextInput;
     private readonly bool _suspendWhenHidden;
@@ -172,6 +173,12 @@ public sealed class GameWebView : Control
         // Attach only once the visible viewport is laid out. Hidden editors do
         // not create background CEF browsers, even while their UI stays in tree.
         if (_suspendWhenHidden && VisibleInTree && _view.Parent == null) AddChild(_view);
+        if (_ready && Math.Abs(_browserScale - UIScale) > 0.001f)
+        {
+            SuspendBrowser();
+            _ready = false;
+            AddChild(_view);
+        }
         if (_disposed || _messageDispatchPending || _incoming.IsEmpty) return;
         _messageDispatchPending = true;
         // Actions can add or remove windows (including this browser's owner).
@@ -199,6 +206,10 @@ public sealed class GameWebView : Control
                 case "ready":
                     // Vite may reload the document after an HTML/non-component edit.
                     // Keep the native window open and let its owner resend current state.
+                    // Force a fresh size notification once CEF has finished creating its view.
+                    _view.Arrange(UIBox2.FromDimensions(System.Numerics.Vector2.Zero, Size + System.Numerics.Vector2.One));
+                    InvalidateArrange();
+                    _browserScale = UIScale;
                     _ready = true;
                     while (_outgoing.TryDequeue(out var queued))
                         Dispatch(queued);

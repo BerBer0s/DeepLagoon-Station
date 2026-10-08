@@ -325,9 +325,17 @@ public sealed partial class StationSpawningSystem : SharedStationSpawningSystem
 
             _humanoidSystem.LoadProfile(entity.Value, profile);
             _metaSystem.SetEntityName(entity.Value, name); // Frontier: profile.Name<name
-            if (profile.FlavorText != "" && _configurationManager.GetCVar(CCVars.FlavorText))
+            if (_configurationManager.GetCVar(CCVars.FlavorText))
             {
-                AddComp<DetailExaminableComponent>(entity.Value).Content = profile.FlavorText;
+                var details = EnsureComp<DetailExaminableComponent>(entity.Value);
+                details.Content = profile.FlavorText;
+                details.OocNotes = profile.OocNotes;
+                details.HeadshotId = profile.HeadshotId;
+                details.CharacterCard = true;
+                details.Erp = (byte)profile.ERPConsent;
+                details.NonCon = (byte)profile.NonConConsent;
+                details.Vore = (byte)profile.VoreConsent;
+                Dirty(entity.Value, details);
             }
         }
 

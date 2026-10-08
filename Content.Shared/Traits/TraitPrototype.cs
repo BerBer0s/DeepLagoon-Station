@@ -10,6 +10,9 @@ namespace Content.Shared.Traits;
 [Prototype]
 public sealed partial class TraitPrototype : IPrototype
 {
+    /// <summary>Disabled traits remain registered for old saved profiles.</summary>
+    [DataField] public bool Disabled;
+
     [ViewVariables]
     [IdDataField]
     public string ID { get; private set; } = default!;

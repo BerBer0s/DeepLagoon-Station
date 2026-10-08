@@ -1,10 +1,15 @@
-# Only these documents may be displayed in the guidebook. Links to other pages are blocked.
-# Add a prototype per page, with an explicit path and the old guidebook IDs it replaces.
+# Public /ru/in_game/ descendants are discovered live.
+- type: wikiPage
+  id: InGame
+  name: wiki-page-in-game
+  path: /ru/in_game
+  default: true
+
 - type: wikiPage
   id: Rules
   name: wiki-page-rules
   path: /ru/rules
-  default: true
+  default: false
   guideEntries:
   - NewPlayer
   - DefaultRuleset

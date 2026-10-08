@@ -33,7 +33,7 @@ namespace Content.Shared.Preferences
 
         public const int MaxNameLength = 32;
         public const int MaxLoadoutNameLength = 32;
-        public const int MaxDescLength = 512;
+        public const int MaxDescLength = 4096;
 
         public const int DefaultBalance = 75000;
 
@@ -80,6 +80,11 @@ namespace Content.Shared.Preferences
         /// </summary>
         [DataField]
         public string FlavorText { get; set; } = string.Empty;
+
+        [DataField] public string OocNotes { get; set; } = string.Empty;
+        [DataField] public string HeadshotId { get; set; } = string.Empty;
+        public HumanoidCharacterProfile WithHeadshotId(string value) => new(this) { HeadshotId = value };
+        public HumanoidCharacterProfile WithOocNotes(string value) => new(this) { OocNotes = value };
 
         /// <summary>
         /// Associated <see cref="SpeciesPrototype"/> for this profile.
@@ -209,6 +214,8 @@ namespace Content.Shared.Preferences
                 other.Flags, other.Components, other.Items) // Mono
         {
             CopyInteractionPanelPreferences(other);
+            OocNotes = other.OocNotes;
+            HeadshotId = other.HeadshotId;
         }
 
         /// <summary>Copy constructor</summary>
@@ -233,6 +240,8 @@ namespace Content.Shared.Preferences
                 other.Items) // Mono
         {
             CopyInteractionPanelPreferences(other);
+            OocNotes = other.OocNotes;
+            HeadshotId = other.HeadshotId;
         }
 
         /// <summary>
@@ -558,7 +567,7 @@ namespace Content.Shared.Preferences
             if (!_jobPriorities.SequenceEqual(other._jobPriorities)) return false;
             if (!_antagPreferences.SequenceEqual(other._antagPreferences)) return false;
             if (!_traitPreferences.SequenceEqual(other._traitPreferences)) return false;
-            if (FlavorText != other.FlavorText) return false;
+            if (FlavorText != other.FlavorText || OocNotes != other.OocNotes || HeadshotId != other.HeadshotId) return false;
             if (!Appearance.MemberwiseEquals(other.Appearance)) return false;
 
             // Compare loadouts
@@ -652,15 +661,8 @@ namespace Content.Shared.Preferences
                 name = GetName(Species, gender);
             }
 
-            string flavortext;
-            if (FlavorText.Length > MaxDescLength)
-            {
-                flavortext = FormattedMessage.RemoveMarkupOrThrow(FlavorText)[..MaxDescLength];
-            }
-            else
-            {
-                flavortext = FormattedMessage.RemoveMarkupOrThrow(FlavorText);
-            }
+            var flavortext = FlavorText[..Math.Min(FlavorText.Length, MaxDescLength)];
+            OocNotes = OocNotes[..Math.Min(OocNotes.Length, MaxDescLength)];
 
             // Frontier
             //make sure theres no funny bank stuff going on
@@ -714,7 +716,7 @@ namespace Content.Shared.Preferences
                 .ToList();
 
             var traits = TraitPreferences
-                         .Where(prototypeManager.HasIndex)
+                         .Where(id => prototypeManager.TryIndex(id, out var trait) && !trait.Disabled)
                          .ToList();
 
             Name = name;
@@ -837,6 +839,8 @@ namespace Content.Shared.Preferences
             hashCode.Add(_loadouts);
             hashCode.Add(Name);
             hashCode.Add(FlavorText);
+            hashCode.Add(OocNotes);
+            hashCode.Add(HeadshotId);
             hashCode.Add(Species);
             hashCode.Add(Age);
             hashCode.Add((int)Sex);

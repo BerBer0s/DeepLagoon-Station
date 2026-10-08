@@ -27,7 +27,7 @@ namespace Content.Client.Info
             _cfg = IoCManager.Resolve<IConfigurationManager>();
 
             var rulesButton = new Button() {Text = Loc.GetString("server-info-rules-button")};
-            rulesButton.OnPressed += args => new RulesAndInfoWindow().Open();
+            rulesButton.OnPressed += _ => UserInterfaceManager.GetUIController<GuidebookUIController>().OpenWikiPage("Rules");
             buttons.AddChild(rulesButton);
 
             AddInfoButton("server-info-discord-button", CCVars.InfoLinksDiscord);

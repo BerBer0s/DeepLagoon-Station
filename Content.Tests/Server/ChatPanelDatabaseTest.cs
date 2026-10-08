@@ -47,7 +47,7 @@ public sealed class ChatPanelDatabaseTest
         var other = new NetUserId(Guid.NewGuid());
         await using (var context = new SqliteServerDbContext(options))
         {
-            var previous = context.Database.GetMigrations().Last(id => !id.EndsWith("_ChatPanelSettings"));
+            var previous = context.Database.GetMigrations().TakeWhile(id => id != "20261005170000_ChatPanelSettings").Last();
             await context.GetService<IMigrator>().MigrateAsync(previous);
             await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO preference (user_id, selected_character_slot, admin_ooc_color, mono_coins) VALUES ({user.UserId}, 0, '#FF0000', 42)");
             await context.Database.MigrateAsync();
@@ -86,7 +86,7 @@ public sealed class ChatPanelDatabaseTest
             .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused").Options;
         using var context = new PostgresServerDbContext(options);
         Assert.That(context.Database.HasPendingModelChanges(), Is.False);
-        var previous = context.Database.GetMigrations().Last(id => !id.EndsWith("_ChatPanelSettings"));
+        var previous = context.Database.GetMigrations().TakeWhile(id => id != "20261005170000_ChatPanelSettings").Last();
         var sql = context.GetService<IMigrator>().GenerateScript(previous, "20261005170000_ChatPanelSettings");
         Assert.That(sql, Does.Contain("ADD chat_panel_settings text NOT NULL DEFAULT ''"));
         Assert.That(sql, Does.Not.Contain("DROP TABLE"));

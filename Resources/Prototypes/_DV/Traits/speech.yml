@@ -2,6 +2,7 @@
 
 - type: trait
   id: ScottishAccent
+  disabled: true
   name: trait-scottish-accent-name
   description: trait-scottish-accent-desc
   category: SpeechTraits
