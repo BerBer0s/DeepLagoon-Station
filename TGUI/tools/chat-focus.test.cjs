@@ -30,6 +30,11 @@ function createPage(name = 'chat.html') {
   });
   return {
     messages,
+    async click(node) {
+      document.activeElement = node;
+      for (const callback of listeners.mouseup ?? []) callback();
+      await new Promise(resolve => setImmediate(resolve));
+    },
     async blurWindowAndClickSameInput() {
       for (const callback of windowListeners.blur ?? []) callback();
       await new Promise(resolve => setImmediate(resolve));
@@ -53,6 +58,22 @@ test('reading chat never requests keyboard focus', async () => {
   const page = createPage();
   await page.focus(background);
   assert.deepEqual(page.messages, []);
+});
+
+test('each background click releases the stock engines automatic keyboard focus', async () => {
+  const page = createPage();
+  await page.click(background);
+  await page.click(background);
+  assert.deepEqual(page.messages.map(m => [m.type, m.active]), [
+    ['chat-input-focus', false], ['chat-input-focus', false],
+  ]);
+});
+
+test('clicking an editable field keeps keyboard focus', async () => {
+  const page = createPage();
+  await page.click(input());
+  await page.click(input());
+  assert.deepEqual(page.messages.map(m => m.active), [true]);
 });
 
 test('editable fields acquire focus and leaving them returns gameplay keys', async () => {

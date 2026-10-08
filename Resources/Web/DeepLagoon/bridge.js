@@ -66,7 +66,12 @@
     document.addEventListener('focusout', () => queueMicrotask(syncInputFocus));
     // CEF can lose native focus while activeElement still points at the input.
     // A later click on that same field must reacquire keyboard focus.
-    document.addEventListener('mouseup', syncInputFocus);
+    document.addEventListener('mouseup', () => {
+      syncInputFocus();
+      // Stock Robust acquires native focus on every mouse click, even when DOM
+      // focus did not change. Return it to gameplay after a non-editable click.
+      if (!inputFocused) send({ type: 'chat-input-focus', payload: { active: false } });
+    });
     window.addEventListener('blur', () => {
       if (!inputFocused) return;
       inputFocused = false;

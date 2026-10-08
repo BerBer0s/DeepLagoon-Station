@@ -46,20 +46,21 @@ commit stay unchanged. An incompatible engine update fails the build with an
 adapter diagnostic; review the adapter before updating its source fragments.
 Normal client builds automatically apply it; no separate command is needed.
 
-The WebView adapter also forwards bound left/right mouse presses and releases
-when a chat viewport has `KeyboardFocusOnClick=false`. Keyboard focus is reserved
-for editable DOM fields, so reading chat does not consume movement keys.
-`WebViewChatMouseTest` exercises both mouse buttons and movement passthrough.
+Chat uses stock WebView mouse delivery: native keyboard focus is acquired for
+the click, then the DOM bridge releases it after mouseup unless an editable field
+is selected. This avoids requiring a custom WebView engine module for clicks.
+`node --test tools/chat-focus.test.cjs` checks background clicks, editable fields,
+and returning from gameplay to an already-selected input.
 
-Packaged `.rsic` previews use `MSBuild/DeepLagoon.PackedSprites.cs`, compiled into
-`Robust.Client` through an `obj` copy. It reads embedded metadata through the
-engine's RSI loader and crops file-local frames instead of GPU meta-atlas
-coordinates. This also keeps PNG metadata access outside the content sandbox.
-`TguiPackedSpriteTest` checks packed PNG roundtrips, directional/animated states,
-and row transitions; `ClientSandboxTest` checks the resulting content assembly.
-Deploy the rebuilt `Robust.Client.dll` and `Robust.Client.WebView.dll` together
-with the client package. Updating content alone while the launcher reuses an
-unadapted prebuilt engine does not include these adapters.
+Packaged `.rsic` previews use the loaded RSI's frame regions. The minimum X/Y of
+its first south frames identifies the shared GPU atlas offset, which is subtracted
+before cropping the original packed PNG. This is content-only code using existing
+engine APIs; neither PNG metadata sandbox exceptions nor custom engine types are
+required. `TguiPackedSpriteTest` uses the real RSI loader with a nonzero GPU atlas
+offset and checks directional/animated states and row transitions.
+Set `SS14_LAUNCHER_ENGINE_DIR` to an installed launcher's engine DLL directory when
+running `ClientSandboxTest`: it prioritizes those DLLs over local engine builds
+to check IL compatibility with the engine that players actually use.
 
 `GameWebView` dispatches browser events through the UI manager's deferred-action
 queue after frame traversal. Action and ready handlers can open or close windows

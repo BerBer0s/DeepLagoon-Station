@@ -45,7 +45,8 @@ public sealed class TguiSpriteImages
             if (spec is SpriteSpecifier.Rsi rsi)
             {
                 if (packed)
-                    return _frames[spec] = PackedFrame(image, rsi.RsiState);
+                    return _frames[spec] = PackedFrame(image,
+                        resources.GetResource<RSIResource>(new ResPath("/Textures") / rsi.RsiPath).RSI, rsi.RsiState);
                 var size = resources.GetResource<RSIResource>(new ResPath("/Textures") / rsi.RsiPath).RSI.Size;
                 using var frame = image.Clone(context => context.Crop(new Rectangle(0, 0, size.X, size.Y)));
                 frame.SaveAsPng(output);
@@ -56,8 +57,22 @@ public sealed class TguiSpriteImages
         catch (Exception) { return ""; }
     }
 
-    public static string PackedFrame(Image<Rgba32> image, string stateName) =>
-        DeepLagoonPackedSpriteFrames.ReadFrame(image, stateName);
+    public static string PackedFrame(Image<Rgba32> image, RSI rsi, string stateName)
+    {
+        // The first south frame of the first state is at sheet index zero.
+        // All states share a GPU atlas offset; its minimum X/Y is the RSI origin.
+        // Subtract it to recover coordinates inside this RSI's packed PNG.
+        if (!rsi.TryGetState(stateName, out var selected))
+            throw new InvalidDataException("RSIC state not found: " + stateName);
+        var regions = rsi.Select(state => ((AtlasTexture) state.Frame0).SubRegion).ToArray();
+        var region = ((AtlasTexture) selected.Frame0).SubRegion;
+        var rectangle = new Rectangle((int) (region.Left - regions.Min(r => r.Left)),
+            (int) (region.Top - regions.Min(r => r.Top)), rsi.Size.X, rsi.Size.Y);
+        using var frame = image.Clone(context => context.Crop(rectangle));
+        using var output = new MemoryStream();
+        frame.SaveAsPng(output);
+        return "data:image/png;base64," + Convert.ToBase64String(output.ToArray());
+    }
 
     public IEnumerable<TguiData> EntityImages(EntityUid entity)
     {
