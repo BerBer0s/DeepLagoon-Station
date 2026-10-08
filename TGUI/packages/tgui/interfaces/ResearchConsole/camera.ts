@@ -13,8 +13,9 @@ export const READABLE_SCALE = 0.7;
 
 const FIT_PADDING = 48;
 const MIN_SCALE_RATIO = 0.8;
-// How far past the tree's edge the view center may travel, as a share of the viewport.
-const OVERSCROLL = 0.4;
+// How far past the tree's edge the view center may travel, as a share of the viewport. Small,
+// so that a pan cannot lose a tree that is wider than the window.
+const OVERSCROLL = 0.15;
 
 const clamp = (value: number, low: number, high: number) =>
   Math.min(high, Math.max(low, value));
@@ -65,14 +66,21 @@ const minScaleFor = (tree: Size, viewport: Size) =>
     1,
   ) * MIN_SCALE_RATIO;
 
+// On one axis: a tree smaller than the window stays fully inside it, a larger one may be moved
+// until the view center is `slack` past its edge.
+const clampAxis = (position: number, view: number, tree: number, scale: number, slack: number) => {
+  const extent = tree * scale;
+  return extent <= view
+    ? clamp(position, 0, view - extent)
+    : clamp(position, view / 2 - extent - slack, view / 2 + slack);
+};
+
 export const clampCamera = (camera: Camera, tree: Size, viewport: Size): Camera => {
   const scale = clamp(camera.scale, minScaleFor(tree, viewport), MAX_SCALE);
-  const slackX = viewport.width * OVERSCROLL;
-  const slackY = viewport.height * OVERSCROLL;
   return {
     scale,
-    x: clamp(camera.x, viewport.width / 2 - tree.width * scale - slackX, viewport.width / 2 + slackX),
-    y: clamp(camera.y, viewport.height / 2 - tree.height * scale - slackY, viewport.height / 2 + slackY),
+    x: clampAxis(camera.x, viewport.width, tree.width, scale, viewport.width * OVERSCROLL),
+    y: clampAxis(camera.y, viewport.height, tree.height, scale, viewport.height * OVERSCROLL),
   };
 };
 
