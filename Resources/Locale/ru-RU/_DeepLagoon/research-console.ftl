@@ -8,3 +8,7 @@ dl-research-no-access = Нет доступа
 dl-research-no-server = Нет подключённого сервера исследований
 dl-research-tier = Тир
 dl-research-cost = Стоимость
+dl-research-recenter = К доступным
+dl-research-fit = Всё дерево
+dl-research-zoom-in = Приблизить
+dl-research-zoom-out = Отдалить

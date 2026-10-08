@@ -8,3 +8,7 @@ dl-research-no-access = No access
 dl-research-no-server = No research server connected
 dl-research-tier = Tier
 dl-research-cost = Cost
+dl-research-recenter = Recenter
+dl-research-fit = Fit
+dl-research-zoom-in = Zoom in
+dl-research-zoom-out = Zoom out

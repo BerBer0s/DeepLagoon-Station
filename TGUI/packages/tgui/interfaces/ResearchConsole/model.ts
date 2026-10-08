@@ -33,20 +33,10 @@ export type WireData = {
 
 export type Tech = Omit<WireTech, 'prerequisites'> & { prerequisites: string[] };
 
-export type DisciplineGroup = WireDiscipline & { techs: Tech[] };
-
-export const buildGroups = (
-  disciplines: WireDiscipline[],
-  techs: WireTech[],
-): DisciplineGroup[] =>
-  disciplines.map((discipline) => ({
-    ...discipline,
-    techs: techs
-      .filter((tech) => tech.discipline === discipline.id)
-      .map((tech) => ({
-        ...tech,
-        prerequisites: tech.prerequisites.map((prerequisite) => prerequisite.id),
-      })),
+export const buildTechs = (techs: WireTech[]): Tech[] =>
+  techs.map((tech) => ({
+    ...tech,
+    prerequisites: tech.prerequisites.map((prerequisite) => prerequisite.id),
   }));
 
 export const buildStateMap = (

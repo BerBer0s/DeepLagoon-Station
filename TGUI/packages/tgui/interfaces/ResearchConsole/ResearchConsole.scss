@@ -1,15 +1,16 @@
 $space: 8px;
-$radius: 4px;
-$icon-size: 48px;
-$card-height: $icon-size + $space * 2 + 2px;
+$radius: 6px;
+$icon-size: 64px;
+$badge-size: 20px;
 $fade-duration: 0.12s;
+$smooth-duration: 0.22s;
 
 .ResearchConsole {
   --rc-border: #68788a;
   --rc-accent: #83bbfa;
   --rc-good: #7ac779;
-  --rc-bad: #e5a4a4;
-  --rc-muted: 0.55;
+  --rc-warn: #e0b45a;
+  --rc-select: #ffffff;
 
   box-sizing: border-box;
   display: flex;
@@ -29,6 +30,7 @@ $fade-duration: 0.12s;
 
   &__header {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
     gap: $space;
@@ -36,69 +38,125 @@ $fade-duration: 0.12s;
     border-bottom: 1px solid var(--rc-border);
   }
 
-  &__content {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: $space * 2;
-  }
-
   &__notice {
-    margin-bottom: $space * 2;
+    flex: 0 0 auto;
+    margin: $space ($space * 2) 0;
     padding: $space * 1.5;
     border: 1px solid var(--rc-border);
     border-radius: $radius;
     background: var(--player-surface);
   }
+}
 
-  &__group {
-    margin-bottom: $space * 3;
+.ResearchTree {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+
+  &--dragging {
+    cursor: grabbing;
   }
 
-  &__groupTitle {
-    display: flex;
-    align-items: center;
-    gap: $space;
-    margin: 0 0 $space;
-    padding-bottom: $space * 0.5;
-    border-bottom: 2px solid;
-    font-size: 15px;
+  &__world {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
 
-    img {
-      width: 24px;
-      height: 24px;
-      image-rendering: pixelated;
+    &--smooth {
+      transition: transform $smooth-duration ease-out;
+    }
+
+    &[data-lod='far'] .TechNode__text {
+      display: none;
     }
   }
 
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: $space;
+  &__edges {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
   }
 
-  &__card {
-    display: flex;
-    align-items: center;
-    gap: $space;
-    padding: $space;
-    border: 1px solid var(--rc-border);
-    border-radius: $radius;
-    background: var(--player-surface);
-    content-visibility: auto;
-    contain-intrinsic-size: auto $card-height;
-
-    &--researched {
-      border-color: var(--rc-good);
-    }
-
-    &--available {
-      border-color: var(--rc-accent);
-    }
+  &__edge {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
 
     &--locked {
-      opacity: var(--rc-muted);
+      stroke: color-mix(in srgb, currentcolor 35%, transparent);
+      stroke-width: 1.5;
+      stroke-dasharray: 4 4;
     }
+
+    &--open {
+      stroke: var(--rc-accent);
+      stroke-width: 2.5;
+    }
+
+    &--done {
+      stroke: var(--rc-good);
+      stroke-width: 3.5;
+    }
+  }
+
+  &__toolbar {
+    position: absolute;
+    top: $space;
+    right: $space;
+    display: flex;
+    gap: $space * 0.5;
+  }
+}
+
+.TechNode {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: $space;
+  padding: $space;
+  border: 2px solid var(--rc-border);
+  border-left: 6px solid var(--discipline);
+  border-radius: $radius;
+  background: var(--player-surface);
+  cursor: pointer;
+
+  &--researched {
+    border-color: var(--rc-good);
+    border-left-color: var(--discipline);
+    background: color-mix(in srgb, var(--discipline) 30%, var(--player-surface));
+  }
+
+  &--available {
+    border-color: var(--rc-accent);
+    border-left-color: var(--discipline);
+  }
+
+  &--unaffordable {
+    border-style: dashed;
+    border-color: var(--rc-warn);
+    border-left: 6px solid var(--discipline);
+
+    .TechNode__cost {
+      color: var(--rc-warn);
+    }
+  }
+
+  &--locked {
+    border-style: dotted;
+    border-left: 6px solid var(--discipline);
+    opacity: 0.55;
+  }
+
+  &--selected {
+    outline: 3px solid var(--rc-select);
+    outline-offset: 3px;
   }
 
   &__icon {
@@ -119,25 +177,60 @@ $fade-duration: 0.12s;
     }
   }
 
-  &__cardBody {
+  &__text {
+    display: flex;
     flex: 1;
+    flex-direction: column;
+    justify-content: space-between;
     min-width: 0;
+    height: 100%;
   }
 
-  &__cardName {
+  &__name {
+    display: -webkit-box;
     overflow: hidden;
     font-weight: bold;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
-  &__cardMeta {
-    opacity: 0.75;
+  &__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space * 0.5;
+  }
+
+  &__cost {
+    white-space: nowrap;
   }
 
   &__badge {
-    flex: 0 0 auto;
-    white-space: nowrap;
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: $badge-size;
+    height: $badge-size;
+    border-radius: 50%;
+    font-size: 11px;
+    color: #171c24;
+    background: var(--rc-border);
+  }
+
+  &--researched &__badge {
+    background: var(--rc-good);
+  }
+
+  &--available &__badge {
+    background: var(--rc-accent);
+  }
+
+  &--unaffordable &__badge {
+    background: var(--rc-warn);
   }
 }
 

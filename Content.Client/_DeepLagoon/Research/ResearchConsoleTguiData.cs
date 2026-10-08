@@ -29,6 +29,10 @@ public sealed class ResearchConsoleTguiData
         "dl-research-no-server",
         "dl-research-tier",
         "dl-research-cost",
+        "dl-research-recenter",
+        "dl-research-fit",
+        "dl-research-zoom-in",
+        "dl-research-zoom-out",
     ];
 
     // Shared by every console window, so reopening the console does no image work.

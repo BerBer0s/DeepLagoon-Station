@@ -1,11 +1,10 @@
 import { globalStore } from 'common/redux';
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 
 import { selectBackend, sendAct } from '../../backend';
 import type { IconLayer, WireData } from './model';
 
 const MAX_IDS_PER_REQUEST = 100;
-const VISIBLE_MARGIN = '200px';
 
 // common/redux is untyped JavaScript; this is the part of the store used here.
 type Store = {
@@ -48,12 +47,14 @@ const attach = () => {
 const flush = () => {
   flushScheduled = false;
   while (pending.length > 0) {
-    const ids = pending.splice(0, MAX_IDS_PER_REQUEST);
+    const ids = pending.slice(0, MAX_IDS_PER_REQUEST);
+    pending = pending.slice(MAX_IDS_PER_REQUEST);
     sendAct('icons', { ids: ids.join(',') });
   }
 };
 
 const requestIcon = (id: string) => {
+  attach();
   if (requested.has(id)) {
     return;
   }
@@ -65,43 +66,7 @@ const requestIcon = (id: string) => {
   }
 };
 
-let observer: IntersectionObserver | undefined;
-const idByElement = new WeakMap<Element, string>();
-
-const getObserver = () => {
-  observer ??= new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        const id = entry.isIntersecting && idByElement.get(entry.target);
-        if (id) {
-          observer?.unobserve(entry.target);
-          requestIcon(id);
-        }
-      }
-    },
-    { rootMargin: VISIBLE_MARGIN },
-  );
-  return observer;
-};
-
-/** Ref callback: asks the host for a technology's icon once its element is near the viewport. */
-export const useIconRequest = (id: string) =>
-  useCallback(
-    (element: HTMLElement | null) => {
-      if (!element) {
-        return;
-      }
-      attach();
-      if (layersById.has(id)) {
-        return;
-      }
-      idByElement.set(element, id);
-      getObserver().observe(element);
-      return () => getObserver().unobserve(element);
-    },
-    [id],
-  );
-
+/** Returns a technology's icon layers and asks the host for them the first time it is shown. */
 export const useTechIcon = (id: string): IconLayer[] => {
   const subscribe = useCallback(
     (listener: () => void) => {
@@ -118,6 +83,7 @@ export const useTechIcon = (id: string): IconLayer[] => {
     },
     [id],
   );
+  useEffect(() => requestIcon(id), [id]);
   return useSyncExternalStore(
     subscribe,
     () => layersById.get(id) ?? NO_LAYERS,
