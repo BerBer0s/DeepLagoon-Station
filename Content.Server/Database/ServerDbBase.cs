@@ -296,9 +296,10 @@ namespace Content.Server.Database
                 profile.Items.Select(item => new PersistentProfileItem(
                     item.Data,
                     item.Sticky))) // Mono end
+                .WithOocNotes(profile.OocNotes)
                 .WithInteractionPanelConsent(InteractionPanelCategory.Erotic, (InteractionPanelConsent)profile.ERPConsent)
                 .WithInteractionPanelConsent(InteractionPanelCategory.NonCon, (InteractionPanelConsent)profile.NonConConsent)
-                .WithInteractionPanelConsent(InteractionPanelCategory.Vore, (InteractionPanelConsent)profile.VoreConsent);
+                .WithInteractionPanelConsent(InteractionPanelCategory.Vore, (InteractionPanelConsent)profile.VoreConsent).WithHeadshotId(profile.HeadshotId);
         }
 
         private static Profile ConvertProfiles(HumanoidCharacterProfile humanoid, int slot, Profile? profile = null)
@@ -314,6 +315,8 @@ namespace Content.Server.Database
 
             profile.CharacterName = humanoid.Name;
             profile.FlavorText = humanoid.FlavorText;
+            profile.OocNotes = humanoid.OocNotes;
+            profile.HeadshotId = humanoid.HeadshotId;
             profile.Species = humanoid.Species;
             profile.Age = humanoid.Age;
             profile.Sex = humanoid.Sex.ToString();

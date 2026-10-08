@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBackend } from '../backend';
 import { Button, Dropdown, Section } from '../components';
 import './CharacterEditor.scss';
 import { ColorSquare } from '../components/PlayerColorPicker';
 import { playerTheme, TintedSprite } from '../components/PlayerTheme';
+import { CharacterText, FormattingHint } from '../components/CharacterText';
 import { EquipmentBrowser } from './EquipmentBrowser';
 
 const Field = ({ label, children }) => <label className="CharacterEditor__field"><span>{label}</span>{children}</label>;
@@ -23,8 +24,18 @@ const ColorEditor = ColorSquare;
 const consentOptions = [{ id: '0', name: 'Запрещено' }, { id: '1', name: 'Спросить' }, { id: '2', name: 'Разрешено' }];
 const priorities = [{ id: '0', name: 'Никогда' }, { id: '1', name: 'Низкий' }, { id: '2', name: 'Средний' }, { id: '3', name: 'Высокий' }];
 
+const HairCarousel = ({options,selected,color,onSelect}) => {
+  const track=useRef(null);
+  const turn=direction=>track.current?.scrollBy({left:direction*track.current.clientWidth,behavior:'smooth'});
+  return <div className="HairCarousel"><button type="button" aria-label="Предыдущие четыре" onClick={()=>turn(-1)}>◀</button><div className="HairCarousel__track" ref={track}>
+    {options.map(option=><button type="button" key={option.id} aria-pressed={selected===option.id} onClick={()=>onSelect(option.id)}><div className="CharacterEditor__sprite">{(option.images||[]).map((image,i)=><TintedSprite key={i} image={image.url} color={color} />)}</div><span>{option.name}</span></button>)}
+  </div><button type="button" aria-label="Следующие четыре" onClick={()=>turn(1)}>▶</button></div>;
+};
+
 export const CharacterEditor = () => {
   const { data, act } = useBackend();
+  const equipmentCache=useRef(null);
+  if(data.equipment)equipmentCache.current=data.equipment;
   const [search, setSearch] = useState('');
   const [charactersOpen,setCharactersOpen]=useState(false),[statsOpen,setStatsOpen]=useState(false),[deleteSlot,setDeleteSlot]=useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -32,7 +43,10 @@ export const CharacterEditor = () => {
   if (!data.available) return <div className="CharacterEditor">Выберите персонажа.</div>;
   const matches = name => name.toLowerCase().includes(search.toLowerCase());
   return <div className={'CharacterEditor Chat ' + playerTheme(data.chatState).className + ' CharacterEditor--' + data.mode} style={playerTheme(data.chatState).style}>
-    <aside className="CharacterEditor__preview"><div className="CharacterEditor__previewSpace" /><div className="CharacterEditor__rotation"><Button onClick={()=>act('rotate',{value:-1})}>◀</Button><Button onClick={()=>act('rotate',{value:1})}>▶</Button></div><div className="CharacterEditor__slots">{(data.previewSlots||[]).map(slot=><button type="button" key={slot.id} title={slot.name} aria-pressed={slot.selected} onClick={()=>act('preview-slot',{value:slot.id})}><div className="CharacterEditor__sprite">{slot.images.map((image,i)=><TintedSprite key={i} image={image.url} color={image.color} />)}</div><span>{slot.name}</span></button>)}</div></aside>
+    <aside className="CharacterEditor__preview"><div className="CharacterEditor__previewSpace" />
+      <div className="CharacterEditor__rotation"><Button onClick={()=>act('rotate',{value:-1})}>◀</Button><Button onClick={()=>act('rotate',{value:1})}>▶</Button><Button selected={data.showClothes} onClick={()=>act('clothes')}>Show</Button></div>
+      <div className="CharacterEditor__slots">{(data.previewSlots||[]).map((slot,index)=><button type="button" key={slot.id} title={slot.name} style={{gridColumn:index%2?3:1,gridRow:Math.floor(index/2)+1}} aria-label={slot.name} aria-pressed={slot.selected} onClick={()=>act('preview-slot',{value:slot.id})}><div className="CharacterEditor__sprite">{(slot.images.length?slot.images:[{url:slot.background,color:"#ffffff"}]).map((image,i)=><TintedSprite key={i} image={image.url} color={image.color} />)}</div></button>)}</div>
+    </aside>
     <main className="CharacterEditor__content">
     {data.setup && <>
       <div className="CharacterEditor__tabs"><Button onClick={()=>setCharactersOpen(!charactersOpen)} selected={charactersOpen}>Персонажи</Button><Button onClick={()=>setStatsOpen(!statsOpen)} selected={statsOpen}>Статистика</Button><Button onClick={()=>act('setup/rules')}>Правила</Button>{data.setup.notes&&<Button onClick={()=>act('setup/notes')}>Заметки администрации</Button>}<Button onClick={()=>act('setup/close')}>Закрыть</Button></div>
@@ -43,7 +57,7 @@ export const CharacterEditor = () => {
     <div className="CharacterEditor__identity"><DraftInput label="Имя" value={data.name} onCommit={change('name')} />
       <Button disabled={!data.dirty} color="good" onClick={()=>act('save')}>Сохранить</Button><Button disabled={!data.dirty} onClick={()=>act('reset')}>Сбросить</Button>
       <Button selected={data.showClothes} onClick={()=>act('clothes')}>Одежда</Button>
-      <Button onClick={()=>act('random-name')}>Случайное имя</Button><Button onClick={()=>act('random-all')}>Случайный персонаж</Button>
+      <Button onClick={()=>act('character-card')}>Просмотр профиля</Button><Button onClick={()=>act('random-name')}>Случайное имя</Button><Button onClick={()=>act('random-all')}>Случайный персонаж</Button>
       <Button onClick={()=>act('import')}>Импорт</Button><Button onClick={()=>act('export')}>Экспорт</Button><Button onClick={()=>act('export-image')}>Изображение</Button><Button onClick={()=>act('open-images')}>Открыть изображения</Button>
     </div>
     {data.mode === 'identity' && <>
@@ -81,14 +95,13 @@ export const CharacterEditor = () => {
       </div>
       <ColorEditor label="Цвет кожи" value={data.skinColor} onChange={change('skin-color')} hint={data.humanSkin ? 'Цвет приводится к допустимому оттенку кожи.' : undefined} />
       <div className="CharacterEditor__hair">
+        {data.hairOptions?.length <= 1 && data.beardOptions?.length <= 1 && <small>Для этой расы нет обычных причёсок и бороды. Доступные украшения головы настраиваются во вкладке «Особенности».</small>}
         {['hair', 'beard'].map((key, index) => {
+          if ((data[key + 'Options'] || []).length <= 1) return null;
           const locked = data[key + 'Locked'];
           const missing = data[key + 'Style'] === (index ? 'FacialHairShaved' : 'HairBald');
           return <Section key={key} title={index ? 'Борода и усы' : 'Причёска'}>
-            <details><summary>{index ? 'Выбор бороды и усов' : 'Выбор причёски'}</summary><div className="CharacterEditor__tiles">
-              {(data[key+'Options']||[]).map(option=><button type="button" key={option.id} aria-pressed={option.id===data[key+'Style']} onClick={()=>change(key+'-style')(option.id)}>
-                <div className="CharacterEditor__sprite">{(option.images||[]).map((image,i)=><TintedSprite key={i} image={image.url} color={locked ? data.skinColor : data[key+'Color']} />)}</div><span>{option.name}</span></button>)}
-            </div></details>
+            <details><summary>{index ? 'Выбор бороды и усов' : 'Выбор причёски'}</summary><HairCarousel options={data[key+'Options']||[]} selected={data[key+'Style']} color={locked ? data.skinColor : data[key+'Color']} onSelect={change(key+'-style')} /></details>
             <ColorEditor label={index ? 'Цвет бороды' : 'Цвет волос'} value={locked ? data.skinColor : data[key + 'Color']}
               disabled={locked || missing} onChange={change(key + '-color')}
               hint={locked ? 'Цвет этой расы совпадает с цветом кожи.' : missing ? 'Выберите стиль, чтобы изменить цвет.' : 'Изменения сразу видны на персонаже слева.'} />
@@ -126,8 +139,11 @@ export const CharacterEditor = () => {
       })}
     </>}
     {data.mode === 'saved' && <Section title="Сохранённые предметы"><div className="CharacterEditor__tiles">{(data.savedItems||[]).map((item,i)=><div key={i}><div className="CharacterEditor__sprite">{item.images.map((image,j)=><TintedSprite key={j} image={image.url} color={image.color} />)}</div>{item.name}</div>)}</div></Section>}
-    {data.mode === 'equipment'  && <EquipmentBrowser data={data.equipment} act={(action,payload)=>act('equipment/'+action,payload)} />}
-    {data.mode === 'flavor' && <Section title="Описание персонажа"><textarea aria-label="Описание персонажа" value={data.flavorText||''} maxLength={data.maxFlavorLength} onChange={e=>change('flavor')(e.target.value)} /></Section>}
+    {equipmentCache.current && <div style={{display:data.mode==='equipment'?'block':'none'}}><EquipmentBrowser data={equipmentCache.current} act={(action,payload)=>act('equipment/'+action,payload)} /></div>}
+    {data.mode === 'flavor' && <>
+      <Section title="Headshot">{data.headshot&&<img className="CharacterEditor__headshot" src={data.headshot} alt="Headshot персонажа"/>}<Button onClick={()=>act('headshot-upload')}>{data.hasHeadshot?'Заменить изображение':'Загрузить изображение'}</Button><Button disabled={!data.hasHeadshot} onClick={()=>act('headshot-download')}>Скачать изображение</Button><small>PNG/JPEG, до 1 МБ, одно изображение на персонажа. Сначала сохраните нового персонажа. Изображение доступно только через игру.</small>{data.headshotStatus&&<p>{data.headshotStatus}</p>}</Section>
+      {[['flavor','Описание персонажа',data.flavorText],['ooc','OOC заметки',data.oocNotes]].map(([key,label,value])=><Section key={key} title={label}><textarea aria-label={label} value={value||''} maxLength={data.maxFlavorLength} onChange={e=>change(key)(e.target.value)}/><FormattingHint/><details><summary>Предпросмотр форматирования</summary><div className="CharacterText"><CharacterText text={value}/></div></details></Section>)}
+    </>}
     {data.mode === 'markings' && <>
       <Section title="Выбранные особенности">{(data.markings||[]).map(marking=><div key={marking.index}>
         <strong>{marking.name}</strong><Button onClick={()=>act('marking-remove',{index:marking.index})}>Удалить</Button>

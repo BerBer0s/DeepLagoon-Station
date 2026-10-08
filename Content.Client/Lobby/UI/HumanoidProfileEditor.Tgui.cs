@@ -33,6 +33,8 @@ public sealed partial class HumanoidProfileEditor
     private bool _publishedTguiClothes;
     private float _tguiRefresh;
     private readonly TguiSpriteImages _tguiImages = new();
+    private readonly Dictionary<int, (string Id, string Image, string Status)> _headshotPreviews = new();
+    private readonly Dictionary<int, Guid> _headshotReads = new();
     private string _tguiMode = "appearance";
     private readonly Dictionary<string, string> _companyWebImages = new();
 
@@ -81,6 +83,7 @@ public sealed partial class HumanoidProfileEditor
         _tguiRefresh -= args.DeltaSeconds;
         if (_tguiRefresh > 0 || _profileWeb == null || !_profileWeb.VisibleInTree) return;
         _tguiRefresh = 0.2f;
+        if (_profileWeb.Web.IsReady) _personalLoadoutEditor.WarmTguiImages();
         if (!ReferenceEquals(Profile, _publishedTguiProfile) || IsDirty != _publishedTguiDirty || ShowClothes.Pressed != _publishedTguiClothes)
             PublishTguiProfile();
     }
@@ -109,7 +112,13 @@ public sealed partial class HumanoidProfileEditor
         if (mode == "saved") data.Array("savedItems", _savedItemEntities.Where(_entManager.EntityExists).Select(entity =>
             new TguiData().String("name", _entManager.GetComponent<MetaDataComponent>(entity).EntityName)
                 .Array("images", _tguiImages.EntityImages(entity))));
-        data.String("flavorText", p.FlavorText).Number("maxFlavorLength", HumanoidCharacterProfile.MaxDescLength);
+        data.String("oocNotes", p.OocNotes).Bool("hasHeadshot", p.HeadshotId.Length > 0).String("flavorText", p.FlavorText).Number("maxFlavorLength", HumanoidCharacterProfile.MaxDescLength);
+        if (mode == "flavor" && CharacterSlot is { } headshotSlot)
+        {
+            EnsureHeadshotPreview(headshotSlot, p.HeadshotId);
+            var preview = _headshotPreviews[headshotSlot];
+            data.String("headshot", preview.Image).String("headshotStatus", preview.Status);
+        }
         if (mode == "equipment") data.Object("equipment", _personalLoadoutEditor.CreateTguiState());
         if (mode == "markings")
         {
@@ -176,10 +185,40 @@ public sealed partial class HumanoidProfileEditor
 
     private static TguiData Choice(string id, string name) => new TguiData().String("id", id).String("name", name);
 
+    private void EnsureHeadshotPreview(int slot, string id)
+    {
+        if (_headshotPreviews.TryGetValue(slot, out var cached) && cached.Id == id)
+            return;
+
+        _headshotPreviews[slot] = (id, "", id.Length > 0 ? "Загрузка предпросмотра…" : "");
+        if (id.Length == 0)
+        {
+            _headshotReads.Remove(slot);
+            return;
+        }
+
+        var request = Guid.NewGuid();
+        _headshotReads[slot] = request;
+        _entManager.System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Read(slot, null, (bytes, mime, returnedId, error) =>
+        {
+            if (Disposed || !_headshotReads.TryGetValue(slot, out var currentRequest) || currentRequest != request)
+                return;
+
+            _headshotReads.Remove(slot);
+            _headshotPreviews[slot] = (id,
+                error.Length == 0 && bytes.Length > 0 && returnedId == id ? HeadshotImage(bytes, mime) : "",
+                error);
+            if (CharacterSlot == slot)
+                PublishTguiProfile();
+        });
+    }
+
+    private static string HeadshotImage(byte[] bytes, string mime) => $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+
     private IEnumerable<TguiData> HairChoices(bool beard)
     {
         if (Profile == null) yield break;
-        yield return Choice(beard ? HairStyles.DefaultFacialHairStyle : HairStyles.DefaultHairStyle, "—");
+        yield return Choice(beard ? HairStyles.DefaultFacialHairStyle : HairStyles.DefaultHairStyle, beard ? "Без бороды" : "Без волос");
         var category = beard ? MarkingCategories.FacialHair : MarkingCategories.Hair;
         foreach (var marking in _markingManager.MarkingsByCategoryAndSpecies(category, Profile.Species).Values
                      .Where(m => _markingManager.CanBeApplied(Profile.Species, Profile.Sex, m, _prototypeManager))
@@ -240,6 +279,33 @@ public sealed partial class HumanoidProfileEditor
             case "select-tab":
                 if (!args.TryInt("value", out var selectedTab) || selectedTab < 0 || selectedTab >= TabContainer.ChildCount) return false;
                 TabContainer.CurrentTab = selectedTab; break;
+            case "character-card":
+                Content.Client._DeepLagoon.CharacterInfo.CharacterCardWindow.Open(PreviewDummy, Profile.Name, Profile.FlavorText, Profile.OocNotes, (byte)Profile.ERPConsent, (byte)Profile.NonConConsent, (byte)Profile.VoreConsent, CharacterSlot ?? -1); break;
+            case "headshot-upload":
+                if (CharacterSlot is not {} slot) return false;
+                EnsureHeadshotPreview(slot, Profile.HeadshotId);
+                var existingPreview = _headshotPreviews[slot];
+                _headshotPreviews[slot] = (existingPreview.Id, existingPreview.Image, "Загрузка…");
+                _entManager.System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Upload(slot, (bytes, mime, id, error) =>
+                {
+                    if (Disposed) return;
+                    var status = error.Length > 0 ? error : id.Length > 0 ? "Изображение сохранено на сервере." : "Загрузка отменена.";
+                    if (error.Length == 0 && id.Length > 0) _headshotReads.Remove(slot);
+                    _headshotPreviews[slot] = error.Length == 0 && id.Length > 0
+                        ? (id, HeadshotImage(bytes, mime), status)
+                        : (existingPreview.Id, existingPreview.Image, status);
+                    if (CharacterSlot == slot)
+                    {
+                        if (Profile != null && id.Length > 0) Profile = Profile.WithHeadshotId(id);
+                        PublishTguiProfile();
+                    }
+                }); break;
+            case "headshot-download":
+                if (CharacterSlot is not {} downloadSlot) return false;
+                _entManager.System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Download(downloadSlot); break;
+            case "ooc":
+                if (value.Length > HumanoidCharacterProfile.MaxDescLength) return false;
+                Profile = Profile.WithOocNotes(value); SetDirty(); break;
             case "flavor":
                 if (value.Length > HumanoidCharacterProfile.MaxDescLength) return false;
                 OnFlavorTextChange(value); break;

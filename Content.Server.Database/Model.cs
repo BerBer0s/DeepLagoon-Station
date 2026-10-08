@@ -444,6 +444,8 @@ namespace Content.Server.Database
         public int Slot { get; set; }
         [Column("char_name")] public string CharacterName { get; set; } = null!;
         public string FlavorText { get; set; } = null!;
+        public string OocNotes { get; set; } = string.Empty;
+        public string HeadshotId { get; set; } = string.Empty;
         public int Age { get; set; }
         public int BankBalance { get; set; }
         public string Sex { get; set; } = null!;

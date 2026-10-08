@@ -15,13 +15,19 @@ public sealed partial class PersonalLoadoutEditor
     public bool TguiMode;
     private readonly TguiSpriteImages _images = new();
 
+    private IEnumerator<string>? _imageWarmup;
+    public void WarmTguiImages()
+    {
+        _imageWarmup ??= _prototypes.EnumeratePrototypes<LoadoutPrototype>().SelectMany(p => p.PersonalItems).Select(p => p.Id).Distinct().GetEnumerator();
+        for (var i = 0; i < 8 && _imageWarmup.MoveNext(); i++) _ = _images.Item(_imageWarmup.Current).ToArray();
+    }
     public IEnumerable<TguiData> CreateTguiSlots(EntityUid preview)
     {
         var inventory = _entities.System<InventorySystem>();
         if (!_entities.EntityExists(preview) || !inventory.TryGetSlots(preview, out var slots)) yield break;
         foreach (var slot in slots.Where(s => (s.SlotFlags & (SlotFlags.PREVENTEQUIP | SlotFlags.POCKET | SlotFlags.SUITSTORAGE)) == 0)
                      .OrderBy(s => s.StrippingWindowPos.Y).ThenBy(s => s.StrippingWindowPos.X))
-            yield return new TguiData().String("id", slot.Name).String("name", SlotLabel(slot)).Bool("selected", _slotFilter?.Name == slot.Name)
+            yield return new TguiData().String("id", slot.Name).String("name", SlotLabel(slot)).Bool("selected", _slotFilter?.Name == slot.Name).String("background", _images.Frame(new Robust.Shared.Utility.SpriteSpecifier.Texture(new Robust.Shared.Utility.ResPath("Interface/Default/Slots/" + slot.TextureName + ".png"))))
                 .Array("images", inventory.TryGetSlotEntity(preview, slot.Name, out var item) ? _images.EntityImages(item.Value) : Enumerable.Empty<TguiData>());
     }
 
@@ -38,8 +44,17 @@ public sealed partial class PersonalLoadoutEditor
         return true;
     }
 
+    private HumanoidCharacterProfile? _cachedTguiProfile;
+    private string? _cachedTguiJob;
+    private SlotDefinition? _cachedTguiSlot;
+    private TguiData? _cachedTguiState;
+
     public TguiData CreateTguiState()
     {
+        if (_cachedTguiState != null && ReferenceEquals(_profile, _cachedTguiProfile) && _job == _cachedTguiJob && ReferenceEquals(_slotFilter, _cachedTguiSlot)) return _cachedTguiState;
+        _cachedTguiProfile = _profile;
+        _cachedTguiJob = _job;
+        _cachedTguiSlot = _slotFilter;
         var data = new TguiData();
         if (_profile == null) return data;
         PrepareJobCatalog();
@@ -83,11 +98,13 @@ public sealed partial class PersonalLoadoutEditor
                     .String("reason", reason?.ToString()).Number("cost", item.Price).Number("min", entry.Group.MinLimit).Number("max", entry.Group.MaxLimit)
                     .Array("images", entity is {} id ? _images.Item(id.Id) : Enumerable.Empty<TguiData>());
             }));
+        _cachedTguiState = data;
         return data;
     }
 
     public bool HandleTguiAction(string action, TguiActionData args)
     {
+        _cachedTguiState = null;
         if (_profile == null) return false;
         if (action == "all-slots") { _slotFilter = null; UpdateSlotHighlights(); return true; }
         if (action == "remove-unavailable") { RemoveUnavailable(); return true; }

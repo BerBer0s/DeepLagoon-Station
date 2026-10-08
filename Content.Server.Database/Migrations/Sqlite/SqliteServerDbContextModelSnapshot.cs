@@ -860,6 +860,9 @@ namespace Content.Server.Database.Migrations.Sqlite
                         .HasColumnType("INTEGER")
                         .HasColumnName("playful_consent");
 
+                    b.Property<string>("OocNotes").IsRequired().HasColumnType("TEXT").HasColumnName("ooc_notes");
+                    b.Property<string>("HeadshotId").IsRequired().HasColumnType("TEXT").HasColumnName("headshot_id");
+
                     b.Property<string>("FlavorText")
                         .IsRequired()
                         .HasColumnType("TEXT")

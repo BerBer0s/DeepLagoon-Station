@@ -118,10 +118,12 @@ namespace Content.Server.Preferences.Managers
             {
                 if (curPrefs.Characters.TryGetValue(slot, out var oldProfile) && oldProfile is HumanoidCharacterProfile oldHumanoid)
                     profile = humanoid
+                        .WithHeadshotId(oldHumanoid.HeadshotId)
                         .WithBankBalance(oldHumanoid.BankBalance)
                         .WithPersistentData(oldHumanoid.Flags, oldHumanoid.Components, oldHumanoid.Items); // Mono
                 else
                     profile = humanoid
+                        .WithHeadshotId(string.Empty)
                         .WithBankBalance(HumanoidCharacterProfile.DefaultBalance)
                         .WithPersistentData([], [], []); // Mono
             }
@@ -173,6 +175,8 @@ namespace Content.Server.Preferences.Managers
             }
 
             var arr = new Dictionary<int, ICharacterProfile>(curPrefs.Characters);
+            if (curPrefs.Characters.TryGetValue(slot, out var removed) && removed is HumanoidCharacterProfile removedHumanoid)
+                IoCManager.Resolve<Robust.Shared.GameObjects.IEntityManager>().System<Content.Server._DeepLagoon.CharacterInfo.HeadshotSystem>().Delete(removedHumanoid.HeadshotId);
             arr.Remove(slot);
 
             prefsData.Prefs = new PlayerPreferences(arr, nextSlot ?? curPrefs.SelectedCharacterIndex, curPrefs.AdminOOCColor, curPrefs.ChatPanelSettings);

@@ -15,7 +15,10 @@
   &__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 8px; margin-bottom: 15px; }
   &__field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; min-width: 0; }
   &__rangeValue { text-align: center; }
-  &__hair { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 15px 0; }
+  &__hair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 8px; margin: 15px 0;
+    > .Section { min-width: 0; }
+    > small { grid-column: 1 / -1; }
+  }
   &__color { border: 1px solid #646473; border-radius: 3px; padding: 8px; min-width: 0; margin: 8px 0; }
   &__colorLine { display: flex; align-items: center; gap: 8px; }
   &__swatch { display: block; flex: 0 0 32px; height: 28px; border: 2px solid #ddd; border-radius: 3px; }
@@ -30,7 +33,6 @@
   &__description { white-space: pre-wrap; padding: 10px; }
   &__companyImage { display: block; object-fit: contain; max-width: min(100%, 500px); max-height: 260px; margin: 10px auto; }
 }
-@container (min-width: 600px) { .CharacterEditor__hair { grid-template-columns: 1fr 1fr; } }
 @container (max-width: 350px) { .CharacterEditor__job { grid-template-columns: 1fr auto; > :first-child { grid-column: 1 / -1; } } }
 
 .CharacterEditor {
@@ -55,3 +57,29 @@
 .CharacterEditor.theme-light {input,.Dropdown__control,.Dropdown__menu {color:#171c24;background:#ddd;}small {color:#333;}}
 .CharacterEditor--save {display:block;overflow:hidden;}
 .CharacterEditor__tiles .CharacterEditor__sprite {background:#89919d;border-radius:3px;}
+
+.CharacterEditor__preview {width:400px;flex-basis:400px;position:relative;}
+.CharacterEditor__slots {position:absolute;inset:0 0 0;display:grid;grid-template-columns:64px 1fr 64px;grid-auto-rows:minmax(36px,64px);align-content:center;gap:8px;margin:0;overflow:hidden;
+  button {padding:2px;background:#202632;border:2px solid #394357;box-shadow:inset 0 0 0 2px #10151b;}
+  .CharacterEditor__sprite {width:100%;height:100%;margin:0;}
+}
+.CharacterEditor__rotation {position:absolute;top:calc(50% + 130px);left:72px;right:72px;z-index:1;}
+.CharacterEditor__identity {align-items:center; .Button {display:inline-flex;align-items:center;justify-content:center;text-align:center;min-height:28px;height:auto;line-height:1.3;padding:6px 10px;}}
+.HairCarousel {display:grid;grid-template-columns:24px minmax(0,1fr) 24px;align-items:center;gap:6px;padding:8px 0;box-sizing:border-box;width:100%;max-width:520px;min-width:0;>button {min-width:0;padding:3px 0;cursor:pointer;}}
+.HairCarousel__track {display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;min-width:0;width:100%;>button {box-sizing:border-box;flex:0 0 calc((100% - 18px)/4);min-width:0;scroll-snap-align:start;background:var(--player-surface);color:inherit;border:1px solid #68788a;cursor:pointer;white-space:normal;overflow-wrap:anywhere;padding:3px;} >button[aria-pressed=true] {border:2px solid #83bbfa;}.CharacterEditor__sprite {max-width:100%;background:#89919d;}}
+
+.CharacterEditor--flavor textarea {height:180px;box-sizing:border-box;}
+.CharacterEditor__headshot {display:block;max-width:min(100%,320px);max-height:240px;object-fit:contain;margin:0 0 12px;}
+.CharacterText {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;padding:12px;background:var(--player-surface);border-radius:4px;}
+.CharacterText__spoiler {background:currentColor;border-radius:3px;color:transparent;cursor:pointer;box-shadow:inset 0 0 0 20px #69707b;&:hover,&:focus {color:inherit;box-shadow:none;}}
+.CharacterTextHint {padding-top:8px;line-height:1.5;}
+.CharacterCard {height:100vh;box-sizing:border-box;padding:16px;display:flex;gap:18px;overflow:hidden;font:14px Arial;color:#ddd;--player-surface:#252b35;
+ aside {flex:0 0 260px;overflow-y:auto;overflow-x:hidden;}main {flex:1;min-width:0;overflow:auto;}h2 {margin:0;}h3 {margin-top:20px;}
+ &__headshot {display:block;width:240px;height:170px;object-fit:contain;image-rendering:auto;}
+ &__model {height:300px;}
+ &__header {display:flex;justify-content:space-between;align-items:center;gap:8px;}
+ &__consent {padding:8px;margin:8px 0;border:1px solid;strong,span {display:block;} &.consent-0 {color:#f07e7e;} &.consent-1 {color:#ffbd70;} &.consent-2 {color:#85d891;}}
+}
+
+.CharacterText__spoiler > * {visibility:hidden;}
+.CharacterText__spoiler:hover > *, .CharacterText__spoiler:focus > * {visibility:visible;}

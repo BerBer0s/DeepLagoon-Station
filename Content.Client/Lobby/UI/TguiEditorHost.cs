@@ -38,7 +38,7 @@ public sealed class TguiEditorHost : Container
     {
         _tabs.Arrange(UIBox2.FromDimensions(Vector2.Zero, finalSize));
         _panel.Arrange(UIBox2.FromDimensions(Vector2.Zero, finalSize));
-        _sprite.Arrange(UIBox2.FromDimensions(new Vector2(24, 30), new Vector2(232, 320)));
+        _sprite.Arrange(UIBox2.FromDimensions(new Vector2(94, Math.Max(10, (finalSize.Y - 320) / 2 - 30)), new Vector2(232, 320)));
         return finalSize;
     }
 }
