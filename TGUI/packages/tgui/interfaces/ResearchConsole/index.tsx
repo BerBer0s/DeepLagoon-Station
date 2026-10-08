@@ -108,7 +108,8 @@ export const ResearchConsole = () => {
     }
     return activeDiscipline ? new Set(techIdsByDiscipline.get(activeDiscipline)) : null;
   }, [results, activeDiscipline, techIdsByDiscipline]);
-  // The panel lies over the right edge of the tree; the toolbar moves aside for it.
+  // The panel lies over the right edge of the tree: the toolbar moves aside for it, and the camera
+  // works with what is left free.
   const panelWidth = selectedTech ? (panelCollapsed ? PANEL_STRIP_WIDTH : PANEL_WIDTH) : 0;
 
   // The first click on a technology selects it, the second one on the same technology researches
@@ -146,20 +147,22 @@ export const ResearchConsole = () => {
     [act],
   );
 
+  const moveCamera = useCallback((target: CameraTarget) => {
+    setCameraCommand((previous) => ({ serial: (previous?.serial ?? 0) + 1, target }));
+  }, []);
+
+  // A click on a technology that is hidden under the panel or off the free view moves the camera.
   const onActivate = useCallback(
     (id: string) => {
       if (id !== latest.current.selectedId) {
         select(id);
+        moveCamera({ kind: 'reveal', id });
       } else if (!research(id)) {
         setAttention((count) => count + 1);
       }
     },
-    [research, select],
+    [moveCamera, research, select],
   );
-
-  const moveCamera = useCallback((target: CameraTarget) => {
-    setCameraCommand((previous) => ({ serial: (previous?.serial ?? 0) + 1, target }));
-  }, []);
 
   // Selecting a technology from the panel or from a search also brings it into view.
   const navigate = useCallback(
@@ -257,6 +260,7 @@ export const ResearchConsole = () => {
           canResearch={data.hasAccess === true}
           highlight={highlight}
           labels={labels}
+          insetRight={panelWidth}
           command={cameraCommand}
           onSelect={select}
           onActivate={onActivate}

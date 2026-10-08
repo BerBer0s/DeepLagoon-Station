@@ -1,10 +1,10 @@
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button, Icon } from '../../components';
-import { rectsIntersect, type Rect, ZOOM_STEP } from './camera';
+import { type Camera, rectsIntersect, type Rect, sameCamera, type Size, ZOOM_STEP } from './camera';
 import { chainOf } from './chain';
 import { EdgeLayer } from './EdgeLayer';
-import { fitCamera, groupCamera, homeCamera, recenterCamera } from './focus';
+import { fitCamera, groupCamera, homeCamera, recenterCamera, revealCamera } from './focus';
 import type { Tech, TechState } from './model';
 import { describeTech } from './status';
 import { type Origin, TechNode } from './TechNode';
@@ -13,7 +13,10 @@ import { collectEdges, type TreeModel, unitStates } from './tree';
 import { useTreeCamera } from './useTreeCamera';
 
 export type CameraTarget =
+  /** Center the technology in the free view. */
   | { kind: 'node'; id: string }
+  /** Move no more than needed to bring the technology into the free view. */
+  | { kind: 'reveal'; id: string }
   | { kind: 'group'; ids: string[] };
 
 /** Asks the tree to move the camera; a new `serial` is a new request. */
@@ -32,6 +35,8 @@ type TechTreeProps = {
   /** The technologies that stay bright while the others are dimmed; null when none is dimmed. */
   highlight: Set<string> | null;
   labels: Record<string, string>;
+  /** Width of the details panel over the right edge of the tree. */
+  insetRight: number;
   command: CameraCommand | null;
   onSelect: (id: string | null) => void;
   onActivate: (id: string) => void;
@@ -44,6 +49,23 @@ const nodeFx = (fx: ResearchFx | null, id: string) => {
     return 'snap';
   }
   return fx?.woken.has(id) ? 'wake' : null;
+};
+
+const cameraFor = (
+  target: CameraTarget,
+  tree: TreeModel,
+  states: Map<string, TechState>,
+  size: Size,
+  current: Camera,
+): Camera => {
+  switch (target.kind) {
+    case 'node':
+      return recenterCamera(tree, states, size, current, target.id);
+    case 'reveal':
+      return revealCamera(tree, target.id, current, size);
+    case 'group':
+      return groupCamera(tree, target.ids, size);
+  }
 };
 
 const nodeRect = (node: {
@@ -70,6 +92,7 @@ export const TechTree = ({
   canResearch,
   highlight,
   labels,
+  insetRight,
   command,
   onSelect,
   onActivate,
@@ -84,20 +107,18 @@ export const TechTree = ({
   const camera = useTreeCamera({
     tree,
     initialCamera: (size) => homeCamera(tree, statesRef.current, size),
+    insetRight,
     onClick: (id) => (id ? onActivate(id) : onSelect(null)),
   });
   const { rendered } = camera;
 
   useEffect(() => {
     if (command) {
-      const { target } = command;
-      const size = camera.getSize();
-      camera.moveTo(
-        target.kind === 'node'
-          ? recenterCamera(tree, statesRef.current, size, camera.getCamera(), target.id)
-          : groupCamera(tree, target.ids, size),
-        true,
-      );
+      const current = camera.getCamera();
+      const next = cameraFor(command.target, tree, statesRef.current, camera.getSize(), current);
+      if (!sameCamera(next, current)) {
+        camera.moveTo(next, true);
+      }
     }
   }, [command]);
 

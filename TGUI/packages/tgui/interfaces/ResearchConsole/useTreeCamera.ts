@@ -20,6 +20,7 @@ import {
   FAR_SCALE,
   type Rect,
   rectArea,
+  sameCamera,
   type Size,
   TINY_SCALE,
   unionRect,
@@ -64,6 +65,11 @@ type TreeCameraOptions = {
   tree: TreeModel;
   /** The camera for the first view; called once the viewport has a real size. */
   initialCamera: (size: Size) => Camera;
+  /**
+   * How much of the viewport's right edge is covered by something else. The camera works with the
+   * free rest: it is what `getSize` returns, what the camera is clamped to and zooms around.
+   */
+  insetRight: number;
   /** A press and release without a drag in between; `id` is null on the background. */
   onClick: (id: string | null) => void;
 };
@@ -82,6 +88,7 @@ export type TreeCamera = {
   moveTo: (camera: Camera, smooth: boolean) => void;
   zoomBy: (factor: number) => void;
   getCamera: () => Camera;
+  /** The size of the free part of the viewport. */
   getSize: () => Size;
   isDragging: () => boolean;
 };
@@ -89,12 +96,14 @@ export type TreeCamera = {
 export const useTreeCamera = ({
   tree,
   initialCamera,
+  insetRight,
   onClick,
 }: TreeCameraOptions): TreeCamera => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<Camera>(rememberedCamera ?? { x: 0, y: 0, scale: 1 });
   const sizeRef = useRef<Size>({ width: 0, height: 0 });
+  const insetRef = useRef(insetRight);
   const treeRef = useRef(tree);
   const renderedRef = useRef<Rect | null>(null);
   const dragRef = useRef<Drag | null>(null);
@@ -111,6 +120,14 @@ export const useTreeCamera = ({
     initialCameraRef.current = initialCamera;
     clickRef.current = onClick;
   });
+
+  const freeSize = useCallback(
+    (): Size => ({
+      width: Math.max(1, sizeRef.current.width - insetRef.current),
+      height: sizeRef.current.height,
+    }),
+    [],
+  );
 
   const syncCulling = useCallback((view: Rect) => {
     const wanted = expandRect(view, CULL_MARGIN);
@@ -160,7 +177,7 @@ export const useTreeCamera = ({
       }
       const size = sizeRef.current;
       const previous = cameraRef.current;
-      const camera = clampCamera(next, treeRef.current, size);
+      const camera = clampCamera(next, treeRef.current, freeSize());
       cameraRef.current = camera;
       rememberedCamera = camera;
       smoothRef.current = smooth;
@@ -194,7 +211,7 @@ export const useTreeCamera = ({
         });
       }
     },
-    [apply, cancelFrame, syncCulling],
+    [apply, cancelFrame, freeSize, syncCulling],
   );
 
   // Turns an unfinished smooth move into a plain camera at its current position.
@@ -217,8 +234,8 @@ export const useTreeCamera = ({
       return;
     }
     initializedRef.current = true;
-    setCamera(rememberedCamera ?? initialCameraRef.current(size));
-  }, [setCamera]);
+    setCamera(rememberedCamera ?? initialCameraRef.current(freeSize()));
+  }, [freeSize, setCamera]);
 
   useLayoutEffect(() => {
     treeRef.current = tree;
@@ -235,6 +252,18 @@ export const useTreeCamera = ({
       initialize();
     }
   }, [tree, setCamera, initialize]);
+
+  // A narrower free part may leave the camera out of bounds; it moves back smoothly.
+  useLayoutEffect(() => {
+    insetRef.current = insetRight;
+    const current = cameraRef.current;
+    if (
+      initializedRef.current &&
+      !sameCamera(current, clampCamera(current, treeRef.current, freeSize()))
+    ) {
+      setCamera(current, true);
+    }
+  }, [insetRight, freeSize, setCamera]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -365,7 +394,7 @@ export const useTreeCamera = ({
   };
 
   const zoomBy = (factor: number) => {
-    const size = sizeRef.current;
+    const size = freeSize();
     setCamera(
       zoomAt(cameraRef.current, { x: size.width / 2, y: size.height / 2 }, factor),
       true,
@@ -385,7 +414,7 @@ export const useTreeCamera = ({
     moveTo: setCamera,
     zoomBy,
     getCamera: () => cameraRef.current,
-    getSize: () => sizeRef.current,
+    getSize: freeSize,
     isDragging: () => dragRef.current?.active === true,
   };
 };

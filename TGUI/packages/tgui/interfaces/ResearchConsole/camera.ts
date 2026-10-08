@@ -20,6 +20,9 @@ const MIN_SCALE_RATIO = 0.8;
 // so that a pan cannot lose a tree that is wider than the window.
 const OVERSCROLL = 0.15;
 
+export const sameCamera = (a: Camera, b: Camera) =>
+  a.x === b.x && a.y === b.y && a.scale === b.scale;
+
 const clamp = (value: number, low: number, high: number) =>
   Math.min(high, Math.max(low, value));
 

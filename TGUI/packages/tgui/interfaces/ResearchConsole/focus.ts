@@ -115,6 +115,36 @@ export const recenterCamera = (
   return clampCamera(centerOn(centerOf(selected), scale, viewport), tree, viewport);
 };
 
+// How much of the free view around a technology must be clear for it to count as in view: its hint
+// hangs below it, and the toolbar sits above it, in the corner.
+const REVEAL_MARGIN = { left: 24, right: 24, top: 48, bottom: 72 };
+
+/** The camera moved as little as needed to bring a technology into the free view; unchanged if it is. */
+export const revealCamera = (
+  tree: TreeModel,
+  id: string,
+  current: Camera,
+  viewport: Size,
+): Camera => {
+  const node = tree.nodeById.get(id);
+  if (!node) {
+    return current;
+  }
+  const left = node.x * current.scale + current.x;
+  const top = node.y * current.scale + current.y;
+  const right = left + node.width * current.scale;
+  const bottom = top + node.height * current.scale;
+  const shift = (low: number, high: number, start: number, end: number) => {
+    if (low < start) {
+      return start - low;
+    }
+    return high > end ? end - high : 0;
+  };
+  const dx = shift(left, right, REVEAL_MARGIN.left, viewport.width - REVEAL_MARGIN.right);
+  const dy = shift(top, bottom, REVEAL_MARGIN.top, viewport.height - REVEAL_MARGIN.bottom);
+  return dx === 0 && dy === 0 ? current : { ...current, x: current.x + dx, y: current.y + dy };
+};
+
 const gapBetween = (a: TreeNode, b: TreeNode) => ({
   x: Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.width, b.x + b.width)),
   y: Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.height, b.y + b.height)),
