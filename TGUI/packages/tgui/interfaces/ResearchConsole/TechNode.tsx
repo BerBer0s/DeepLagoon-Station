@@ -1,6 +1,6 @@
 import { type CSSProperties, memo } from 'react';
 
-import { Button, Icon } from '../../components';
+import { Icon } from '../../components';
 import { TintedSprite } from '../../components/PlayerTheme';
 import { useTechIcon } from './icons';
 import type { Tech, TechState } from './model';
@@ -21,6 +21,13 @@ const STATE_LABEL: Record<TechState, string> = {
   available: 'dl-research-research',
   unaffordable: 'dl-research-unaffordable',
   locked: 'dl-research-locked',
+};
+
+/** What the selected technology says about researching it. */
+export type Hint = {
+  text: string;
+  /** The next click researches it. */
+  armed: boolean;
 };
 
 const TechIcon = ({ id }: { id: string }) => {
@@ -45,11 +52,13 @@ type TechNodeProps = {
   selected: boolean;
   /** Part of the chain of the focused technology. */
   inChain: boolean;
-  canResearch: boolean;
+  /** Only the selected technology has a hint. */
+  hint: Hint | null;
+  /** Grows each time the player clicks the selected technology and nothing can be done. */
+  attention: number;
   color: string;
   labels: Record<string, string>;
-  onSelect: (id: string) => void;
-  onResearch: (id: string) => void;
+  onActivate: (id: string) => void;
 };
 
 export const TechNode = memo(function TechNode({
@@ -58,11 +67,11 @@ export const TechNode = memo(function TechNode({
   state,
   selected,
   inChain,
-  canResearch,
+  hint,
+  attention,
   color,
   labels,
-  onSelect,
-  onResearch,
+  onActivate,
 }: TechNodeProps) {
   const style = {
     left: node.x,
@@ -76,11 +85,12 @@ export const TechNode = memo(function TechNode({
       className={
         `TechNode TechNode--${state}` +
         (selected ? ' TechNode--selected' : '') +
-        (inChain ? ' TechNode--chain' : '')
+        (inChain ? ' TechNode--chain' : '') +
+        (hint?.armed ? ' TechNode--armed' : '')
       }
       data-id={tech.id}
       style={style}
-      onClick={() => onSelect(tech.id)}
+      onClick={() => onActivate(tech.id)}
     >
       <TechIcon id={tech.id} />
       <div className="TechNode__text">
@@ -89,18 +99,23 @@ export const TechNode = memo(function TechNode({
           <span className="TechNode__cost">
             <Icon name="coins" /> {tech.cost}
           </span>
-          {state === 'available' && (
-            <Button
-              compact
-              disabled={!canResearch}
-              tooltip={canResearch ? undefined : labels['dl-research-no-access']}
-              onClick={() => onResearch(tech.id)}
-            >
-              {labels[STATE_LABEL.available]}
-            </Button>
+          {hint?.armed && (
+            <span className="TechNode__go">{labels[STATE_LABEL.available]}</span>
           )}
         </div>
       </div>
+      {hint && (
+        <div
+          key={attention}
+          className={
+            'TechNode__hint' +
+            (hint.armed ? ' TechNode__hint--go' : '') +
+            (attention > 0 ? ' TechNode__hint--attention' : '')
+          }
+        >
+          {hint.text}
+        </div>
+      )}
       <span className="TechNode__badge" aria-label={labels[STATE_LABEL[state]]}>
         <Icon name={STATE_ICON[state]} />
       </span>

@@ -1,6 +1,7 @@
 import {
   type SyntheticEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -18,6 +19,12 @@ import {
 import './ResearchConsole.scss';
 import { TechTree } from './TechTree';
 import { buildTree } from './tree';
+
+// A second click this soon after the first is taken for a double click, not for a confirmation.
+const CONFIRM_GUARD_MS = 300;
+
+// The same research request is not repeated within this time; the server answers by then.
+const REQUEST_REPEAT_MS = 1000;
 
 // Left mouse button drags are reserved for panning, so the browser must not
 // start text selection or image dragging. Text fields keep their behavior.
@@ -57,7 +64,55 @@ export const ResearchConsole = () => {
     return next;
   }, [states]);
 
-  const onResearch = useCallback((id: string) => act('research', { id }), [act]);
+  // The first click on a technology selects it, the second one on the same technology researches
+  // it. The callbacks read the latest values from a ref so that the nodes keep their props.
+  const [attention, setAttention] = useState(0);
+  const selectedAt = useRef(0);
+  const lastRequest = useRef({ id: '', at: -REQUEST_REPEAT_MS });
+  const latest = useRef({ selectedId, stateById, hasAccess: data.hasAccess === true });
+  useEffect(() => {
+    latest.current = { selectedId, stateById, hasAccess: data.hasAccess === true };
+  });
+
+  const select = useCallback((id: string | null) => {
+    setSelectedId(id);
+    setAttention(0);
+    selectedAt.current = performance.now();
+  }, []);
+
+  const onActivate = useCallback(
+    (id: string) => {
+      const { selectedId: current, stateById: states, hasAccess } = latest.current;
+      if (id !== current) {
+        select(id);
+        return;
+      }
+      if (performance.now() - selectedAt.current < CONFIRM_GUARD_MS) {
+        return;
+      }
+      if (states.get(id) === 'available' && hasAccess) {
+        const now = performance.now();
+        const { id: lastId, at } = lastRequest.current;
+        if (lastId !== id || now - at >= REQUEST_REPEAT_MS) {
+          lastRequest.current = { id, at: now };
+          act('research', { id });
+        }
+      } else {
+        setAttention((count) => count + 1);
+      }
+    },
+    [act, select],
+  );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        select(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [select]);
 
   const theme = playerTheme(data.chatState);
   // playerTheme also returns the chat's animated-background class. That animation never ends and
@@ -90,10 +145,12 @@ export const ResearchConsole = () => {
         disciplineColors={disciplineColors}
         states={stateById}
         selectedId={selectedId}
+        attention={attention}
+        points={data.points ?? 0}
         canResearch={data.hasAccess === true}
         labels={labels}
-        onSelect={setSelectedId}
-        onResearch={onResearch}
+        onSelect={select}
+        onActivate={onActivate}
       />
     </div>
   );

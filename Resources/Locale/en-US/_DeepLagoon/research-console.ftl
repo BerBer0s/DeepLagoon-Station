@@ -12,3 +12,5 @@ dl-research-recenter = Recenter
 dl-research-fit = Fit
 dl-research-zoom-in = Zoom in
 dl-research-zoom-out = Zoom out
+dl-research-confirm = Click again to research
+dl-research-hint-locked = Research the required technologies first

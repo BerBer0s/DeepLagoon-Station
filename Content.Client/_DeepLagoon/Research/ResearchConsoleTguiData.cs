@@ -33,6 +33,8 @@ public sealed class ResearchConsoleTguiData
         "dl-research-fit",
         "dl-research-zoom-in",
         "dl-research-zoom-out",
+        "dl-research-confirm",
+        "dl-research-hint-locked",
     ];
 
     // Shared by every console window, so reopening the console does no image work.

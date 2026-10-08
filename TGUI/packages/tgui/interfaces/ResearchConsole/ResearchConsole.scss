@@ -3,6 +3,7 @@ $radius: 6px;
 $icon-size: 64px;
 $badge-size: 20px;
 $fade-duration: 0.12s;
+$nudge-duration: 0.25s;
 $dim-nodes: 0.3;
 $dim-lines: 0.12;
 $dim-lines-far: 0.04;
@@ -213,8 +214,13 @@ $dim-lines-far: 0.04;
   }
 
   &--selected {
+    z-index: 2;
     outline: 3px solid var(--rc-select);
     outline-offset: 3px;
+  }
+
+  &--armed {
+    background: color-mix(in srgb, var(--rc-accent) 22%, var(--player-surface));
   }
 
   .ResearchTree__world[data-focus='true'] &:not(&--chain) {
@@ -272,6 +278,46 @@ $dim-lines-far: 0.04;
     white-space: nowrap;
   }
 
+  &__go {
+    padding: 1px $space * 0.75;
+    border-radius: $radius;
+    font-weight: bold;
+    color: #171c24;
+    background: var(--rc-accent);
+  }
+
+  // Under the selected node: what a second click does, or why it cannot do anything.
+  &__hint {
+    position: absolute;
+    top: calc(100% + #{$space + 3px});
+    right: 0;
+    left: 0;
+    box-sizing: border-box;
+    padding: $space * 0.5 $space * 0.75;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius;
+    font-size: 12px;
+    line-height: 1.25;
+    text-align: center;
+    pointer-events: none;
+    background: var(--player-surface);
+
+    &--go {
+      border-color: var(--rc-accent);
+      font-weight: bold;
+    }
+
+    &--attention {
+      border-color: var(--rc-warn);
+      animation: TechNode-nudge $nudge-duration ease-out;
+    }
+  }
+
+  .ResearchTree__world[data-lod='far'] &__hint,
+  .ResearchTree__world[data-lod='tiny'] &__hint {
+    display: none;
+  }
+
   &__badge {
     position: absolute;
     top: 3px;
@@ -297,6 +343,21 @@ $dim-lines-far: 0.04;
 
   &--unaffordable &__badge {
     background: var(--rc-warn);
+  }
+}
+
+@keyframes TechNode-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  60% {
+    transform: translateX(4px);
   }
 }
 

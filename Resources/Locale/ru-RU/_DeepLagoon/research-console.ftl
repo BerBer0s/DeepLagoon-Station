@@ -12,3 +12,5 @@ dl-research-recenter = Центрировать
 dl-research-fit = Всё дерево
 dl-research-zoom-in = Приблизить
 dl-research-zoom-out = Отдалить
+dl-research-confirm = Клик ещё раз: изучить
+dl-research-hint-locked = Сначала изучите нужные технологии

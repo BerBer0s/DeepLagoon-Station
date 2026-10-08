@@ -6,7 +6,7 @@ import { chainOf } from './chain';
 import { EdgeLayer } from './EdgeLayer';
 import { fitCamera, homeCamera, recenterCamera } from './focus';
 import type { Tech, TechState } from './model';
-import { TechNode } from './TechNode';
+import { type Hint, TechNode } from './TechNode';
 import { type TreeModel, unitStates, visibleEdges } from './tree';
 import { useTreeCamera } from './useTreeCamera';
 
@@ -16,10 +16,39 @@ type TechTreeProps = {
   disciplineColors: Map<string, string>;
   states: Map<string, TechState>;
   selectedId: string | null;
+  attention: number;
+  points: number;
   canResearch: boolean;
   labels: Record<string, string>;
   onSelect: (id: string | null) => void;
-  onResearch: (id: string) => void;
+  onActivate: (id: string) => void;
+};
+
+const describeSelected = (
+  tech: Tech,
+  state: TechState,
+  points: number,
+  canResearch: boolean,
+  labels: Record<string, string>,
+): Hint => {
+  switch (state) {
+    case 'researched':
+      return { text: labels['dl-research-researched'], armed: false };
+    case 'locked':
+      return { text: labels['dl-research-hint-locked'], armed: false };
+    case 'unaffordable':
+      return {
+        text: `${labels['dl-research-unaffordable']}: ${tech.cost - points}`,
+        armed: false,
+      };
+    case 'available':
+      return canResearch
+        ? {
+            text: `${labels['dl-research-confirm']} · ${tech.cost}`,
+            armed: true,
+          }
+        : { text: labels['dl-research-no-access'], armed: false };
+  }
 };
 
 const nodeRect = (node: {
@@ -40,10 +69,12 @@ export const TechTree = ({
   disciplineColors,
   states,
   selectedId,
+  attention,
+  points,
   canResearch,
   labels,
   onSelect,
-  onResearch,
+  onActivate,
 }: TechTreeProps) => {
   const statesRef = useRef(states);
   const selectedRef = useRef(selectedId);
@@ -80,6 +111,13 @@ export const TechTree = ({
     () => visibleEdges(tree, edgeStates, rendered, chain?.units ?? null),
     [tree, edgeStates, rendered, chain],
   );
+
+  const selectedHint = useMemo(() => {
+    const tech = selectedId ? techs.get(selectedId) : undefined;
+    return tech
+      ? describeSelected(tech, states.get(tech.id) ?? 'locked', points, canResearch, labels)
+      : null;
+  }, [selectedId, techs, states, points, canResearch, labels]);
 
   const onPointerOver = (event: PointerEvent<HTMLDivElement>) => {
     if (camera.isDragging()) {
@@ -124,11 +162,11 @@ export const TechTree = ({
                 state={states.get(node.id) ?? 'locked'}
                 selected={node.id === selectedId}
                 inChain={chain?.nodes.has(node.id) === true}
-                canResearch={canResearch}
+                hint={node.id === selectedId ? selectedHint : null}
+                attention={node.id === selectedId ? attention : 0}
                 color={disciplineColors.get(tech.discipline) ?? '#888888'}
                 labels={labels}
-                onSelect={onSelect}
-                onResearch={onResearch}
+                onActivate={onActivate}
               />
             )
           );
