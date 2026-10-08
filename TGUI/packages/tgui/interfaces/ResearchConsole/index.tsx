@@ -147,6 +147,8 @@ export const ResearchConsole = () => {
     [act],
   );
 
+  const togglePanel = useCallback(() => setPanelCollapsed((collapsed) => !collapsed), []);
+
   const moveCamera = useCallback((target: CameraTarget) => {
     setCameraCommand((previous) => ({ serial: (previous?.serial ?? 0) + 1, target }));
   }, []);
@@ -279,7 +281,7 @@ export const ResearchConsole = () => {
             hubs={selectedHubs}
             collapsed={panelCollapsed}
             labels={labels}
-            onToggle={() => setPanelCollapsed((collapsed) => !collapsed)}
+            onToggle={togglePanel}
             onNavigate={navigate}
             onResearch={research}
           />

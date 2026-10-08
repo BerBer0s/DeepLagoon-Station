@@ -120,7 +120,7 @@ export const DetailsPanel = memo(function DetailsPanel({
             <span>
               {labels['dl-research-tier']} {tech.tier}
             </span>
-            <span className="Details__cost">
+            <span className="Details__cost" data-tip={labels['dl-research-cost']}>
               <Icon name="coins" /> {tech.cost}
             </span>
           </div>
