@@ -235,6 +235,7 @@ namespace Content.Server.Database
                 var loadout = new RoleLoadout(role.RoleName)
                 {
                     EntityName = role.EntityName,
+                    Customizations = role.Customizations == null ? new() : JsonSerializer.Deserialize<Dictionary<string, PersonalLoadoutCustomization>>(role.Customizations) ?? new(),
                 };
 
                 foreach (var group in role.Groups)
@@ -381,6 +382,7 @@ namespace Content.Server.Database
                 {
                     RoleName = role,
                     EntityName = loadouts.EntityName ?? string.Empty,
+                    Customizations = JsonSerializer.Serialize(loadouts.Customizations),
                 };
 
                 foreach (var (group, groupLoadouts) in loadouts.SelectedLoadouts)

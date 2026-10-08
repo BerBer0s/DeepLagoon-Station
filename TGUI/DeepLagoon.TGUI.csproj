@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <IsPackable>false</IsPackable>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <TguiPackageManager Condition="'$(TguiPackageManager)' == ''">pnpm</TguiPackageManager>
+    <!-- VS Code does not inherit Codex's extra PATH entries. Use installed
+         commands first, with the existing bundled runtime as a Windows fallback. -->
+    <TguiRuntimeDirectory Condition="'$(TguiRuntimeDirectory)' == '' and '$(OS)' == 'Windows_NT'">$(USERPROFILE)/.cache/codex-runtimes/codex-primary-runtime/dependencies</TguiRuntimeDirectory>
+    <TguiBuildPath>$(PATH)</TguiBuildPath>
+    <TguiBuildPath Condition="'$(OS)' == 'Windows_NT' and Exists('$(TguiRuntimeDirectory)/node/bin/node.exe') and Exists('$(TguiRuntimeDirectory)/bin/fallback/pnpm.cmd')">$(TguiBuildPath);$(TguiRuntimeDirectory)/node/bin;$(TguiRuntimeDirectory)/bin/fallback</TguiBuildPath>
+  </PropertyGroup>
+
+  <!-- Restore JS dependencies on the first build and after manifest/lock/config changes.
+       The marker is inside node_modules so deleting dependencies also invalidates it. -->
+  <Target Name="RestoreTguiDependencies"
+          Inputs="$(MSBuildProjectDirectory)/package.json;$(MSBuildProjectDirectory)/pnpm-lock.yaml;$(MSBuildProjectDirectory)/pnpm-workspace.yaml"
+          Outputs="$(MSBuildProjectDirectory)/node_modules/.deeplagoon-restore">
+    <Exec Command="$(TguiPackageManager) install --frozen-lockfile" WorkingDirectory="$(MSBuildProjectDirectory)"
+          EnvironmentVariables="PATH=$([MSBuild]::Escape('$(TguiBuildPath)'))" />
+    <Touch Files="$(MSBuildProjectDirectory)/node_modules/.deeplagoon-restore" AlwaysCreate="true" />
+  </Target>
+
+  <!-- No Inputs/Outputs: every actual build regenerates both production bundles. -->
+  <Target Name="BuildTgui" BeforeTargets="BeforeBuild" DependsOnTargets="RestoreTguiDependencies"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Message Text="DeepLagoon: rebuilding TGUI interface and chat bundles" Importance="high" />
+    <Exec Command="$(TguiPackageManager) build" WorkingDirectory="$(MSBuildProjectDirectory)"
+          EnvironmentVariables="PATH=$([MSBuild]::Escape('$(TguiBuildPath)'))" />
+  </Target>
+</Project>

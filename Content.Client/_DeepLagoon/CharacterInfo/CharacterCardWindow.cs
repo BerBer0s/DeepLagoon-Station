@@ -16,6 +16,7 @@ public sealed class CharacterCardWindow : FancyWindow
     private readonly SpriteView _sprite = new() { Scale = new Vector2(3,3), OverrideDirection = Direction.South, MouseFilter = MouseFilterMode.Ignore };
     private readonly CardHost _host;
     private readonly TguiData _data;
+    private readonly Dictionary<string, string> _headshots = new();
     private CharacterCardWindow(EntityUid entity, string name, string flavor, string ooc, byte erp, byte nonCon, byte vore, int slot)
     {
         _entity = entity;
@@ -49,12 +50,29 @@ public sealed class CharacterCardWindow : FancyWindow
                 window._panel.SetState("CharacterCard",window._data.ToString());
             }
         });
+        entities.System<HeadshotSystem>().Gallery(slot, slot < 0 ? entities.GetNetEntity(entity) : null, gallery =>
+        {
+            if (window.Disposed || gallery.Error.Length > 0) return;
+            foreach (var (id, index) in gallery.Active.Select((id, index) => (id, index)))
+                Robust.Shared.Timing.Timer.Spawn((index + 1) * 350, () =>
+                {
+                    if (window.Disposed) return;
+                    entities.System<HeadshotSystem>().Read(slot, slot < 0 ? entities.GetNetEntity(entity) : null, (bytes, mime, returnedId, error) =>
+                    {
+                        if (window.Disposed || error.Length > 0 || bytes.Length == 0 || returnedId != id) return;
+                        window._headshots[id] = "data:" + mime + ";base64," + Convert.ToBase64String(bytes);
+                        window._data.Array("headshots", gallery.Active.Where(window._headshots.ContainsKey).Select(image => new TguiData().String("id", image).String("image", window._headshots[image])));
+                        window._host.HasHeadshot = true; window._host.InvalidateArrange();
+                        window._panel.SetState("CharacterCard", window._data.ToString());
+                    }, id);
+                });
+        });
     }
     private sealed class CardHost : Container
     {
         private readonly TguiPanel _panel;private readonly Control _sprite;public bool HasHeadshot;
         public CardHost(TguiPanel panel,Control sprite){_panel=panel;_sprite=sprite;HorizontalExpand=VerticalExpand=true;AddChild(panel);AddChild(sprite);}
         protected override Vector2 MeasureOverride(Vector2 available){_panel.Measure(available);_sprite.Measure(new Vector2(240,260));return Vector2.Zero;}
-        protected override Vector2 ArrangeOverride(Vector2 final){_panel.Arrange(UIBox2.FromDimensions(Vector2.Zero,final));_sprite.Arrange(UIBox2.FromDimensions(new Vector2(24,HasHeadshot?216:46),new Vector2(240,260)));return final;}
+        protected override Vector2 ArrangeOverride(Vector2 final){_panel.Arrange(UIBox2.FromDimensions(Vector2.Zero,final));_sprite.Arrange(UIBox2.FromDimensions(new Vector2(24,HasHeadshot?260:46),new Vector2(240,260)));return final;}
     }
 }

@@ -24,10 +24,13 @@ public sealed class TguiPanel : Control
     private Vector2 _dragOrigin;
     private bool _dragging;
     private string _chatState = "";
+    private string? _chatSettings;
     private float _appearanceRefresh;
+    private readonly bool _inheritChatAppearance;
 
-    public TguiPanel(bool suspendWhenHidden = false)
+    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true)
     {
+        _inheritChatAppearance = inheritChatAppearance;
         Web = new GameWebView(suspendWhenHidden: suspendWhenHidden);
         HorizontalExpand = VerticalExpand = true;
         AddChild(Web);
@@ -86,7 +89,7 @@ public sealed class TguiPanel : Control
             FloatingWindow() is not { } window) return;
         var pointer = _input.MouseScreenPosition;
         // Color wheels, sliders, selections and scrollbars own drags in the body.
-        if (pointer.Position.Y / UIScale - GlobalPosition.Y > 32) return;
+        if (pointer.Position.Y / UIScale - GlobalPosition.Y > 52) return;
         for (var hit = UserInterfaceManager.MouseGetControl(pointer); hit != null; hit = hit.Parent)
         {
             if (hit != this) continue;
@@ -154,12 +157,19 @@ public sealed class TguiPanel : Control
     {
         base.FrameUpdate(args);
         _appearanceRefresh -= args.DeltaSeconds;
-        if (_appearanceRefresh <= 0)
+        if (_inheritChatAppearance && VisibleInTree && _appearanceRefresh <= 0)
         {
             _appearanceRefresh = 0.2f;
             var preferences = IoCManager.Resolve<Content.Client.Lobby.IClientPreferencesManager>();
-            var state = Content.Client.UserInterface.Systems.Chat.Controls.ChatTabsSettings.Deserialize(preferences.Preferences?.ChatPanelSettings ?? "")?.WebState ?? "";
-            if (state != _chatState) { _chatState = state; Publish(); }
+            var settings = preferences.Preferences?.ChatPanelSettings ?? "";
+            // Saved chat settings can be large. Parse only when the source changes,
+            // including caching malformed settings instead of retrying every frame.
+            if (!string.Equals(settings, _chatSettings, StringComparison.Ordinal))
+            {
+                _chatSettings = settings;
+                var state = Content.Client.UserInterface.Systems.Chat.Controls.ChatTabsSettings.Deserialize(settings)?.WebState ?? "";
+                if (state != _chatState) { _chatState = state; Publish(); }
+            }
         }
         if (_dragWindow == null || _input == null) return;
         if (!VisibleInTree || FloatingWindow() != _dragWindow || !_input.IsKeyDown(Keyboard.Key.MouseLeft))

@@ -95,6 +95,26 @@ namespace Content.IntegrationTests.Tests.Preferences
         }
 
         [Test]
+        public async Task DeselectedItemCustomizationSurvivesDatabaseReload()
+        {
+            var pair = await PoolManager.GetServerClient();
+            var db = GetDb(pair.Server);
+            var user = NewUserId();
+            var role = new RoleLoadout("DLEinsteinPersonal");
+            role.Customizations["DLEELoadoutClothingJumpsuitSuitBlack"] = new Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutCustomization
+                { Name = "Моя униформа", Description = "Русское описание", Color = "#123456FF" };
+            var profile = CharlieCharlieson().WithLoadout(role);
+            await db.InitPrefsAsync(user, profile);
+            var loaded = (HumanoidCharacterProfile)(await db.GetPlayerPreferencesAsync(user))!.Characters[0];
+            Assert.That(loaded.Loadouts[role.Role.Id].SelectedLoadouts, Is.Empty);
+            Assert.That(loaded.Loadouts[role.Role.Id].Customizations, Is.EqualTo(role.Customizations));
+            await db.SaveCharacterSlotAsync(user, loaded.WithName("Another Name"), 0);
+            var reloaded = (HumanoidCharacterProfile)(await db.GetPlayerPreferencesAsync(user))!.Characters[0];
+            Assert.That(reloaded.Loadouts[role.Role.Id].Customizations, Is.EqualTo(role.Customizations));
+            await pair.CleanReturnAsync();
+        }
+
+        [Test]
         public async Task TestDeleteCharacter()
         {
             var pair = await PoolManager.GetServerClient();

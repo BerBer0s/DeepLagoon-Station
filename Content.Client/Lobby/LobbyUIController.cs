@@ -50,6 +50,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
     [UISystemDependency] private readonly GuidebookSystem _guide = default!;
 
     private CharacterSetupGui? _characterSetup;
+    private CharacterEditorWindow? _editorWindow;
     private HumanoidProfileEditor? _profileEditor;
     private CharacterSetupGuiSavePanel? _savePanel;
 
@@ -192,8 +193,10 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
     public void OnStateExited(LobbyState state)
     {
         PreviewPanel?.SetLoaded(false);
-        _profileEditor?.Dispose();
-        _characterSetup?.Dispose();
+        _savePanel?.Dispose();
+        _savePanel = null;
+        _editorWindow?.Dispose();
+        _editorWindow = null;
 
         _characterSetup = null;
         _profileEditor = null;
@@ -210,6 +213,13 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
         profileEditor.SetProfile(
             (HumanoidCharacterProfile?)_preferencesManager.Preferences?.SelectedCharacter,
             _preferencesManager.Preferences?.SelectedCharacterIndex);
+    }
+
+    public void OpenCharacterEditor()
+    {
+        if (_editorWindow is { IsOpen: true }) { _editorWindow.MoveToFront(); return; }
+        ReloadCharacterSetup();
+        _editorWindow?.ShowEditor();
     }
 
     /// <summary>
@@ -300,6 +310,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
 
         _profileEditor.SetProfile(null, null);
         _profileEditor.Visible = false;
+        _editorWindow?.CloseConfirmed();
 
         if (_stateManager.CurrentState is LobbyState lobbyGui)
         {
@@ -312,7 +323,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
         if (_savePanel is { IsOpen: true })
             return;
 
-        _savePanel = new CharacterSetupGuiSavePanel();
+        _savePanel = new CharacterSetupGuiSavePanel(_profileEditor?.EditorAppearanceState());
 
         _savePanel.SaveRequested += () =>
         {
@@ -359,7 +370,11 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
 
         _characterSetup = new CharacterSetupGui(_profileEditor);
 
-        _characterSetup.CloseRequested += () =>
+        _editorWindow = new CharacterEditorWindow(_characterSetup);
+        _characterSetup.CloseRequested += RequestCloseEditor;
+        _editorWindow.CloseRequested += RequestCloseEditor;
+
+        void RequestCloseEditor()
         {
             // Open the save panel if we have unsaved changes.
             if (_profileEditor.Profile != null && _profileEditor.IsDirty)
@@ -371,7 +386,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
 
             // Reset sliders etc.
             CloseProfileEditor();
-        };
+        }
 
         _profileEditor.Save += SaveProfile;
 
@@ -396,11 +411,6 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
                 _characterSetup?.ReloadCharacterPickers();
             }
         };
-
-        if (_stateManager.CurrentState is LobbyState lobby)
-        {
-            lobby.Lobby?.CharacterSetupState.AddChild(_characterSetup);
-        }
 
         return (_characterSetup, _profileEditor);
     }
@@ -444,7 +454,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
                 if (!_prototypeManager.TryIndex(loadout.Prototype, out var loadoutProto))
                     continue;
 
-                _spawn.EquipStartingGear(uid, loadoutProto);
+                _spawn.EquipStartingGear(uid, loadoutProto, customization: loadout.Customization);
             }
         }
     }

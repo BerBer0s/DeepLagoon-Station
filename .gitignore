@@ -322,3 +322,6 @@ Resources/MapImages
 !/TGUI/packages/
 !/TGUI/packages/**
 /TGUI/packages/**/node_modules/
+
+# TGUI production bundles (and development source maps) are rebuilt by MSBuild.
+/Resources/Web/DeepLagoon/*.bundle.*

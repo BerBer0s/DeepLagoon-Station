@@ -110,7 +110,7 @@ namespace Content.Client.Lobby.UI
 
         private readonly Dictionary<string, BoxContainer> _jobCategories;
 
-        private Direction _previewRotation = Direction.North;
+        private Direction _previewRotation = Direction.South;
 
         private ColorSelectorSliders _rgbSkinColorSelector;
 
@@ -226,6 +226,11 @@ namespace Content.Client.Lobby.UI
             _personalLoadoutEditor.SelectionChanged += role =>
             {
                 Profile = Profile?.WithLoadout(role);
+                ReloadPreview();
+            };
+            _personalLoadoutEditor.ProfileChanged += profile =>
+            {
+                Profile = profile;
                 ReloadPreview();
             };
 
@@ -574,12 +579,12 @@ namespace Content.Client.Lobby.UI
 
             SpriteRotateLeft.OnPressed += _ =>
             {
-                _previewRotation = _previewRotation.TurnCw();
+                _previewRotation = (Direction)(((int)_previewRotation + 6) % 8);
                 SetPreviewRotation(_previewRotation);
             };
             SpriteRotateRight.OnPressed += _ =>
             {
-                _previewRotation = _previewRotation.TurnCcw();
+                _previewRotation = (Direction)(((int)_previewRotation + 2) % 8);
                 SetPreviewRotation(_previewRotation);
             };
 
@@ -1217,6 +1222,8 @@ namespace Content.Client.Lobby.UI
                 && previous.Loadouts.Count == Profile.Loadouts.Count
                 && previous.Loadouts.All(x => Profile.Loadouts.TryGetValue(x.Key, out var current) && x.Value.SelectedLoadouts.Count == current.SelectedLoadouts.Count && x.Value.SelectedLoadouts.All(g => current.SelectedLoadouts.TryGetValue(g.Key, out var items) && g.Value.SequenceEqual(items))))
             {
+                // Unselected item customizations still change the catalogue's draft.
+                RefreshPersonalLoadouts();
                 SetDirty();
                 ReloadProfilePreview();
                 _entManager.System<MetaDataSystem>().SetEntityName(PreviewDummy, Profile.Name);
@@ -1236,6 +1243,7 @@ namespace Content.Client.Lobby.UI
             _previewJob = job;
             _previewClothes = ShowClothes.Pressed;
             SpriteView.SetEntity(PreviewDummy);
+            SetPreviewRotation(_previewRotation);
             _personalLoadoutEditor.UpdatePreviewSlots(PreviewDummy, PreviewSlotsLeft, PreviewSlotsRight);
             _entManager.System<MetaDataSystem>().SetEntityName(PreviewDummy, Profile.Name);
 
@@ -1258,6 +1266,7 @@ namespace Content.Client.Lobby.UI
         /// </summary>
         public void SetProfile(HumanoidCharacterProfile? profile, int? slot)
         {
+            if (slot != CharacterSlot || profile == null) CloseHeadshotLibrary();
             Profile = profile?.Clone();
             CharacterSlot = slot;
             IsDirty = false;
@@ -2153,7 +2162,7 @@ namespace Content.Client.Lobby.UI
 
         private void SetPreviewRotation(Direction direction)
         {
-            SpriteView.OverrideDirection = (Direction)((int)direction % 4 * 2);
+            SpriteView.OverrideDirection = direction;
         }
 
         private void RandomizeEverything()

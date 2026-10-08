@@ -20,6 +20,7 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
     [Dependency] private ISharedPlaytimeManager _playtime = default!;
 
     public int Points => Math.Max(0, _configuration.GetCVar(CCVars.PersonalLoadoutPoints));
+    public int GetPoints(ICommonSession? session) => Points + EntityManager.System<SharedDiscordBoostSystem>().GetLoadoutPointBonus(session);
 
     public IEnumerable<Loadout> GetSelections(HumanoidCharacterProfile profile) => profile.Loadouts.TryGetValue(Role, out var role)
         ? role.SelectedLoadouts.Values.SelectMany(x => x)
@@ -114,9 +115,9 @@ public sealed partial class PersonalLoadoutSystem : EntitySystem
             return null;
         return new PersonalLoadoutCustomization
         {
-            Name = prototype.PersonalCustomName ? Limit(data.Name, HumanoidCharacterProfile.MaxNameLength) : null,
-            Description = prototype.PersonalCustomDescription ? Limit(data.Description, HumanoidCharacterProfile.MaxDescLength) : null,
-            Color = prototype.PersonalCustomColor && data.Color != null && Robust.Shared.Maths.Color.TryFromHex(data.Color) is {} color ? color.ToHex() : null,
+            Name = Limit(data.Name, HumanoidCharacterProfile.MaxNameLength),
+            Description = Limit(data.Description, HumanoidCharacterProfile.MaxDescLength),
+            Color = data.Color != null && Robust.Shared.Maths.Color.TryFromHex(data.Color) is {} color ? color.ToHex() : null,
             Heirloom = prototype.PersonalHeirloom && data.Heirloom,
         };
     }

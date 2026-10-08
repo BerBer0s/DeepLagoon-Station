@@ -226,7 +226,7 @@ public sealed partial class StationSpawningSystem : SharedStationSpawningSystem
                     if (loadoutProto.Price <= bankBalance && (loadoutProto.Price <= 0 || hasBalance))
                     {
                         bankBalance -= int.Max(0, loadoutProto.Price); // Treat negatives as zero.
-                        EquipStartingGear(entity.Value, loadoutProto, raiseEvent: false);
+                        EquipStartingGear(entity.Value, loadoutProto, raiseEvent: false, customization: items.Customization);
                         equippedItems.Add(loadoutProto.ID);
 
                         // Add support for IPC encryption keys from loadout headsets
@@ -331,6 +331,7 @@ public sealed partial class StationSpawningSystem : SharedStationSpawningSystem
                 details.Content = profile.FlavorText;
                 details.OocNotes = profile.OocNotes;
                 details.HeadshotId = profile.HeadshotId;
+                details.HeadshotImages = EntityManager.System<Content.Server._DeepLagoon.CharacterInfo.HeadshotSystem>().GetActive(profile.HeadshotId, session);
                 details.CharacterCard = true;
                 details.Erp = (byte)profile.ERPConsent;
                 details.NonCon = (byte)profile.NonConConsent;

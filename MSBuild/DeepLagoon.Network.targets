@@ -1,0 +1,120 @@
+<Project>
+  <!-- Content-owned adapter: compile generated copies, never edit engine sources. -->
+  <UsingTask TaskName="DeepLagoonPrepareNetwork" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <SourceDirectory ParameterType="System.String" Required="true" />
+      <OutputDirectory ParameterType="System.String" Required="true" />
+      <GeneratedSources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="Microsoft.Build.Utilities" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var patches = new[]
+        {
+            new[] {
+                "NetManager.ClientConnect.cs",
+                "Dictionary<NetConnection, (CancellationTokenRegistration reg, TaskCompletionSource<string> tcs)>",
+                "System.Collections.Concurrent.ConcurrentDictionary<NetConnection, (CancellationTokenRegistration reg, TaskCompletionSource<string> tcs)>"
+            },
+            new[] {
+                "NetManager.ClientConnect.cs",
+                @"            if (_awaitingStatusChange.ContainsKey(connection))
+            {
+                throw new InvalidOperationException();
+            }
+
+            var tcs = new TaskCompletionSource<string>();
+            CancellationTokenRegistration reg = default;
+            if (cancellationToken != default)
+            {
+                reg = cancellationToken.Register(() =>
+                {
+                    _awaitingStatusChange.Remove(connection);
+                    tcs.TrySetCanceled();
+                });
+            }
+
+            _awaitingStatusChange.Add(connection, (reg, tcs));
+            return tcs.Task;",
+                @"            var tcs = new TaskCompletionSource<string>();
+            var initial = (default(CancellationTokenRegistration), tcs);
+            // Publish before registering: an already-cancelled token invokes
+            // its callback synchronously and must not leave a stale waiter.
+            if (!_awaitingStatusChange.TryAdd(connection, initial))
+                throw new InvalidOperationException();
+
+            if (cancellationToken != default)
+            {
+                var reg = cancellationToken.Register(() =>
+                {
+                    if (_awaitingStatusChange.TryGetValue(connection, out var current) && current.tcs == tcs)
+                        _awaitingStatusChange.TryRemove(new KeyValuePair<NetConnection,
+                            (CancellationTokenRegistration reg, TaskCompletionSource<string> tcs)>(connection, current));
+                    tcs.TrySetCanceled();
+                });
+                // A status or cancellation may have already consumed the waiter.
+                if (!_awaitingStatusChange.TryUpdate(connection, (reg, tcs), initial))
+                    reg.Dispose();
+            }
+            return tcs.Task;"
+            },
+            new[] {
+                "NetManager.cs",
+                @"            if (_awaitingStatusChange.TryGetValue(sender, out var resume))
+            {
+                _awaitingStatusChange.Remove(sender);
+                resume.Item1.Dispose();
+                resume.Item2.SetResult(reason);",
+                @"            if (_awaitingStatusChange.TryRemove(sender, out var resume))
+            {
+                resume.Item1.Dispose();
+                // Cancellation can win after removal but before completion.
+                resume.Item2.TrySetResult(reason);"
+            }
+        };
+        var sources = new Dictionary<string, string>();
+        foreach (var patch in patches)
+        {
+            var sourcePath = Path.Combine(SourceDirectory, patch[0]);
+            string source;
+            if (!sources.TryGetValue(patch[0], out source))
+                source = File.ReadAllText(sourcePath).Replace("\r\n", "\n");
+            var anchor = patch[1].Replace("\r\n", "\n");
+            var first = source.IndexOf(anchor, StringComparison.Ordinal);
+            if (first < 0 || source.IndexOf(anchor, first + anchor.Length, StringComparison.Ordinal) >= 0)
+            {
+                Log.LogError("DeepLagoon network adapter: expected exactly one source anchor in {0}. Review the adapter for this engine version.", sourcePath);
+                return false;
+            }
+            sources[patch[0]] = source.Replace(anchor, patch[2].Replace("\r\n", "\n"));
+        }
+        Directory.CreateDirectory(OutputDirectory);
+        var generated = new List<Microsoft.Build.Framework.ITaskItem>();
+        foreach (var source in sources)
+        {
+            var outputPath = Path.Combine(OutputDirectory, source.Key);
+            if (!File.Exists(outputPath) || File.ReadAllText(outputPath) != source.Value)
+                File.WriteAllText(outputPath, source.Value);
+            generated.Add(new TaskItem(outputPath));
+        }
+        GeneratedSources = generated.ToArray();
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <Target Name="DeepLagoonAdaptNetwork" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectName)' == 'Robust.Shared'">
+    <DeepLagoonPrepareNetwork SourceDirectory="$(MSBuildProjectDirectory)/Network"
+                             OutputDirectory="$(MSBuildProjectDirectory)/$(IntermediateOutputPath)DeepLagoonNetwork">
+      <Output TaskParameter="GeneratedSources" ItemName="_DeepLagoonNetworkSources" />
+    </DeepLagoonPrepareNetwork>
+    <ItemGroup>
+      <Compile Remove="Network\NetManager.cs;Network\NetManager.ClientConnect.cs;Network/NetManager.cs;Network/NetManager.ClientConnect.cs" />
+      <Compile Include="@(_DeepLagoonNetworkSources)" />
+      <FileWrites Include="@(_DeepLagoonNetworkSources)" />
+    </ItemGroup>
+  </Target>
+</Project>

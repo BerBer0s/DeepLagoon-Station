@@ -102,7 +102,7 @@ public sealed partial class PersonalLoadoutEditor
         return _jobEntries.Where(x => category == null || x.Category == category)
             .Where(x => _slotFilter == null || FitsJobSlot(x.Item, _slotFilter))
             .Where(x => string.IsNullOrWhiteSpace(_search.Text) || JobItemName(x.Item).Contains(_search.Text, StringComparison.OrdinalIgnoreCase) || x.Item.ID.Contains(_search.Text, StringComparison.OrdinalIgnoreCase))
-            .Where(x => _showUnavailable.Pressed || _jobRole.SelectedLoadouts.TryGetValue(x.Group.ID, out var selected) && selected.Any(i => i.Prototype.Id == x.Item.ID) || _jobRole.IsValid(_profile, _session, x.Item.ID, IoCManager.Instance!, out _));
+            .Where(x => _showUnavailable.Pressed || _jobRole.SelectedLoadouts.TryGetValue(x.Group.ID, out var selected) && selected.Any(i => i.Prototype.Id == x.Item.ID) || _jobRole.IsValid(_entities.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().RemovePersonalConflicts(_profile, x.Item), _session, x.Item.ID, IoCManager.Instance!, out _));
     }
 
     private void AddJobCards(GridContainer grid, string? category)
@@ -114,7 +114,8 @@ public sealed partial class PersonalLoadoutEditor
                 var role = _jobRole;
                 var item = entry.Item;
                 var selected = role.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(x => x.Prototype.Id == item.ID);
-                var valid = role.IsValid(_profile, _session, item.ID, IoCManager.Instance!, out var reason);
+                var replacementProfile = _entities.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().RemovePersonalConflicts(_profile, item);
+                var valid = role.IsValid(replacementProfile, _session, item.ID, IoCManager.Instance!, out var reason);
                 if (!_showUnavailable.Pressed && !valid && !selected)
                     continue;
                 var title = JobItemName(item);
@@ -139,7 +140,7 @@ public sealed partial class PersonalLoadoutEditor
                         role.AddLoadout(entry.Group.ID, item.ID, _prototypes);
                     else
                         role.RemoveLoadout(entry.Group.ID, item.ID, _prototypes);
-                    SelectionChanged?.Invoke(role);
+                    ProfileChanged?.Invoke((button.Pressed ? replacementProfile : _profile).WithLoadout(role));
                 };
                 grid.AddChild(button);
         }

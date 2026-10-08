@@ -45,6 +45,7 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
     private readonly Dictionary<string, SlotButton> _slotButtons = new();
     public event Action? SlotOpened;
     public event Action<RoleLoadout>? SelectionChanged;
+    public event Action<HumanoidCharacterProfile>? ProfileChanged;
 
     public PersonalLoadoutEditor()
     {
@@ -81,7 +82,7 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         base.FrameUpdate(args);
         var supporters = _entities.System<SharedDiscordBoostSystem>();
         var discordRewards = supporters.HasDiscordRewardAccess(_session);
-        var boostyTier = supporters.GetBoostyTier(_session);
+        var boostyTier = supporters.GetSupporterTier(_session);
         if (discordRewards == _hadDiscordRewards && boostyTier == _lastBoostyTier && _donorColors.SequenceEqual(supporters.RoleColors))
             return;
         _hadDiscordRewards = discordRewards;
@@ -146,9 +147,9 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         var role = GetRole();
         var selected = role.SelectedLoadouts.Values.SelectMany(x => x).ToDictionary(x => x.Prototype.Id);
         var spent = selected.Values.Sum(x => _prototypes.Index(x.Prototype).PersonalCost);
-        _points.Text = Loc.GetString("dl-loadout-points", ("points", Math.Max(0, system.Points - spent)), ("max", system.Points));
-        _bar.MaxValue = Math.Max(1, system.Points);
-        _bar.Value = Math.Max(0, system.Points - spent);
+        _points.Text = Loc.GetString("dl-loadout-points", ("points", Math.Max(0, system.GetPoints(_session) - spent)), ("max", system.GetPoints(_session)));
+        _bar.MaxValue = Math.Max(1, system.GetPoints(_session));
+        _bar.Value = Math.Max(0, system.GetPoints(_session) - spent);
         var all = _prototypes.EnumeratePrototypes<LoadoutPrototype>().Where(x => x.PersonalItems.Count > 0).ToList();
         var filtered = all.Where(x => _slotFilter == null || FitsSlot(x, _slotFilter)).Where(x => _showUnavailable.Pressed || DonorCategoryOf(x) != DonorCategory.None || selected.ContainsKey(x.ID) || system.CanUse(x, _profile, _job, _session, out _))
             .Where(x => string.IsNullOrWhiteSpace(_search.Text) || x.ID.Contains(_search.Text, StringComparison.OrdinalIgnoreCase) || _prototypes.Index(x.PersonalItems[0]).Name.Contains(_search.Text, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -229,7 +230,7 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
                 : donor == DonorCategory.DiscordBoost ? Loc.GetString("dl-loadout-donor-discord") : string.Empty;
             var tooltip = string.Join("\n", new[] { title, donorLabel, reason }.Where(x => !string.IsNullOrEmpty(x)));
             var card = new BoxContainer { Orientation = LayoutOrientation.Vertical, SetWidth = 156, ToolTip = tooltip };
-            var button = new Button { ToggleMode = true, Pressed = pressed, HorizontalExpand = true, MinHeight = 124, Disabled = !pressed && (!usable || spent + prototype.PersonalCost > system.Points), ToolTip = tooltip };
+            var button = new Button { ToggleMode = true, Pressed = pressed, HorizontalExpand = true, MinHeight = 124, Disabled = !pressed && (!usable || spent + prototype.PersonalCost > system.GetPoints(_session)), ToolTip = tooltip };
             if (donor != DonorCategory.None)
             {
                 var accent = _entities.System<SharedDiscordBoostSystem>().GetDonorColor(donor, prototype.PersonalDonorTier);
@@ -421,7 +422,21 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
             role.AddLoadout(group, prototype.ID, _prototypes);
         else
             role.RemoveLoadout(group, prototype.ID, _prototypes);
-        SelectionChanged?.Invoke(role);
+        var profile = _profile!.WithLoadout(role);
+        if (pressed && _jobRole != null)
+            profile = profile.WithLoadout(_entities.System<PersonalLoadoutSystem>().RemoveJobConflicts(profile, _jobRole, prototype));
+        ProfileChanged?.Invoke(profile);
+    }
+
+    private bool CanAffordPersonal(LoadoutPrototype prototype, RoleLoadout role)
+    {
+        var candidate = role.Clone();
+        var groups = _prototypes.Index<RoleLoadoutPrototype>(PersonalLoadoutSystem.Role).Groups
+            .Where(g => _prototypes.Index(g).Loadouts.Any(item => item.Id == prototype.ID)).Take(1).ToArray();
+        if (groups.Length == 0) return false;
+        candidate.AddLoadout(groups[0], prototype.ID, _prototypes);
+        return candidate.SelectedLoadouts.Values.SelectMany(items => items)
+            .Sum(item => _prototypes.Index(item.Prototype).PersonalCost) <= _entities.System<PersonalLoadoutSystem>().GetPoints(_session);
     }
 
     private void RemoveUnavailable()

@@ -1,0 +1,7 @@
+# The copied packages/ tree is bundled as source, not as pnpm workspaces.
+packages: []
+
+# pnpm 11 requires an explicit decision for dependency install scripts.
+allowBuilds:
+  '@parcel/watcher@2.6.0': true
+  'esbuild@0.27.3': true

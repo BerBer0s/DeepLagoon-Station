@@ -33,9 +33,9 @@ public sealed class WebUiPreviewCommand : IConsoleCommand
     {
         if (args.Length != 1) { shell.WriteLine(Help); return; }
 #if DEBUG
-        if (args[0] == "character-wait")
+        if (args[0] is "character-wait" or "editor-wait")
         {
-            PreviewWhenConnected(shell, 0);
+            PreviewWhenConnected(shell, 0, args[0] == "editor-wait");
             return;
         }
 #endif
@@ -85,13 +85,16 @@ public sealed class WebUiPreviewCommand : IConsoleCommand
     }
 
 #if DEBUG
-    private void PreviewWhenConnected(IConsoleShell shell, int attempt)
+    private void PreviewWhenConnected(IConsoleShell shell, int attempt, bool floating = false)
     {
         var preferences = IoCManager.Resolve<IClientPreferencesManager>();
         if (preferences.ServerDataLoaded && IoCManager.Resolve<IBaseClient>().RunLevel == ClientRunLevel.InGame)
-            Execute(shell, "character", new[] { "character" });
+        {
+            if (floating) IoCManager.Resolve<IUserInterfaceManager>().GetUIController<LobbyUIController>().OpenCharacterEditor();
+            else Execute(shell, "character", new[] { "character" });
+        }
         else if (attempt < 240)
-            Timer.Spawn(1000, () => PreviewWhenConnected(shell, attempt + 1));
+            Timer.Spawn(1000, () => PreviewWhenConnected(shell, attempt + 1, floating));
         else
             shell.WriteLine("Character preview timed out waiting for a connected lobby.");
     }

@@ -1,3 +1,5 @@
 <Project>
   <Import Project="MSBuild/DeepLagoon.WebView.targets" />
+  <Import Project="MSBuild/DeepLagoon.Network.targets" />
+  <Import Project="MSBuild/DeepLagoon.TGUI.targets" />
 </Project>

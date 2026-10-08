@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using Content.Shared._DeepLagoon.Loadouts;
 using Content.Shared.Humanoid.Prototypes;
 using Content.Shared.Random;
 using Robust.Shared.Collections;
@@ -21,6 +22,10 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
 
     [DataField]
     public Dictionary<ProtoId<LoadoutGroupPrototype>, List<Loadout>> SelectedLoadouts = new();
+
+    // Kept independently of selections, including items that were deselected.
+    [DataField]
+    public Dictionary<string, PersonalLoadoutCustomization> Customizations = new();
 
     /// <summary>
     /// Loadout specific name.
@@ -48,6 +53,7 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
         }
 
         weh.EntityName = EntityName;
+        weh.Customizations = new(Customizations);
 
         return weh;
     }
@@ -59,6 +65,11 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
     {
         var groupRemove = new ValueList<string>();
         var protoManager = collection.Resolve<IPrototypeManager>();
+        foreach (var selected in SelectedLoadouts.Values.SelectMany(items => items))
+            if (selected.Customization != null) Customizations.TryAdd(selected.Prototype.Id, selected.Customization);
+        Customizations = Customizations.Where(entry => protoManager.TryIndex<LoadoutPrototype>(entry.Key, out _))
+            .Take(2000).ToDictionary(entry => entry.Key, entry => collection.Resolve<IEntityManager>()
+                .System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().Sanitize(protoManager.Index<LoadoutPrototype>(entry.Key), entry.Value)!);
 
         if (!protoManager.TryIndex(Role, out var roleProto))
         {
@@ -347,6 +358,13 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
 
         var valid = true;
 
+        if (collection.Resolve<IEntityManager>().System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>()
+            .IsOverridden(profile, Role, loadoutProto, session))
+        {
+            reason = FormattedMessage.FromUnformatted(Loc.GetString("dl-loadout-replaced"));
+            return false;
+        }
+
         foreach (var effect in loadoutProto.Effects)
         {
             valid = valid && effect.Validate(profile, this, session, collection, out reason);
@@ -427,6 +445,7 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
         groupLoadouts.Add(new Loadout()
         {
             Prototype = selectedLoadout,
+            Customization = Customizations.GetValueOrDefault(selectedLoadout.Id),
         });
 
         return true;
@@ -463,7 +482,8 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
         if (!Role.Equals(other.Role) ||
             SelectedLoadouts.Count != other.SelectedLoadouts.Count ||
             Points != other.Points ||
-            EntityName != other.EntityName)
+            EntityName != other.EntityName || Customizations.Count != other.Customizations.Count ||
+            Customizations.Any(entry => !other.Customizations.TryGetValue(entry.Key, out var value) || !entry.Value.Equals(value)))
         {
             return false;
         }

@@ -26,6 +26,8 @@ public sealed class GameWebView : Control
     private bool _messageDispatchPending;
     private bool _explicitTextInput;
     private readonly bool _suspendWhenHidden;
+    private readonly bool _chat;
+    private readonly NativeChatBackground? _background;
     public bool BrowserActive => _view.IsInsideTree;
     public bool IsReady => _ready;
     public event Action<string, string>? Message;
@@ -70,8 +72,14 @@ public sealed class GameWebView : Control
 
     public GameWebView(bool chat = false, bool suspendWhenHidden = false)
     {
+        _chat = chat;
         _suspendWhenHidden = suspendWhenHidden;
         HorizontalExpand = VerticalExpand = true;
+        if (chat)
+        {
+            _background = new NativeChatBackground();
+            AddChild(_background);
+        }
 #if DEBUG
         _devOrigin = TguiDevelopmentPolicy.GetOrigin(IoCManager.Resolve<IConfigurationManager>().GetCVar(WebUiCVars.DevServer));
 #endif
@@ -87,6 +95,9 @@ public sealed class GameWebView : Control
         {
             HorizontalExpand = true,
             VerticalExpand = true,
+            // Reading or scrolling chat must not consume gameplay keys.
+            // Editable DOM controls request keyboard focus through the bridge.
+            KeyboardFocusOnClick = !_chat,
             Url = _documentUrl
         };
         view.AddBeforeBrowseHandler(BeforeBrowse);
@@ -145,6 +156,7 @@ public sealed class GameWebView : Control
     public void Reload()
     {
         _ready = false;
+        _background?.Reset();
         _outgoing.Clear();
         _view.Reload();
     }
@@ -203,9 +215,30 @@ public sealed class GameWebView : Control
                     _view.Arrange(UIBox2.FromDimensions(System.Numerics.Vector2.Zero, Size + System.Numerics.Vector2.One));
                     InvalidateArrange();
                     _ready = true;
+                    if (_background != null)
+                        _view.ExecuteJavaScript("window.__deeplagoonNativeBackground = true; window.dispatchEvent(new Event('deeplagoon/native-background'));");
                     while (_outgoing.TryDequeue(out var queued))
                         Dispatch(queued);
                     Ready?.Invoke();
+                    break;
+                case "native-background":
+                    _background?.Configure(payload);
+                    break;
+                case "chat-input-focus":
+                    if (!_chat || !VisibleInTree || !_view.IsInsideTree ||
+                        !TguiActionData.TryParse(payload, out var focus)) break;
+                    if (focus!.String("active") == "true")
+                    {
+                        FocusInput();
+                        _explicitTextInput = true;
+                        _view.Root?.Window?.TextInputStart();
+                    }
+                    else if (focus.String("active") == "false")
+                    {
+                        ReleaseTextInput();
+                        // Do not release another window's focus (e.g. the composer).
+                        _view.ReleaseKeyboardFocus();
+                    }
                     break;
                 default:
                     Message?.Invoke(type, payload);
@@ -219,6 +252,7 @@ public sealed class GameWebView : Control
         base.ExitedTree();
         if (_suspendWhenHidden && !_disposed) SuspendBrowser();
         _ready = false;
+        _background?.Reset();
         _outgoing.Clear();
         while (_incoming.TryDequeue(out _)) { }
     }
@@ -229,6 +263,7 @@ public sealed class GameWebView : Control
         if (!_suspendWhenHidden || VisibleInTree || _view.Parent == null) return;
         SuspendBrowser();
         _ready = false;
+        _background?.Reset();
         _outgoing.Clear();
         while (_incoming.TryDequeue(out _)) { }
     }

@@ -31,15 +31,11 @@ public sealed class TguiSpriteImages
         };
         try
         {
-            var rectangle = new Rectangle();
             var packed = false;
             if (!resources.TryContentFileRead(path, out var stream) && spec is SpriteSpecifier.Rsi packedRsi)
             {
                 var root = new ResPath("/Textures") / packedRsi.RsiPath;
                 stream = resources.ContentFileRead(root.WithExtension("rsic"));
-                var state = resources.GetResource<RSIResource>(root).RSI[packedRsi.RsiState];
-                var region = ((AtlasTexture) state.Frame0).SubRegion;
-                rectangle = new Rectangle((int) region.Left, (int) region.Top, (int) region.Width, (int) region.Height);
                 packed = true;
             }
             if (stream == null) return _frames[spec] = "";
@@ -48,15 +44,20 @@ public sealed class TguiSpriteImages
             using var output = new MemoryStream();
             if (spec is SpriteSpecifier.Rsi rsi)
             {
+                if (packed)
+                    return _frames[spec] = PackedFrame(image, rsi.RsiState);
                 var size = resources.GetResource<RSIResource>(new ResPath("/Textures") / rsi.RsiPath).RSI.Size;
-                using var frame = image.Clone(context => context.Crop(packed ? rectangle : new Rectangle(0, 0, size.X, size.Y)));
+                using var frame = image.Clone(context => context.Crop(new Rectangle(0, 0, size.X, size.Y)));
                 frame.SaveAsPng(output);
             }
             else image.SaveAsPng(output);
             return _frames[spec] = "data:image/png;base64," + Convert.ToBase64String(output.ToArray());
         }
-        catch (Exception) { return _frames[spec] = ""; }
+        catch (Exception) { return ""; }
     }
+
+    public static string PackedFrame(Image<Rgba32> image, string stateName) =>
+        DeepLagoonPackedSpriteFrames.ReadFrame(image, stateName);
 
     public IEnumerable<TguiData> EntityImages(EntityUid entity)
     {

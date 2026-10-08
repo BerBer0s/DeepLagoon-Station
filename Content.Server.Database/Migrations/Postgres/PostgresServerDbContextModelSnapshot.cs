@@ -1105,6 +1105,10 @@ namespace Content.Server.Database.Migrations.Postgres
 
             modelBuilder.Entity("Content.Server.Database.ProfileRoleLoadout", b =>
                 {
+                    b.Property<string>("Customizations")
+                        .HasColumnType("text")
+                        .HasColumnName("customizations");
+
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

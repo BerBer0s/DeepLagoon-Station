@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <_DeepLagoonProjectParent>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../'))</_DeepLagoonProjectParent>
+    <_DeepLagoonRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)/../'))</_DeepLagoonRoot>
+  </PropertyGroup>
+  <!-- A shared project dependency lets MSBuild build the bundles once, even with /m.
+       Only content projects directly below the repository root participate. -->
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj' and
+                        '$(MSBuildProjectName)' != 'DeepLagoon.TGUI' and
+                        '$(_DeepLagoonProjectParent)' == '$(_DeepLagoonRoot)'">
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <_DeepLagoonBuildTgui>true</_DeepLagoonBuildTgui>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(_DeepLagoonBuildTgui)' == 'true'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)../TGUI/DeepLagoon.TGUI.csproj"
+                      ReferenceOutputAssembly="false" Private="false"
+                      SkipGetTargetFrameworkProperties="true"
+                      AdditionalProperties="Configuration=Debug;Platform=AnyCPU"
+                      GlobalPropertiesToRemove="TargetFramework;RuntimeIdentifier;RuntimeIdentifiers;SelfContained;OutputPath;IntermediateOutputPath;FullRelease" />
+  </ItemGroup>
+</Project>

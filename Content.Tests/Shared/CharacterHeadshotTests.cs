@@ -14,6 +14,16 @@ namespace Content.Tests.Shared;
 [TestFixture]
 public sealed class CharacterHeadshotTests
 {
+    [TestCase(0, false, 1, 1)]
+    [TestCase(0, true, 2, 2)]
+    [TestCase(1, false, 2, 2)]
+    [TestCase(2, false, 3, 5)]
+    [TestCase(3, false, 4, 10)]
+    public void HeadshotSlotsFollowSupporterTier(int tier, bool booster, int active, int library)
+    {
+        Assert.That(Content.Shared._DeepLagoon.CharacterInfo.HeadshotLimits.ActiveSlots(tier, booster), Is.EqualTo(active));
+        Assert.That(Content.Shared._DeepLagoon.CharacterInfo.HeadshotLimits.LibrarySlots(tier, booster), Is.EqualTo(library));
+    }
     [TestCase(true)]
     [TestCase(false)]
     public void NotesAndHeadshotMigrationMatchesModel(bool postgres)
@@ -64,4 +74,40 @@ public sealed class CharacterHeadshotTests
         Assert.That(clone.OocNotes,Is.EqualTo(profile.OocNotes));Assert.That(clone.HeadshotId,Is.EqualTo(profile.HeadshotId));Assert.That(clone.FlavorText,Is.EqualTo(profile.FlavorText));
         Assert.That(profile.MemberwiseEquals(profile.WithOocNotes("other")),Is.False);
     }
+
+    [Test]
+    public void SponsorCanUploadAnimatedGifWithBoundedDecodedSize()
+    {
+        using var animated = new Image<Rgba32>(16, 16);
+        animated.Frames.AddFrame(animated.Frames.RootFrame);
+        using var gif = new MemoryStream(); animated.SaveAsGif(gif);
+        Assert.Throws<InvalidDataException>(() => HeadshotSystem.Validate(gif.ToArray()));
+        Assert.That(HeadshotSystem.Validate(gif.ToArray(), extended: true), Is.EqualTo("image/gif"));
+        using var oversizedAnimation = new Image<Rgba32>(16, 16);
+        for (var i = 0; i < 300; i++) oversizedAnimation.Frames.AddFrame(oversizedAnimation.Frames.RootFrame);
+        using var hugeGif = new MemoryStream(); oversizedAnimation.SaveAsGif(hugeGif);
+        Assert.Throws<InvalidDataException>(() => HeadshotSystem.Validate(hugeGif.ToArray(), extended: true));
+    }
+
+    [Test]
+    public void SponsorGetsFiveMegabyteFileLimit()
+    {
+        using var image = new Image<Rgba32>(8, 8);
+        using var png = new MemoryStream(); image.SaveAsPng(png);
+        // Trailing bytes are legal for the decoder; exercise the independent file-size policy.
+        var larger = new byte[1024 * 1024 + 1]; png.ToArray().CopyTo(larger, 0);
+        Assert.Throws<InvalidDataException>(() => HeadshotSystem.Validate(larger));
+        Assert.That(HeadshotSystem.Validate(larger, extended: true), Is.EqualTo("image/png"));
+        Assert.Throws<InvalidDataException>(() => HeadshotSystem.Validate(new byte[5 * 1024 * 1024 + 1], extended: true));
+    }
+
+    [TestCase(false, 0, 0)]
+    [TestCase(true, 0, 3)]
+    [TestCase(false, 1, 6)]
+    [TestCase(true, 1, 6)]
+    [TestCase(false, 2, 9)]
+    [TestCase(true, 2, 9)]
+    [TestCase(false, 3, 12)]
+    public void SupporterPointBonusFollowsHierarchy(bool booster, int tier, int expected)
+        => Assert.That(Content.Shared._DeepLagoon.DiscordLink.SharedDiscordBoostSystem.LoadoutPointBonus(booster, tier), Is.EqualTo(expected));
 }

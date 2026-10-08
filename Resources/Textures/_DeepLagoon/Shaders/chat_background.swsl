@@ -1,0 +1,98 @@
+light_mode unshaded;
+
+uniform highp int mode;
+uniform highp float intensity;
+uniform highp float reduced;
+uniform highp vec2 origin;
+uniform highp vec2 size;
+uniform highp float ui_scale;
+uniform lowp vec4 background;
+
+// Native equivalents of the chat presets. One quad, no textures to regenerate,
+// no screen-texture reads, and no browser frames for background movement.
+highp float dotTile(highp vec2 p, highp vec2 tile, highp vec2 center, highp vec2 radius, highp vec2 offset) {
+    highp vec2 q = mod(p - offset, tile) - center * tile;
+    return max(0.0, 1.0 - length(q / radius));
+}
+
+lowp vec4 over(lowp vec4 front, lowp vec4 back) {
+    highp float a = front.a + back.a * (1.0 - front.a);
+    return vec4((front.rgb * front.a + back.rgb * back.a * (1.0 - front.a)) / max(a, 0.0001), a);
+}
+
+void fragment() {
+    highp vec2 screen = vec2(FRAGCOORD.x, 1.0 / SCREEN_PIXEL_SIZE.y - FRAGCOORD.y);
+    highp vec2 p = (screen - origin) / ui_scale;
+    highp vec2 uv = p / max(size, vec2(1.0));
+    highp float t = TIME * (1.0 - reduced);
+    lowp vec4 effect = vec4(0.0);
+    if (mode == 1) {
+        // Cosmos: nine tiled star layers, with their original sizes and speeds.
+        highp float f = mod(t, 100.0) / 100.0;
+        highp float stars =
+            dotTile(p, vec2(200.0,200.0), vec2(0.10,0.25), vec2(1.0), vec2(-200.0,200.0)*f)*0.9 +
+            dotTile(p, vec2(250.0,220.0), vec2(0.40,0.70), vec2(1.0), vec2(250.0,-220.0)*f)*0.8 +
+            dotTile(p, vec2(220.0,250.0), vec2(0.65,0.15), vec2(1.0), vec2(-220.0,-250.0)*f)*0.8 +
+            dotTile(p, vec2(180.0,240.0), vec2(0.85,0.55), vec2(1.0), vec2(180.0,240.0)*f)*0.7 +
+            dotTile(p, vec2(350.0,300.0), vec2(0.20,0.50), vec2(1.5), vec2(-350.0,300.0)*f)*0.7 +
+            dotTile(p, vec2(300.0,350.0), vec2(0.55,0.80), vec2(1.5), vec2(300.0,-350.0)*f)*0.7 +
+            dotTile(p, vec2(320.0,280.0), vec2(0.80,0.20), vec2(1.5), vec2(-320.0,280.0)*f)*0.6 +
+            dotTile(p, vec2(500.0,450.0), vec2(0.30,0.40), vec2(2.0), vec2(500.0,450.0)*f)*0.6 +
+            dotTile(p, vec2(450.0,500.0), vec2(0.70,0.75), vec2(2.0), vec2(-450.0,-500.0)*f)*0.5;
+        effect = vec4(0.88,0.94,1.0,min(stars,1.0));
+    } else if (mode == 2) {
+        highp vec2 drift = vec2(sin(t*0.09),cos(t*0.07))*0.3;
+        highp float a = max(0.0,1.0-length((uv-vec2(0.2,0.3)-drift)/vec2(0.6,0.5)))*0.2;
+        highp float b = max(0.0,1.0-length((uv-vec2(0.8,0.7)+drift)/vec2(0.5,0.6)))*0.18;
+        highp float c = max(0.0,1.0-length((uv-vec2(0.5,0.5)-drift.yx)/vec2(0.55,0.45)))*0.15;
+        effect = over(vec4(0.55,0.20,1.0,a),over(vec4(0.20,0.47,1.0,b),vec4(1.0,0.20,0.59,c)));
+    } else if (mode == 3) {
+        highp float a = max(0.0,1.0-mod(p.y-t*20.0,18.0)/3.0)*0.2;
+        highp float b = max(0.0,1.0-mod(p.y-t*28.0,28.0)/2.0)*0.15;
+        highp float c = max(0.0,1.0-mod(p.y-t*42.0,42.0)/4.0)*0.1;
+        effect = vec4(0.0,1.0,0.28,min(1.0,a+b+c));
+    } else if (mode == 4) {
+        highp float x = uv.x*0.5 + uv.y*0.2 + sin(t*0.13)*0.3;
+        highp float band = max(0.0,1.0-abs(x-0.5)*3.0)*0.18;
+        effect = vec4(mix(vec3(0.0,1.0,0.47),vec3(0.39,0.0,1.0),clamp(x,0.0,1.0)),band);
+    } else if (mode == 5) {
+        highp float scale = 1.25 - 0.75*cos(t*1.256637);
+        highp float r = length((uv-0.5)/scale);
+        highp float a = r < 0.2 ? mix(0.35,0.15,r/0.2) : (r < 0.4 ? mix(0.15,0.05,(r-0.2)/0.2) : max(0.0,0.05*(0.6-r)/0.2));
+        effect = vec4(0.39,0.55,1.0,a);
+    } else if (mode == 6) {
+        highp float wave = max(0.0,1.0-abs(mod((uv.x+uv.y)*5.0+sin(t*0.157),1.0)-0.5)*2.0);
+        effect = vec4(0.0,0.59,0.86,wave*0.12);
+    } else if (mode == 7 || mode == 8 || mode == 11) {
+        highp vec2 offset;
+        lowp vec3 tint;
+        highp vec2 radius;
+        if (mode == 7) {
+            offset = vec2(sin(t*0.105)*70.0,cos(t*0.105)*60.0);
+            tint = vec3(1.0,0.86,0.39); radius = vec2(3.0);
+        } else if (mode == 8) {
+            offset = vec2(t*6.94,t*16.67);
+            tint = vec3(1.0,0.70,0.78); radius = vec2(4.0,3.0);
+        } else {
+            offset = vec2(0.0,-t*37.5);
+            tint = vec3(1.0,0.49,0.15); radius = vec2(2.0);
+        }
+        highp float particles =
+            dotTile(p,vec2(250.0,300.0),vec2(0.20,0.30),radius,offset)*0.7 +
+            dotTile(p,vec2(300.0,250.0),vec2(0.45,0.10),radius.yx,offset*1.2)*0.6 +
+            dotTile(p,vec2(200.0,350.0),vec2(0.70,0.50),radius,offset*0.9)*0.6 +
+            dotTile(p,vec2(350.0,280.0),vec2(0.90,0.20),radius,offset*1.1)*0.5 +
+            dotTile(p,vec2(280.0,320.0),vec2(0.10,0.70),radius.yx,offset*1.3)*0.6 +
+            dotTile(p,vec2(320.0,260.0),vec2(0.55,0.85),radius,offset*0.8)*0.5;
+        effect = vec4(tint,min(1.0,particles));
+    } else if (mode == 9) {
+        highp float phase = uv.x*0.25+uv.y*0.25+0.375*(1.0-cos(t*0.418879));
+        effect = vec4(0.5+0.5*cos(6.283185*(phase+vec3(0.0,0.33,0.67))),0.15);
+    } else if (mode == 10) {
+        highp float stripe = mod(p.x*0.9659+p.y*0.2588-t*24.495,10.0);
+        highp float stripe2 = mod(p.x*0.9848+p.y*0.1736-t*35.42,18.0);
+        effect = vec4(0.59,0.78,1.0,max(0.0,1.0-stripe)*0.18+max(0.0,1.0-stripe2/2.0)*0.12);
+    }
+    effect.a *= intensity;
+    COLOR = over(effect, background);
+}
