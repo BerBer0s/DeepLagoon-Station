@@ -53,5 +53,5 @@
   textarea {width:100%;height:50vh;resize:vertical;background:var(--player-surface);color:inherit;}
 }
 .CharacterEditor.theme-light {input,.Dropdown__control,.Dropdown__menu {color:#171c24;background:#ddd;}small {color:#333;}}
-.CharacterEditor--save {display:block;overflow:auto;}
+.CharacterEditor--save {display:block;overflow:hidden;}
 .CharacterEditor__tiles .CharacterEditor__sprite {background:#89919d;border-radius:3px;}
