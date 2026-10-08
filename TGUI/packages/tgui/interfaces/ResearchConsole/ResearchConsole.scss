@@ -3,7 +3,6 @@ $radius: 6px;
 $icon-size: 64px;
 $badge-size: 20px;
 $fade-duration: 0.12s;
-$smooth-duration: 0.22s;
 
 .ResearchConsole {
   --rc-border: #68788a;
@@ -66,11 +65,15 @@ $smooth-duration: 0.22s;
     left: 0;
     transform-origin: 0 0;
 
-    &--smooth {
-      transition: transform $smooth-duration ease-out;
+    // Promoted to its own layer only while the camera moves (see useTreeCamera).
+    &--moving {
+      will-change: transform;
     }
 
-    &[data-lod='far'] .TechNode__text {
+    &[data-lod='far'] .TechNode__text,
+    &[data-lod='tiny'] .TechNode__text,
+    &[data-lod='tiny'] .TechNode__icon,
+    &[data-lod='tiny'] .TechNode__badge {
       display: none;
     }
   }
@@ -91,7 +94,6 @@ $smooth-duration: 0.22s;
     &--locked {
       stroke: color-mix(in srgb, currentcolor 35%, transparent);
       stroke-width: 1.5;
-      stroke-dasharray: 4 4;
     }
 
     &--open {
