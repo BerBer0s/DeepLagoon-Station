@@ -95,9 +95,9 @@ public sealed class GameWebView : Control
         {
             HorizontalExpand = true,
             VerticalExpand = true,
-            // Reading or scrolling chat must not consume gameplay keys.
-            // Editable DOM controls request keyboard focus through the bridge.
-            KeyboardFocusOnClick = !_chat,
+            // Stock WebView delivers mouse clicks through keyboard-focused raw
+            // input. The chat bridge releases focus after non-editable clicks.
+            KeyboardFocusOnClick = true,
             Url = _documentUrl
         };
         view.AddBeforeBrowseHandler(BeforeBrowse);
