@@ -64,7 +64,6 @@ type TechNodeProps = {
   fx: 'snap' | 'wake' | null;
   color: string;
   labels: Record<string, string>;
-  onActivate: (id: string) => void;
 };
 
 export const TechNode = memo(function TechNode({
@@ -79,7 +78,6 @@ export const TechNode = memo(function TechNode({
   fx,
   color,
   labels,
-  onActivate,
 }: TechNodeProps) {
   const style = {
     left: node.x,
@@ -99,7 +97,6 @@ export const TechNode = memo(function TechNode({
       }
       data-id={tech.id}
       style={style}
-      onClick={() => onActivate(tech.id)}
     >
       <TechIcon id={tech.id} />
       <div className="TechNode__text">

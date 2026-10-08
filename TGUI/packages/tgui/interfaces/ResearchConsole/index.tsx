@@ -21,11 +21,11 @@ import { TechTree } from './TechTree';
 import { useResearchFx } from './useResearchFx';
 import { buildTree } from './tree';
 
-// A second click this soon after the first is taken for a double click, not for a confirmation.
-const CONFIRM_GUARD_MS = 300;
-
-// The same research request is not repeated within this time; the server answers by then.
+// The same research request is repeated only after the technology states change, or after this
+// time if the server never answered.
 const REQUEST_REPEAT_MS = 1000;
+
+type Request = { id: string; states: Map<string, TechState>; at: number };
 
 // Left mouse button drags are reserved for panning, so the browser must not
 // start text selection or image dragging. Text fields keep their behavior.
@@ -70,17 +70,18 @@ export const ResearchConsole = () => {
   // The first click on a technology selects it, the second one on the same technology researches
   // it. The callbacks read the latest values from a ref so that the nodes keep their props.
   const [attention, setAttention] = useState(0);
-  const selectedAt = useRef(0);
-  const lastRequest = useRef({ id: '', at: -REQUEST_REPEAT_MS });
+  const lastRequest = useRef<Request | null>(null);
   const latest = useRef({ selectedId, stateById, hasAccess: data.hasAccess === true });
   useEffect(() => {
     latest.current = { selectedId, stateById, hasAccess: data.hasAccess === true };
   });
 
+  // The selection is also written to the ref at once: a second click that arrives before React has
+  // rendered the first one must see the selected technology, or it would select it again.
   const select = useCallback((id: string | null) => {
+    latest.current.selectedId = id;
     setSelectedId(id);
     setAttention(0);
-    selectedAt.current = performance.now();
   }, []);
 
   const onActivate = useCallback(
@@ -90,18 +91,15 @@ export const ResearchConsole = () => {
         select(id);
         return;
       }
-      if (performance.now() - selectedAt.current < CONFIRM_GUARD_MS) {
+      if (states.get(id) !== 'available' || !hasAccess) {
+        setAttention((count) => count + 1);
         return;
       }
-      if (states.get(id) === 'available' && hasAccess) {
-        const now = performance.now();
-        const { id: lastId, at } = lastRequest.current;
-        if (lastId !== id || now - at >= REQUEST_REPEAT_MS) {
-          lastRequest.current = { id, at: now };
-          act('research', { id });
-        }
-      } else {
-        setAttention((count) => count + 1);
+      const now = performance.now();
+      const last = lastRequest.current;
+      if (!last || last.id !== id || last.states !== states || now - last.at >= REQUEST_REPEAT_MS) {
+        lastRequest.current = { id, states, at: now };
+        act('research', { id });
       }
     },
     [act, select],

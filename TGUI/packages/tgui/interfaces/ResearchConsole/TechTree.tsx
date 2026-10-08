@@ -98,7 +98,7 @@ export const TechTree = ({
   const camera = useTreeCamera({
     tree,
     initialCamera: (size) => homeCamera(tree, statesRef.current, size),
-    onBackgroundClick: () => onSelect(null),
+    onClick: (id) => (id ? onActivate(id) : onSelect(null)),
   });
   const { rendered } = camera;
 
@@ -215,7 +215,6 @@ export const TechTree = ({
                 fx={nodeFx(fx, node.id)}
                 color={disciplineColors.get(tech.discipline) ?? '#888888'}
                 labels={labels}
-                onActivate={onActivate}
               />
             )
           );

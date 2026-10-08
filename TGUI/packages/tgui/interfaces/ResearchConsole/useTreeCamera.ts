@@ -3,7 +3,6 @@
 // the view leaves the already rendered region.
 
 import {
-  type MouseEvent,
   type PointerEvent,
   type RefObject,
   useCallback,
@@ -55,13 +54,19 @@ type Drag = {
   startY: number;
   origin: Camera;
   active: boolean;
+  /** The technology under the pointer when it went down, or null for the background. */
+  targetId: string | null;
 };
+
+const nodeIdAt = (target: EventTarget | null) =>
+  (target as Element | null)?.closest<HTMLElement>('.TechNode')?.dataset.id ?? null;
 
 type TreeCameraOptions = {
   tree: TreeModel;
   /** The camera for the first view; called once the viewport has a real size. */
   initialCamera: (size: Size) => Camera;
-  onBackgroundClick: () => void;
+  /** A press and release without a drag in between; `id` is null on the background. */
+  onClick: (id: string | null) => void;
 };
 
 export type TreeCamera = {
@@ -74,7 +79,6 @@ export type TreeCamera = {
     onPointerMove: (event: PointerEvent<HTMLDivElement>) => void;
     onPointerUp: (event: PointerEvent<HTMLDivElement>) => void;
     onPointerCancel: (event: PointerEvent<HTMLDivElement>) => void;
-    onClick: (event: MouseEvent<HTMLDivElement>) => void;
   };
   moveTo: (camera: Camera, smooth: boolean) => void;
   zoomBy: (factor: number) => void;
@@ -86,7 +90,7 @@ export type TreeCamera = {
 export const useTreeCamera = ({
   tree,
   initialCamera,
-  onBackgroundClick,
+  onClick,
 }: TreeCameraOptions): TreeCamera => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
@@ -95,19 +99,18 @@ export const useTreeCamera = ({
   const treeRef = useRef(tree);
   const renderedRef = useRef<Rect | null>(null);
   const dragRef = useRef<Drag | null>(null);
-  const justDraggedRef = useRef(false);
   const initializedRef = useRef(false);
   const smoothRef = useRef(false);
   const frameRef = useRef<number | null>(null);
   const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moveEndRef = useRef<((event: TransitionEvent) => void) | null>(null);
   const initialCameraRef = useRef(initialCamera);
-  const backgroundClickRef = useRef(onBackgroundClick);
+  const clickRef = useRef(onClick);
   const [rendered, setRendered] = useState<Rect | null>(null);
 
   useLayoutEffect(() => {
     initialCameraRef.current = initialCamera;
-    backgroundClickRef.current = onBackgroundClick;
+    clickRef.current = onClick;
   });
 
   const syncCulling = useCallback((view: Rect) => {
@@ -296,23 +299,22 @@ export const useTreeCamera = ({
     [cancelFrame],
   );
 
-  const endDrag = (event: PointerEvent<HTMLDivElement>) => {
+  const releaseDrag = (event: PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) {
-      return;
+      return null;
     }
     dragRef.current = null;
     if (drag.active) {
-      justDraggedRef.current = true;
       event.currentTarget.classList.remove('ResearchTree--dragging');
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
     }
+    return drag;
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    justDraggedRef.current = false;
     if (
       event.button !== 0 ||
       (event.target as Element).closest('.ResearchTree__toolbar')
@@ -326,7 +328,18 @@ export const useTreeCamera = ({
       startY: event.clientY,
       origin: cameraRef.current,
       active: false,
+      targetId: nodeIdAt(event.target),
     };
+  };
+
+  // A click is a press and a release on the same technology (or on the background) without a drag
+  // in between. It is not taken from the `click` event: that one is lost when the node under the
+  // pointer is re-rendered between the press and the release.
+  const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = releaseDrag(event);
+    if (drag && !drag.active && nodeIdAt(event.target) === drag.targetId) {
+      clickRef.current(drag.targetId);
+    }
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -335,7 +348,7 @@ export const useTreeCamera = ({
       return;
     }
     if ((event.buttons & 1) === 0) {
-      endDrag(event);
+      releaseDrag(event);
       return;
     }
     const dx = event.clientX - drag.startX;
@@ -350,16 +363,6 @@ export const useTreeCamera = ({
       event.currentTarget.classList.add('ResearchTree--dragging');
     }
     setCamera({ ...drag.origin, x: drag.origin.x + dx, y: drag.origin.y + dy });
-  };
-
-  const onClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (justDraggedRef.current) {
-      justDraggedRef.current = false;
-      return;
-    }
-    if (!(event.target as Element).closest('.TechNode, .ResearchTree__toolbar')) {
-      backgroundClickRef.current();
-    }
   };
 
   const zoomBy = (factor: number) => {
@@ -377,9 +380,8 @@ export const useTreeCamera = ({
     viewportProps: {
       onPointerDown,
       onPointerMove,
-      onPointerUp: endDrag,
-      onPointerCancel: endDrag,
-      onClick,
+      onPointerUp,
+      onPointerCancel: releaseDrag,
     },
     moveTo: setCamera,
     zoomBy,
