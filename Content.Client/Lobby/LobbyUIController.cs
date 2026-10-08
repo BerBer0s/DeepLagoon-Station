@@ -314,7 +314,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
 
         _savePanel = new CharacterSetupGuiSavePanel();
 
-        _savePanel.SaveButton.OnPressed += _ =>
+        _savePanel.SaveRequested += () =>
         {
             SaveProfile();
 
@@ -323,7 +323,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
             CloseProfileEditor();
         };
 
-        _savePanel.NoSaveButton.OnPressed += _ =>
+        _savePanel.DiscardRequested += () =>
         {
             _savePanel.Close();
 
@@ -359,7 +359,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
 
         _characterSetup = new CharacterSetupGui(_profileEditor);
 
-        _characterSetup.CloseButton.OnPressed += _ =>
+        _characterSetup.CloseRequested += () =>
         {
             // Open the save panel if we have unsaved changes.
             if (_profileEditor.Profile != null && _profileEditor.IsDirty)

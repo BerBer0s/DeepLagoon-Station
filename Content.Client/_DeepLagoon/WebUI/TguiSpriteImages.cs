@@ -1,0 +1,93 @@
+using System.IO;
+using System.Linq;
+using Content.Shared._DeepLagoon.Loadouts;
+using Robust.Client.GameObjects;
+using Robust.Client.Graphics;
+using Robust.Client.ResourceManagement;
+using Robust.Shared.Prototypes;
+using Robust.Shared.Utility;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using Color = Robust.Shared.Maths.Color;
+
+namespace Content.Client._DeepLagoon.WebUI;
+
+/// <summary>Read first sprite frames from packaged resources, without GPU readbacks.</summary>
+public sealed class TguiSpriteImages
+{
+    private readonly Dictionary<SpriteSpecifier, string> _frames = new();
+    private readonly Dictionary<string, List<TguiData>> _items = new();
+
+    public string Frame(SpriteSpecifier spec)
+    {
+        if (_frames.TryGetValue(spec, out var cached)) return cached;
+        var resources = IoCManager.Resolve<IResourceCache>();
+        var path = spec switch
+        {
+            SpriteSpecifier.Rsi rsi => new ResPath("/Textures") / rsi.RsiPath / (rsi.RsiState + ".png"),
+            SpriteSpecifier.Texture texture => new ResPath("/Textures") / texture.TexturePath,
+            _ => new ResPath("/Textures/noSprite.png")
+        };
+        try
+        {
+            var rectangle = new Rectangle();
+            var packed = false;
+            if (!resources.TryContentFileRead(path, out var stream) && spec is SpriteSpecifier.Rsi packedRsi)
+            {
+                var root = new ResPath("/Textures") / packedRsi.RsiPath;
+                stream = resources.ContentFileRead(root.WithExtension("rsic"));
+                var state = resources.GetResource<RSIResource>(root).RSI[packedRsi.RsiState];
+                var region = ((AtlasTexture) state.Frame0).SubRegion;
+                rectangle = new Rectangle((int) region.Left, (int) region.Top, (int) region.Width, (int) region.Height);
+                packed = true;
+            }
+            if (stream == null) return _frames[spec] = "";
+            using var input = stream;
+            using var image = Image.Load<Rgba32>(stream);
+            using var output = new MemoryStream();
+            if (spec is SpriteSpecifier.Rsi rsi)
+            {
+                var size = resources.GetResource<RSIResource>(new ResPath("/Textures") / rsi.RsiPath).RSI.Size;
+                using var frame = image.Clone(context => context.Crop(packed ? rectangle : new Rectangle(0, 0, size.X, size.Y)));
+                frame.SaveAsPng(output);
+            }
+            else image.SaveAsPng(output);
+            return _frames[spec] = "data:image/png;base64," + Convert.ToBase64String(output.ToArray());
+        }
+        catch (Exception) { return _frames[spec] = ""; }
+    }
+
+    public IEnumerable<TguiData> EntityImages(EntityUid entity)
+    {
+        var entities = IoCManager.Resolve<IEntityManager>();
+        if (!entities.TryGetComponent<SpriteComponent>(entity, out var sprite)) yield break;
+        Color? tint = entities.TryGetComponent<AppearanceComponent>(entity, out var appearance) &&
+            entities.System<SharedAppearanceSystem>().TryGetData<Color>(entity, PersonalLoadoutVisuals.Color, out var color, appearance) ? color : null;
+        foreach (var image in SpriteImages(sprite, tint)) yield return image;
+    }
+
+    private IEnumerable<TguiData> SpriteImages(SpriteComponent sprite, Color? tint = null)
+    {
+        foreach (var layer in sprite.AllLayers.Where(layer => layer.Visible && layer.ActualRsi != null && layer.RsiState.IsValid))
+            yield return new TguiData().String("url", Frame(new SpriteSpecifier.Rsi(layer.ActualRsi!.Path, layer.RsiState.Name!)))
+                .String("color", (layer.Color * (tint ?? sprite.Color)).ToHexNoAlpha());
+    }
+
+    public IEnumerable<TguiData> Item(string id)
+    {
+        if (_items.TryGetValue(id, out var cached)) return cached;
+        var result = new List<TguiData>();
+        var prototypes = IoCManager.Resolve<IPrototypeManager>();
+        if (prototypes.Index<EntityPrototype>(id).TryGetComponent<IconComponent>(out var icon))
+            result.Add(new TguiData().String("url", Frame(icon.Icon)).String("color", "#ffffff"));
+        else if (prototypes.Index<EntityPrototype>(id).TryGetComponent<SpriteComponent>(out var sprite))
+        {
+            // Prototypes already deserialize sprite layers. Starting arbitrary
+            // catalogue entities also starts their gameplay systems and can fail.
+            result.AddRange(SpriteImages(sprite));
+        }
+        _items[id] = result;
+        return result;
+    }
+}

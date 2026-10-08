@@ -714,7 +714,7 @@ namespace Content.Shared.Preferences
                 .ToList();
 
             var traits = TraitPreferences
-                         .Where(prototypeManager.HasIndex)
+                         .Where(id => prototypeManager.TryIndex(id, out var trait) && !trait.Disabled)
                          .ToList();
 
             Name = name;

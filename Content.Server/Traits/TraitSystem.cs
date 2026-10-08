@@ -41,6 +41,9 @@ public sealed partial class TraitSystem : EntitySystem
                 return;
             }
 
+            if (traitPrototype.Disabled)
+                continue;
+
             if (_whitelistSystem.IsWhitelistFail(traitPrototype.Whitelist, args.Mob) ||
                 _whitelistSystem.IsBlacklistPass(traitPrototype.Blacklist, args.Mob))
                 continue;

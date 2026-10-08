@@ -123,6 +123,7 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
 
     private void Rebuild()
     {
+        if (TguiMode) return;
         if (_refreshing)
             return;
         _refreshing = true;

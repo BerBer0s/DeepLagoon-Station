@@ -1,5 +1,5 @@
 .CharacterEditor {
-  box-sizing: border-box; height: 100vh; overflow-y: auto; padding: 10px;
+  box-sizing: border-box; height: 100vh; overflow: hidden; display:flex; gap:10px; padding: 10px;
   background: #2f2f35; color: #ddd; font-family: Arial, sans-serif; font-size: 13px;
   container-type: inline-size;
   input { box-sizing: border-box; width: 100%; min-width: 0; padding: 5px; color: #eee; background: #25252d; border: 1px solid #646473; border-radius: 2px; }
@@ -32,3 +32,26 @@
 }
 @container (min-width: 600px) { .CharacterEditor__hair { grid-template-columns: 1fr 1fr; } }
 @container (max-width: 350px) { .CharacterEditor__job { grid-template-columns: 1fr auto; > :first-child { grid-column: 1 / -1; } } }
+
+.CharacterEditor {
+  &__preview {width:260px;flex:0 0 260px;display:flex;flex-direction:column;min-height:0;}
+  &__previewSpace {height:340px;flex-shrink:0;}
+  &__rotation {display:flex;justify-content:center;gap:8px;flex-shrink:0;}
+  &__slots {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;overflow:auto;min-height:0;margin-top:12px;
+    button {border:1px solid #68788a;background:var(--player-surface);color:inherit;cursor:pointer;min-width:0;padding:3px;}
+    button[aria-pressed=true] {border:2px solid #83bbfa;}span {font-size:10px;display:block;}.CharacterEditor__sprite {width:40px;height:40px;}
+  }
+  &__content {flex:1;min-width:0;overflow-y:auto;overflow-x:hidden;padding-right:4px;}
+  &__tabs, &__identity {display:flex;flex-wrap:wrap;gap:5px;padding-bottom:8px;border-bottom:1px solid #667;margin-bottom:10px;}
+  &__identity .CharacterEditor__field {flex:1;min-width:160px;}
+  &__tiles {display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;padding:8px 0;
+    > button {background:var(--player-surface);color:inherit;border:1px solid #68788a;padding:6px;cursor:pointer;min-height:105px;}
+    > button[aria-pressed=true] {border:2px solid #83bbfa;}
+  }
+  &__sprite {position:relative;width:64px;height:64px;margin:4px auto;img {position:absolute;inset:0;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;}}
+  details {margin:8px 0;} summary {cursor:pointer;padding:8px;background:var(--player-surface);}
+  textarea {width:100%;height:50vh;resize:vertical;background:var(--player-surface);color:inherit;}
+}
+.CharacterEditor.theme-light {input,.Dropdown__control,.Dropdown__menu {color:#171c24;background:#ddd;}small {color:#333;}}
+.CharacterEditor--save {display:block;overflow:auto;}
+.CharacterEditor__tiles .CharacterEditor__sprite {background:#89919d;border-radius:3px;}
