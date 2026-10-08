@@ -19,7 +19,35 @@
             new[] {
                 "WebViewControl.cs",
                 @"        protected internal override void Draw(DrawingHandleScreen handle)",
-                @"        protected internal override void UIScaleChanged()
+                @"        // Raw input normally requires keyboard focus. Read-only chat deliberately
+        // leaves it with gameplay, so forward its bound mouse events separately.
+        protected internal override void KeyBindDown(GUIBoundKeyEventArgs args)
+        {
+            base.KeyBindDown(args);
+            ForwardUnfocusedMouse(args, RawKeyAction.Down);
+        }
+
+        protected internal override void KeyBindUp(GUIBoundKeyEventArgs args)
+        {
+            base.KeyBindUp(args);
+            ForwardUnfocusedMouse(args, RawKeyAction.Up);
+        }
+
+        private void ForwardUnfocusedMouse(GUIBoundKeyEventArgs args, RawKeyAction action)
+        {
+            if (KeyboardFocusOnClick || HasKeyboardFocus()) return;
+            Robust.Client.Input.Keyboard.Key key;
+            if (args.Function == Robust.Shared.Input.EngineKeyFunctions.UIClick)
+                key = Robust.Client.Input.Keyboard.Key.MouseLeft;
+            else if (args.Function == Robust.Shared.Input.EngineKeyFunctions.UIRightClick)
+                key = Robust.Client.Input.Keyboard.Key.MouseRight;
+            else return;
+            _controlImpl.RawKeyEvent(new GuiRawKeyEvent(key, 0, action,
+                (Robust.Shared.Maths.Vector2i) args.RelativePixelPosition, 0));
+            args.Handle();
+        }
+
+        protected internal override void UIScaleChanged()
         {
             base.UIScaleChanged();
             // Physical size can change while logical size stays the same.
@@ -73,6 +101,15 @@
       ]]></Code>
     </Task>
   </UsingTask>
+  <Target Name="DeepLagoonPackedSprites" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectName)' == 'Robust.Client'">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)DeepLagoon.PackedSprites.cs"
+          DestinationFiles="$(IntermediateOutputPath)DeepLagoonPackedSprites.cs" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)DeepLagoonPackedSprites.cs" />
+      <FileWrites Include="$(IntermediateOutputPath)DeepLagoonPackedSprites.cs" />
+    </ItemGroup>
+  </Target>
   <Target Name="DeepLagoonAdaptWebView" BeforeTargets="CoreCompile"
           Condition="'$(MSBuildProjectName)' == 'Robust.Client.WebView'">
     <DeepLagoonPrepareWebView SourceDirectory="$(MSBuildProjectDirectory)"

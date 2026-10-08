@@ -46,6 +46,33 @@
     loadCss: () => {},
     loadJs: () => {},
   };
+  window.DeepLagoonNativeBackground = {
+    publish: payload => send({ type: 'native-background', payload }),
+  };
+  // The chat viewport leaves gameplay keys alone. Only actual editable fields
+  // (e.g. settings search) need CEF keyboard focus; the composer has its own window.
+  if (location.pathname.endsWith('/chat.html')) {
+    let inputFocused = false;
+    const syncInputFocus = () => {
+      const node = document.activeElement;
+      const active = !!node && (node.isContentEditable ||
+        (node.matches?.('input, textarea, select') && !node.disabled && !node.readOnly));
+      if (active === inputFocused) return;
+      inputFocused = active;
+      send({ type: 'chat-input-focus', payload: { active } });
+    };
+    // Read activeElement after the focus transition, including input-to-input clicks.
+    document.addEventListener('focusin', () => queueMicrotask(syncInputFocus));
+    document.addEventListener('focusout', () => queueMicrotask(syncInputFocus));
+    // CEF can lose native focus while activeElement still points at the input.
+    // A later click on that same field must reacquire keyboard focus.
+    document.addEventListener('mouseup', syncInputFocus);
+    window.addEventListener('blur', () => {
+      if (!inputFocused) return;
+      inputFocused = false;
+      send({ type: 'chat-input-focus', payload: { active: false } });
+    });
+  }
   // Remote links, popups and wiki requests are not supported in local TGUI windows.
   window.open = () => null;
   let dragging = false;

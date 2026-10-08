@@ -24,6 +24,7 @@ public sealed class TguiPanel : Control
     private Vector2 _dragOrigin;
     private bool _dragging;
     private string _chatState = "";
+    private string? _chatSettings;
     private float _appearanceRefresh;
     private readonly bool _inheritChatAppearance;
 
@@ -156,12 +157,19 @@ public sealed class TguiPanel : Control
     {
         base.FrameUpdate(args);
         _appearanceRefresh -= args.DeltaSeconds;
-        if (_inheritChatAppearance && _appearanceRefresh <= 0)
+        if (_inheritChatAppearance && VisibleInTree && _appearanceRefresh <= 0)
         {
             _appearanceRefresh = 0.2f;
             var preferences = IoCManager.Resolve<Content.Client.Lobby.IClientPreferencesManager>();
-            var state = Content.Client.UserInterface.Systems.Chat.Controls.ChatTabsSettings.Deserialize(preferences.Preferences?.ChatPanelSettings ?? "")?.WebState ?? "";
-            if (state != _chatState) { _chatState = state; Publish(); }
+            var settings = preferences.Preferences?.ChatPanelSettings ?? "";
+            // Saved chat settings can be large. Parse only when the source changes,
+            // including caching malformed settings instead of retrying every frame.
+            if (!string.Equals(settings, _chatSettings, StringComparison.Ordinal))
+            {
+                _chatSettings = settings;
+                var state = Content.Client.UserInterface.Systems.Chat.Controls.ChatTabsSettings.Deserialize(settings)?.WebState ?? "";
+                if (state != _chatState) { _chatState = state; Publish(); }
+            }
         }
         if (_dragWindow == null || _input == null) return;
         if (!VisibleInTree || FloatingWindow() != _dragWindow || !_input.IsKeyDown(Keyboard.Key.MouseLeft))

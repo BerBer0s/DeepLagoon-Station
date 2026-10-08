@@ -5,6 +5,37 @@ source changes are required. Local packaged UI and remote wiki documents have
 separate request policies and separate controls. A wiki page never receives the
 TGUI bridge.
 
+Embedded windows inherit the player's chat colors and light/dark theme, but not
+its animated background. `TguiPanel` polls appearance only while visible and
+deserializes the saved chat settings only when their source string changes.
+
+In the game, chat background animation is drawn by `NativeChatBackground` under
+the transparent CEF chat. All eleven presets and their intensity setting remain
+available as native shader equivalents; reduced-motion freezes the effect.
+The document publishes appearance/viewport changes through `native-background`,
+but background movement itself generates no DOM updates or CEF texture uploads.
+Message animations, scrolling and input can still repaint the browser.
+The standalone browser preview retains the original CSS backgrounds until the
+native host advertises support. Hidden/suspended/reloaded views reset the native
+layer. This feature uses content code and a content shader, without an engine
+source adapter.
+
+For a visual smoke test, run `node TGUI/tools/native-background-preview.cjs` from
+the repository root and open `http://127.0.0.1:8176`. It composites the actual
+packaged chat over the same shader in WebGL and displays background bridge calls.
+After settings settle, the count should stay constant while the effect moves.
+This is a browser composition check, not an in-game CEF performance measurement.
+
+`MSBuild/DeepLagoon.Network.targets` also compiles adapted copies of the engine's
+network sources in `obj`, without editing RobustToolbox. It makes connection
+status waiter removal atomic and completion tolerant of cancellation. This fixes
+the IPv6/IPv4 losing-attempt race triggered by `localhost` when the main thread
+stalls past the Happy Eyeballs delay; both address families remain available.
+Already-cancelled tokens cannot leave a stale waiter. The build fails if the
+expected engine source anchors change. Normal builds apply the adapter; use the
+resulting `Robust.Shared.dll` along with the rebuilt client. Reusing a prebuilt
+engine DLL bypasses this adapter.
+
 Window resizing and automatic UI scaling keep the same browser document alive.
 `MSBuild/DeepLagoon.WebView.targets`, imported by the root `Directory.Build.targets`,
 adapts the WebView build to notify CEF of scale changes and reuse unchanged-size
@@ -14,6 +45,21 @@ directory instead of the original files. RobustToolbox sources and its pinned
 commit stay unchanged. An incompatible engine update fails the build with an
 adapter diagnostic; review the adapter before updating its source fragments.
 Normal client builds automatically apply it; no separate command is needed.
+
+The WebView adapter also forwards bound left/right mouse presses and releases
+when a chat viewport has `KeyboardFocusOnClick=false`. Keyboard focus is reserved
+for editable DOM fields, so reading chat does not consume movement keys.
+`WebViewChatMouseTest` exercises both mouse buttons and movement passthrough.
+
+Packaged `.rsic` previews use `MSBuild/DeepLagoon.PackedSprites.cs`, compiled into
+`Robust.Client` through an `obj` copy. It reads embedded metadata through the
+engine's RSI loader and crops file-local frames instead of GPU meta-atlas
+coordinates. This also keeps PNG metadata access outside the content sandbox.
+`TguiPackedSpriteTest` checks packed PNG roundtrips, directional/animated states,
+and row transitions; `ClientSandboxTest` checks the resulting content assembly.
+Deploy the rebuilt `Robust.Client.dll` and `Robust.Client.WebView.dll` together
+with the client package. Updating content alone while the launcher reuses an
+unadapted prebuilt engine does not include these adapters.
 
 `GameWebView` dispatches browser events through the UI manager's deferred-action
 queue after frame traversal. Action and ready handlers can open or close windows
@@ -71,8 +117,14 @@ shared `DeepLagoon.TGUI.csproj` dependency prevents concurrent bundle writes
 within a parallel solution build. Debug, DebugOpt, Release, Rebuild and Publish
 use the same production bundles. IDE design-time checks do not run pnpm.
 
-Install Node.js 22.13+ and pnpm 11.25.0 on build machines. JavaScript dependencies
-are installed with `pnpm install --frozen-lockfile` on the first build and when
+Install Node.js 22.13+ and pnpm 11.25.0 on build machines.
+
+On Windows, builds also append an existing Codex bundled runtime to their child
+process PATH when it is available. This lets VS Code build with the same tools
+without changing the user's system PATH; installed commands still take priority.
+`TguiRuntimeDirectory` can override the fallback dependency directory.
+
+JavaScript dependencies are installed with `pnpm install --frozen-lockfile` on the first build and when
 `package.json`, `pnpm-lock.yaml` or `pnpm-workspace.yaml` changes. The workspace
 configuration permits install scripts only for the pinned esbuild and
 @parcel/watcher versions; no interactive `pnpm approve-builds` step is needed.

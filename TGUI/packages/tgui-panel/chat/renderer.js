@@ -14,6 +14,7 @@ import { MESSAGE_STYLE_ANIMATIONS, MESSAGE_STYLES } from '../settings/constants'
 import { COMBINE_MAX_MESSAGES, COMBINE_MAX_TIME_WINDOW, IMAGE_RETRY_DELAY, IMAGE_RETRY_LIMIT, IMAGE_RETRY_MAX_DELAY, IMAGE_RETRY_MESSAGE_AGE, MAX_PERSISTED_MESSAGES, MAX_VISIBLE_MESSAGES, MESSAGE_PRUNE_INTERVAL, MESSAGE_TYPE_INTERNAL, MESSAGE_TYPE_UNKNOWN, MESSAGE_TYPES } from './constants';
 import { canPageAcceptType, createMessage, isSameMessage } from './model';
 import { highlightNode, linkifyNode } from './replaceInTextNode';
+import { configureNativeChatBackground } from './nativeBackground';
 
 const logger = createLogger('chatRenderer');
 
@@ -750,7 +751,8 @@ export class ChatRenderer {
     if (!this.rootNode) {
       return;
     }
-    const newBgAnim = (bgAnimation && bgAnimation !== 'none')
+    const native = configureNativeChatBackground(this.rootNode, this.scrollNode, bgAnimation, opacity);
+    const newBgAnim = !native && (bgAnimation && bgAnimation !== 'none')
       ? bgAnimation : 'none';
     if (newBgAnim !== this._currentBgAnim) {
       // Remove old bgAnim class

@@ -1,13 +1,13 @@
 import { useId } from 'react';
-import '../../tgui-panel/styles/components/ChatBgAnimations.scss';
 export const playerTheme = state => {
   let settings={};
   try {settings=JSON.parse(state||'{}').settings||{};} catch (_) {}
   const light=settings.theme==='default'||settings.theme==='light';
-  const animation=/^[a-z-]+$/.test(settings.chatBgAnimation||'')?settings.chatBgAnimation:'none';
-  return {className:(light?'theme-light':'theme-dark')+' Chat--bgAnim-'+animation,
+  // Embedded windows inherit colors, but chat animation would repaint their
+  // entire CEF texture continuously. Animation belongs to the chat document.
+  return {className:light?'theme-light':'theme-dark',
     style:{backgroundColor:settings.chatBgColor||(light?'#eeeeee':'#171c24'),color:settings.chatTextColor||(light?'#171c24':'#ddd'),
-      '--player-surface':light?'#dedee3':'#252b35','--chat-bg-anim-opacity':settings.chatBgAnimOpacity??0.5}};
+      '--player-surface':light?'#dedee3':'#252b35'}};
 };
 export const TintedSprite = ({image,color='#ffffff',baseColor='#ffffff'}) => {
   color='#'+[1,3,5].map(i=>Math.round((parseInt(color.slice(i,i+2),16)||0)*(parseInt(baseColor.slice(i,i+2),16)||0)/255).toString(16).padStart(2,'0')).join('');
