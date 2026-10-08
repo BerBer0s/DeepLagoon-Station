@@ -10,6 +10,9 @@ export const MAX_SCALE = 1.5;
 export const ZOOM_STEP = 1.25;
 /** Smallest scale at which node labels are still comfortable to read. */
 export const READABLE_SCALE = 0.7;
+// Below these scales the nodes drop their text, then their icons (styled by `data-lod`).
+export const FAR_SCALE = 0.5;
+export const TINY_SCALE = 0.25;
 
 const FIT_PADDING = 48;
 const MIN_SCALE_RATIO = 0.8;

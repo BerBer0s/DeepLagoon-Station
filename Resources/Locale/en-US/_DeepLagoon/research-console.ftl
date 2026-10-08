@@ -22,3 +22,4 @@ dl-research-details-hub = Hub
 dl-research-details-outside = Not on this server
 dl-research-details-hide = Hide the panel
 dl-research-details-show = Show the panel
+dl-research-tabs-all = All

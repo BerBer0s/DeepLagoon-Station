@@ -69,6 +69,51 @@ $recipe-icon-size: 32px;
   }
 }
 
+// One chip per discipline, in its color; the tree is narrowed to the active one.
+.DisciplineTabs {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.DisciplineTab {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 30px;
+  height: 28px;
+  padding: 0 $space;
+  border: 1px solid var(--rc-border);
+  border-bottom: 3px solid var(--discipline, var(--rc-border));
+  border-radius: $radius;
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+
+  img {
+    width: 18px;
+    height: 18px;
+    image-rendering: pixelated;
+    -webkit-user-drag: none;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, currentcolor 10%, transparent);
+  }
+
+  &--active {
+    border-color: var(--discipline, var(--rc-accent));
+    background: color-mix(in srgb, var(--discipline, var(--rc-accent)) 35%, transparent);
+  }
+}
+
 .ResearchTree {
   position: relative;
   flex: 1;
@@ -169,12 +214,15 @@ $recipe-icon-size: 32px;
     fill: color-mix(in srgb, currentcolor 70%, transparent);
   }
 
-  &__world[data-focus='true'] &__lines {
+  &__world[data-focus='true'] &__lines,
+  &__world[data-dim='true'] &__lines {
     opacity: $dim-lines;
   }
 
   &__world[data-focus='true'][data-lod='far'] &__lines,
-  &__world[data-focus='true'][data-lod='tiny'] &__lines {
+  &__world[data-focus='true'][data-lod='tiny'] &__lines,
+  &__world[data-dim='true'][data-lod='far'] &__lines,
+  &__world[data-dim='true'][data-lod='tiny'] &__lines {
     opacity: $dim-lines-far;
   }
 
@@ -262,6 +310,10 @@ $recipe-icon-size: 32px;
     border-style: dotted;
     border-left: 6px solid var(--discipline);
     opacity: 0.55;
+  }
+
+  &--dim {
+    opacity: $dim-nodes;
   }
 
   &--selected {

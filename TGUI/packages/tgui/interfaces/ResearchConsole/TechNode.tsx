@@ -14,6 +14,8 @@ type TechNodeProps = {
   tech: Tech;
   state: TechState;
   selected: boolean;
+  /** Not among the technologies a tab or a search brings forward. */
+  dimmed: boolean;
   /** Part of the chain of the focused technology. */
   inChain: boolean;
   origins: Origin[];
@@ -32,6 +34,7 @@ export const TechNode = memo(function TechNode({
   tech,
   state,
   selected,
+  dimmed,
   inChain,
   origins,
   hint,
@@ -52,6 +55,7 @@ export const TechNode = memo(function TechNode({
       className={
         `TechNode TechNode--${state}` +
         (selected ? ' TechNode--selected' : '') +
+        (dimmed ? ' TechNode--dim' : '') +
         (inChain ? ' TechNode--chain' : '') +
         (hint?.armed ? ' TechNode--armed' : '') +
         (fx ? ' TechNode--' + fx : '')

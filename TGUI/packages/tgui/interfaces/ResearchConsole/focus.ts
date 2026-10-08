@@ -4,6 +4,7 @@ import {
   type Camera,
   centerOn,
   clampCamera,
+  FAR_SCALE,
   fitRect,
   fitScale,
   MAX_SCALE,
@@ -11,8 +12,14 @@ import {
   type Rect,
   type Size,
 } from './camera';
+import { NODE_HEIGHT, NODE_WIDTH } from './layout';
 import type { TechState } from './model';
 import type { TreeModel, TreeNode } from './tree';
+
+// Technologies of one group that sit in neighboring columns, less than this far apart on the
+// other axis, form one cluster: a group is drawn in several places, one per cluster.
+const CLUSTER_LINK_X = NODE_WIDTH;
+const CLUSTER_LINK_Y = 3 * NODE_HEIGHT;
 
 // What the player can do next. When nothing is, the roots are shown.
 const NEXT_STATES: TechState[] = ['available', 'unaffordable'];
@@ -106,4 +113,53 @@ export const recenterCamera = (
   }
   const scale = Math.min(MAX_SCALE, Math.max(current.scale, READABLE_SCALE));
   return clampCamera(centerOn(centerOf(selected), scale, viewport), tree, viewport);
+};
+
+const gapBetween = (a: TreeNode, b: TreeNode) => ({
+  x: Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.width, b.x + b.width)),
+  y: Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.height, b.y + b.height)),
+});
+
+// Single-linkage clusters, the biggest first (ties: the leftmost, then the topmost).
+const clustersOf = (nodes: TreeNode[]): TreeNode[][] => {
+  const parent = nodes.map((_, index) => index);
+  const root = (index: number): number =>
+    parent[index] === index ? index : (parent[index] = root(parent[index]));
+  nodes.forEach((a, i) =>
+    nodes.slice(i + 1).forEach((b, offset) => {
+      const gap = gapBetween(a, b);
+      if (gap.x <= CLUSTER_LINK_X && gap.y <= CLUSTER_LINK_Y) {
+        parent[root(i)] = root(i + 1 + offset);
+      }
+    }),
+  );
+  const groups = new Map<number, TreeNode[]>();
+  nodes.forEach((node, index) =>
+    groups.set(root(index), [...(groups.get(root(index)) ?? []), node]),
+  );
+  return [...groups.values()].sort(
+    (a, b) =>
+      b.length - a.length ||
+      Math.min(...a.map((n) => n.x)) - Math.min(...b.map((n) => n.x)) ||
+      Math.min(...a.map((n) => n.y)) - Math.min(...b.map((n) => n.y)),
+  );
+};
+
+/**
+ * The view for a group of technologies, such as a discipline. If everything fits on screen with
+ * readable labels, all of it; otherwise only the biggest cluster, at no less than that scale.
+ */
+export const groupCamera = (tree: TreeModel, ids: string[], viewport: Size): Camera => {
+  const nodes = ids.flatMap((id) => tree.nodeById.get(id) ?? []);
+  if (nodes.length === 0) {
+    return homeCamera(tree, new Map(), viewport);
+  }
+  const all = boundsOf(nodes);
+  const bounds = fitScale(all, viewport) >= FAR_SCALE ? all : boundsOf(clustersOf(nodes)[0]);
+  const scale = Math.min(1, Math.max(FAR_SCALE, fitScale(bounds, viewport)));
+  return clampCamera(
+    centerOn({ x: (bounds.x0 + bounds.x1) / 2, y: (bounds.y0 + bounds.y1) / 2 }, scale, viewport),
+    tree,
+    viewport,
+  );
 };

@@ -4,7 +4,7 @@ import { Button, Icon } from '../../components';
 import { rectsIntersect, type Rect, ZOOM_STEP } from './camera';
 import { chainOf } from './chain';
 import { EdgeLayer } from './EdgeLayer';
-import { fitCamera, homeCamera, recenterCamera } from './focus';
+import { fitCamera, groupCamera, homeCamera, recenterCamera } from './focus';
 import type { Tech, TechState } from './model';
 import { describeTech } from './status';
 import { type Origin, TechNode } from './TechNode';
@@ -12,8 +12,12 @@ import type { ResearchFx } from './fx';
 import { collectEdges, type TreeModel, unitStates } from './tree';
 import { useTreeCamera } from './useTreeCamera';
 
-/** Asks the tree to bring a technology into view; a new `serial` is a new request. */
-export type CameraCommand = { serial: number; id: string };
+export type CameraTarget =
+  | { kind: 'node'; id: string }
+  | { kind: 'group'; ids: string[] };
+
+/** Asks the tree to move the camera; a new `serial` is a new request. */
+export type CameraCommand = { serial: number; target: CameraTarget };
 
 type TechTreeProps = {
   tree: TreeModel;
@@ -25,6 +29,8 @@ type TechTreeProps = {
   points: number;
   fx: ResearchFx | null;
   canResearch: boolean;
+  /** The technologies that stay bright while the others are dimmed; null when none is dimmed. */
+  highlight: Set<string> | null;
   labels: Record<string, string>;
   command: CameraCommand | null;
   onSelect: (id: string | null) => void;
@@ -62,6 +68,7 @@ export const TechTree = ({
   points,
   fx,
   canResearch,
+  highlight,
   labels,
   command,
   onSelect,
@@ -83,8 +90,12 @@ export const TechTree = ({
 
   useEffect(() => {
     if (command) {
+      const { target } = command;
+      const size = camera.getSize();
       camera.moveTo(
-        recenterCamera(tree, statesRef.current, camera.getSize(), camera.getCamera(), command.id),
+        target.kind === 'node'
+          ? recenterCamera(tree, statesRef.current, size, camera.getCamera(), target.id)
+          : groupCamera(tree, target.ids, size),
         true,
       );
     }
@@ -171,6 +182,7 @@ export const TechTree = ({
         className="ResearchTree__world"
         data-lod="near"
         data-focus={chain !== null}
+        data-dim={highlight !== null}
         style={{ width: tree.width, height: tree.height }}
       >
         <svg
@@ -196,6 +208,7 @@ export const TechTree = ({
                 tech={tech}
                 state={states.get(node.id) ?? 'locked'}
                 selected={node.id === selectedId}
+                dimmed={highlight !== null && !highlight.has(node.id) && node.id !== selectedId}
                 inChain={chain?.nodes.has(node.id) === true}
                 origins={originsById.get(node.id) ?? NO_ORIGINS}
                 hint={node.id === selectedId ? selectedHint : null}

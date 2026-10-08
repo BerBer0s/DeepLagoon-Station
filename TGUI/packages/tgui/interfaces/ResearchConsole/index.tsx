@@ -12,6 +12,7 @@ import { useBackend } from '../../backend';
 import { Button } from '../../components';
 import { playerTheme } from '../../components/PlayerTheme';
 import { DetailsPanel, PANEL_STRIP_WIDTH, PANEL_WIDTH } from './DetailsPanel';
+import { DisciplineTabs } from './DisciplineTabs';
 import {
   buildDependents,
   buildStateMap,
@@ -20,7 +21,7 @@ import {
   type WireData,
 } from './model';
 import './ResearchConsole.scss';
-import { type CameraCommand, TechTree } from './TechTree';
+import { type CameraCommand, type CameraTarget, TechTree } from './TechTree';
 import { Tips } from './Tips';
 import { useResearchFx } from './useResearchFx';
 import { buildTree } from './tree';
@@ -60,6 +61,13 @@ export const ResearchConsole = () => {
     () => new Map((disciplines ?? []).map((entry) => [entry.id, entry])),
     [disciplines],
   );
+  const techIdsByDiscipline = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const tech of techs) {
+      groups.set(tech.discipline, [...(groups.get(tech.discipline) ?? []), tech.id]);
+    }
+    return groups;
+  }, [techs]);
   const disciplineColors = useMemo(
     () => new Map((disciplines ?? []).map((entry) => [entry.id, entry.color])),
     [disciplines],
@@ -80,11 +88,16 @@ export const ResearchConsole = () => {
 
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand | null>(null);
+  const [activeDiscipline, setActiveDiscipline] = useState<string | null>(null);
 
   const selectedTech = selectedId ? techById.get(selectedId) : undefined;
   const selectedHubs = useMemo(
     () => new Set(selectedId ? tree.hubParents.get(selectedId) : undefined),
     [tree, selectedId],
+  );
+  const highlight = useMemo(
+    () => (activeDiscipline ? new Set(techIdsByDiscipline.get(activeDiscipline)) : null),
+    [activeDiscipline, techIdsByDiscipline],
   );
   // The panel lies over the right edge of the tree; the toolbar moves aside for it.
   const panelWidth = selectedTech ? (panelCollapsed ? PANEL_STRIP_WIDTH : PANEL_WIDTH) : 0;
@@ -135,13 +148,28 @@ export const ResearchConsole = () => {
     [research, select],
   );
 
+  const moveCamera = useCallback((target: CameraTarget) => {
+    setCameraCommand((previous) => ({ serial: (previous?.serial ?? 0) + 1, target }));
+  }, []);
+
   // Selecting a technology from the panel also brings it into view.
   const navigate = useCallback(
     (id: string) => {
       select(id);
-      setCameraCommand((previous) => ({ serial: (previous?.serial ?? 0) + 1, id }));
+      moveCamera({ kind: 'node', id });
     },
-    [select],
+    [moveCamera, select],
+  );
+
+  // A tab narrows the tree to a discipline and brings it into view; the active one clears it.
+  const onTab = useCallback(
+    (id: string | null) => {
+      setActiveDiscipline(id);
+      if (id) {
+        moveCamera({ kind: 'group', ids: techIdsByDiscipline.get(id) ?? [] });
+      }
+    },
+    [moveCamera, techIdsByDiscipline],
   );
 
   useEffect(() => {
@@ -174,6 +202,12 @@ export const ResearchConsole = () => {
         <span>
           {labels['dl-research-points']}: <b>{data.points ?? 0}</b>
         </span>
+        <DisciplineTabs
+          disciplines={disciplines ?? []}
+          active={activeDiscipline}
+          labels={labels}
+          onSelect={onTab}
+        />
         <Button onClick={() => act('servers')}>{labels['dl-research-servers']}</Button>
       </header>
       {stateById.size === 0 && (
@@ -193,6 +227,7 @@ export const ResearchConsole = () => {
           points={data.points ?? 0}
           fx={fx}
           canResearch={data.hasAccess === true}
+          highlight={highlight}
           labels={labels}
           command={cameraCommand}
           onSelect={select}

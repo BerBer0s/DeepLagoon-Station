@@ -22,3 +22,4 @@ dl-research-details-hub = Хаб
 dl-research-details-outside = Нет на этом сервере
 dl-research-details-hide = Свернуть панель
 dl-research-details-show = Развернуть панель
+dl-research-tabs-all = Все

@@ -17,9 +17,11 @@ import {
   clampCamera,
   containsRect,
   expandRect,
+  FAR_SCALE,
   type Rect,
   rectArea,
   type Size,
+  TINY_SCALE,
   unionRect,
   viewRect,
   zoomAt,
@@ -36,9 +38,6 @@ const CULL_SHRINK_AREA = 4;
 const WHEEL_SENSITIVITY = 0.0015;
 const WHEEL_LINE_PIXELS = 16;
 const WHEEL_MAX_DELTA = 240;
-// Below these scales the nodes drop their text, then their icons (styled by `data-lod`).
-const FAR_SCALE = 0.5;
-const TINY_SCALE = 0.25;
 const SMOOTH_MS = 220;
 // The world is a separate compositor layer only while it moves, so that a pan or zoom does not
 // repaint it; afterwards it is painted once at the final scale.
