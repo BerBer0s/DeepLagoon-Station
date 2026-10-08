@@ -18,6 +18,7 @@ import {
 } from './model';
 import './ResearchConsole.scss';
 import { TechTree } from './TechTree';
+import { useResearchFx } from './useResearchFx';
 import { buildTree } from './tree';
 
 // A second click this soon after the first is taken for a double click, not for a confirmation.
@@ -63,6 +64,8 @@ export const ResearchConsole = () => {
     previousStates.current = next;
     return next;
   }, [states]);
+
+  const fx = useResearchFx(tree, stateById);
 
   // The first click on a technology selects it, the second one on the same technology researches
   // it. The callbacks read the latest values from a ref so that the nodes keep their props.
@@ -147,6 +150,7 @@ export const ResearchConsole = () => {
         selectedId={selectedId}
         attention={attention}
         points={data.points ?? 0}
+        fx={fx}
         canResearch={data.hasAccess === true}
         labels={labels}
         onSelect={select}

@@ -93,30 +93,24 @@ export type EdgeParts = Record<EdgeState, { line: string; arrow: string }>;
 
 export const EDGE_STATES: EdgeState[] = ['locked', 'open', 'done'];
 
-/** Path data of the pieces inside `region`, per state: all of them, and those in `chainUnits`. */
-export const visibleEdges = (
+/** Path data, per state, of the pieces inside `region` for which `include(index)` holds. */
+export const collectEdges = (
   tree: TreeModel,
   edgeStates: EdgeState[],
   region: Rect | null,
-  chainUnits: Set<number> | null,
-): { all: EdgeParts; chain: EdgeParts } => {
-  const collect = (include: (index: number) => boolean): EdgeParts => {
-    const lines: Record<EdgeState, string[]> = { locked: [], open: [], done: [] };
-    const arrows: Record<EdgeState, string[]> = { locked: [], open: [], done: [] };
-    tree.units.forEach((unit, index) => {
-      if (region && rectsIntersect(unit, region) && include(index)) {
-        lines[edgeStates[index]].push(unit.d);
-        arrows[edgeStates[index]].push(unit.arrow);
-      }
-    });
-    const parts = {} as EdgeParts;
-    for (const state of EDGE_STATES) {
-      parts[state] = { line: lines[state].join(''), arrow: arrows[state].join('') };
+  include: (index: number) => boolean,
+): EdgeParts => {
+  const lines: Record<EdgeState, string[]> = { locked: [], open: [], done: [] };
+  const arrows: Record<EdgeState, string[]> = { locked: [], open: [], done: [] };
+  tree.units.forEach((unit, index) => {
+    if (region && rectsIntersect(unit, region) && include(index)) {
+      lines[edgeStates[index]].push(unit.d);
+      arrows[edgeStates[index]].push(unit.arrow);
     }
-    return parts;
-  };
-  return {
-    all: collect(() => true),
-    chain: collect((index) => chainUnits?.has(index) === true),
-  };
+  });
+  const parts = {} as EdgeParts;
+  for (const state of EDGE_STATES) {
+    parts[state] = { line: lines[state].join(''), arrow: arrows[state].join('') };
+  }
+  return parts;
 };

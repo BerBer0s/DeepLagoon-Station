@@ -7,7 +7,8 @@ import { EdgeLayer } from './EdgeLayer';
 import { fitCamera, homeCamera, recenterCamera } from './focus';
 import type { Tech, TechState } from './model';
 import { type Hint, TechNode } from './TechNode';
-import { type TreeModel, unitStates, visibleEdges } from './tree';
+import type { ResearchFx } from './fx';
+import { collectEdges, type TreeModel, unitStates } from './tree';
 import { useTreeCamera } from './useTreeCamera';
 
 type TechTreeProps = {
@@ -18,10 +19,18 @@ type TechTreeProps = {
   selectedId: string | null;
   attention: number;
   points: number;
+  fx: ResearchFx | null;
   canResearch: boolean;
   labels: Record<string, string>;
   onSelect: (id: string | null) => void;
   onActivate: (id: string) => void;
+};
+
+const nodeFx = (fx: ResearchFx | null, id: string) => {
+  if (fx?.snapped.has(id)) {
+    return 'snap';
+  }
+  return fx?.woken.has(id) ? 'wake' : null;
 };
 
 const describeSelected = (
@@ -71,6 +80,7 @@ export const TechTree = ({
   selectedId,
   attention,
   points,
+  fx,
   canResearch,
   labels,
   onSelect,
@@ -107,9 +117,23 @@ export const TechTree = ({
   );
 
   const edgeStates = useMemo(() => unitStates(tree, states), [tree, states]);
-  const edges = useMemo(
-    () => visibleEdges(tree, edgeStates, rendered, chain?.units ?? null),
+  const allEdges = useMemo(
+    () => collectEdges(tree, edgeStates, rendered, () => true),
+    [tree, edgeStates, rendered],
+  );
+  const chainEdges = useMemo(
+    () =>
+      chain
+        ? collectEdges(tree, edgeStates, rendered, (index) => chain.units.has(index))
+        : null,
     [tree, edgeStates, rendered, chain],
+  );
+  const igniteEdges = useMemo(
+    () =>
+      fx
+        ? collectEdges(tree, edgeStates, rendered, (index) => fx.units.has(index))
+        : null,
+    [tree, edgeStates, rendered, fx],
   );
 
   const selectedHint = useMemo(() => {
@@ -148,8 +172,13 @@ export const TechTree = ({
           width={tree.width}
           height={tree.height}
         >
-          <EdgeLayer className="ResearchTree__lines" parts={edges.all} />
-          {chain && <EdgeLayer className="ResearchTree__chain" parts={edges.chain} />}
+          <EdgeLayer className="ResearchTree__lines" parts={allEdges} />
+          {chainEdges && (
+            <EdgeLayer className="ResearchTree__chain" parts={chainEdges} />
+          )}
+          {igniteEdges && (
+            <EdgeLayer className="ResearchTree__ignite" parts={igniteEdges} />
+          )}
         </svg>
         {visibleNodes.map((node) => {
           const tech = techs.get(node.id);
@@ -164,6 +193,7 @@ export const TechTree = ({
                 inChain={chain?.nodes.has(node.id) === true}
                 hint={node.id === selectedId ? selectedHint : null}
                 attention={node.id === selectedId ? attention : 0}
+                fx={nodeFx(fx, node.id)}
                 color={disciplineColors.get(tech.discipline) ?? '#888888'}
                 labels={labels}
                 onActivate={onActivate}

@@ -4,6 +4,14 @@ $icon-size: 64px;
 $badge-size: 20px;
 $fade-duration: 0.12s;
 $nudge-duration: 0.25s;
+// Research animation: the node snaps, then its lines to newly open technologies light up, then
+// those technologies wake up. All of it ends within 0.4s; only transform and opacity change.
+$snap-duration: 0.26s;
+$flash-duration: 0.32s;
+$ignite-delay: 0.12s;
+$ignite-duration: 0.28s;
+$wake-delay: 0.2s;
+$wake-duration: 0.2s;
 $dim-nodes: 0.3;
 $dim-lines: 0.12;
 $dim-lines-far: 0.04;
@@ -164,6 +172,21 @@ $dim-lines-far: 0.04;
     display: none;
   }
 
+  // Lines from a technology just researched to those it has just opened.
+  &__ignite {
+    opacity: 0;
+    animation: ResearchTree-ignite $ignite-duration ease-out $ignite-delay;
+  }
+
+  &__ignite &__edge {
+    stroke: var(--rc-accent);
+    stroke-width: 7;
+  }
+
+  &__ignite &__arrow {
+    fill: var(--rc-accent);
+  }
+
   &__toolbar {
     position: absolute;
     top: $space;
@@ -229,6 +252,41 @@ $dim-lines-far: 0.04;
 
   .ResearchTree__world[data-focus='true'] &--chain#{&}--locked {
     opacity: 0.85;
+  }
+
+  &--snap {
+    z-index: 2;
+    animation: TechNode-snap $snap-duration ease-out;
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      border-radius: $radius;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    // Fill flash over the node, and a ring that grows away from it.
+    &::before {
+      inset: 0;
+      background: var(--rc-good);
+      animation: TechNode-flash $flash-duration ease-out;
+    }
+
+    &::after {
+      inset: -4px;
+      border: 2px solid var(--rc-good);
+      animation: TechNode-ring $flash-duration ease-out;
+    }
+
+    .TechNode__badge {
+      animation: TechNode-pop $snap-duration ease-out 0.06s backwards;
+    }
+  }
+
+  &--wake {
+    animation: TechNode-wake $wake-duration ease-out $wake-delay backwards;
   }
 
   &__icon {
@@ -343,6 +401,53 @@ $dim-lines-far: 0.04;
 
   &--unaffordable &__badge {
     background: var(--rc-warn);
+  }
+}
+
+@keyframes TechNode-snap {
+  35% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes TechNode-flash {
+  from {
+    opacity: 0.55;
+  }
+}
+
+@keyframes TechNode-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes TechNode-pop {
+  from {
+    transform: scale(0.3);
+  }
+
+  60% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes TechNode-wake {
+  from {
+    opacity: 0.55;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes ResearchTree-ignite {
+  40% {
+    opacity: 1;
   }
 }
 

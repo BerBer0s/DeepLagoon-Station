@@ -56,6 +56,8 @@ type TechNodeProps = {
   hint: Hint | null;
   /** Grows each time the player clicks the selected technology and nothing can be done. */
   attention: number;
+  /** Plays a short animation: just researched, or just made available. */
+  fx: 'snap' | 'wake' | null;
   color: string;
   labels: Record<string, string>;
   onActivate: (id: string) => void;
@@ -69,6 +71,7 @@ export const TechNode = memo(function TechNode({
   inChain,
   hint,
   attention,
+  fx,
   color,
   labels,
   onActivate,
@@ -86,7 +89,8 @@ export const TechNode = memo(function TechNode({
         `TechNode TechNode--${state}` +
         (selected ? ' TechNode--selected' : '') +
         (inChain ? ' TechNode--chain' : '') +
-        (hint?.armed ? ' TechNode--armed' : '')
+        (hint?.armed ? ' TechNode--armed' : '') +
+        (fx ? ' TechNode--' + fx : '')
       }
       data-id={tech.id}
       style={style}
