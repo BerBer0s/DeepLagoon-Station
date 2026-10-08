@@ -5,6 +5,16 @@ source changes are required. Local packaged UI and remote wiki documents have
 separate request policies and separate controls. A wiki page never receives the
 TGUI bridge.
 
+Window resizing and automatic UI scaling keep the same browser document alive.
+`MSBuild/DeepLagoon.WebView.targets`, imported by the root `Directory.Build.targets`,
+adapts the WebView build to notify CEF of scale changes and reuse unchanged-size
+textures. It reads two engine sources, checks that each expected source fragment
+occurs exactly once, and compiles adapted copies in the WebView project's `obj`
+directory instead of the original files. RobustToolbox sources and its pinned
+commit stay unchanged. An incompatible engine update fails the build with an
+adapter diagnostic; review the adapter before updating its source fragments.
+Normal client builds automatically apply it; no separate command is needed.
+
 `GameWebView` dispatches browser events through the UI manager's deferred-action
 queue after frame traversal. Action and ready handlers can open or close windows
 without modifying the collection currently being enumerated. Pending messages

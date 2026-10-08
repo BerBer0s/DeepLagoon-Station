@@ -1,5 +1,5 @@
 .CharacterEditor {
-  box-sizing: border-box; height: 100vh; overflow: hidden; display:flex; gap:10px; padding: 10px;
+  box-sizing: border-box; height: 100vh; overflow: hidden; display:flex; gap:10px; padding: 62px 10px 10px;
   background: #2f2f35; color: #ddd; font-family: Arial, sans-serif; font-size: 13px;
   container-type: inline-size;
   input { box-sizing: border-box; width: 100%; min-width: 0; padding: 5px; color: #eee; background: #25252d; border: 1px solid #646473; border-radius: 2px; }
@@ -27,6 +27,10 @@
   &__color:disabled { opacity: .55; }
   &__warning { color: #e5a4a4 !important; }
   &__buttons { display: flex; flex-direction: column; gap: 1px; }
+  &__close.Button { position: fixed; top: 8px; right: 10px; z-index: 30; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; min-width: 140px; min-height: 44px; padding: 10px 16px; margin: 0; font-size: 18px; line-height: 1.2; color: #fff; background: #b32626; border: 2px solid #f08080; border-radius: 4px; }
+  &__close.Button:hover, &__close.Button:focus { background: #d03535; outline: 2px solid #fff; }
+  &__close > span { font-size: 26px; line-height: 1; }
+  &__profileRow { margin: 6px 0; }
   &__job { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(150px, 1fr) auto; gap: 8px; align-items: center; padding: 5px 0; }
   &__traits { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 3px; }
   &__points { margin-bottom: 8px; progress { display: block; width: 100%; height: 6px; margin-top: 3px; accent-color: #7ac779; } }
@@ -59,6 +63,9 @@
 .CharacterEditor__tiles .CharacterEditor__sprite {background:#89919d;border-radius:3px;}
 
 .CharacterEditor__preview {width:400px;flex-basis:400px;position:relative;}
+@media (max-width: 699px), (max-height: 419px) {
+  .CharacterEditor__preview { display: none; }
+}
 .CharacterEditor__slots {position:absolute;inset:0 0 0;display:grid;grid-template-columns:64px 1fr 64px;grid-auto-rows:minmax(36px,64px);align-content:center;gap:8px;margin:0;overflow:hidden;
   button {padding:2px;background:#202632;border:2px solid #394357;box-shadow:inset 0 0 0 2px #10151b;}
   .CharacterEditor__sprite {width:100%;height:100%;margin:0;}

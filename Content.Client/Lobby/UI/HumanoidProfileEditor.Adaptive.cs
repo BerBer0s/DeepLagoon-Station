@@ -8,6 +8,10 @@ public sealed partial class HumanoidProfileEditor
     protected override void Resized()
     {
         base.Resized();
+        // TGUI owns the responsive layout. Do not resize hidden native pickers
+        // or switch the parent orientation as the browser viewport shrinks.
+        if (_tguiHost != null)
+            return;
         var stacked = Size.X < 580f;
         Orientation = stacked ? LayoutOrientation.Vertical : LayoutOrientation.Horizontal;
         EditorColumn.VerticalExpand = true;

@@ -1,0 +1,88 @@
+<Project>
+  <!-- Content-owned build adapter for the unmodified engine WebView project.
+       Generated sources live in obj; no engine source files are written. -->
+  <UsingTask TaskName="DeepLagoonPrepareWebView" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <SourceDirectory ParameterType="System.String" Required="true" />
+      <OutputDirectory ParameterType="System.String" Required="true" />
+      <GeneratedSources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="Microsoft.Build.Utilities" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var patches = new[]
+        {
+            new[] {
+                "WebViewControl.cs",
+                @"        protected internal override void Draw(DrawingHandleScreen handle)",
+                @"        protected internal override void UIScaleChanged()
+        {
+            base.UIScaleChanged();
+            // Physical size can change while logical size stays the same.
+            // Notify the existing browser instead of recreating its document.
+            _controlImpl.Resized();
+        }
+
+        protected internal override void Draw(DrawingHandleScreen handle)"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"                _data.Browser.GetHost().NotifyMoveOrResizeStarted();
+                _data.Browser.GetHost().WasResized();
+                _data.Texture.Dispose();
+                _data.Texture = _clyde.CreateBlankTexture<Rgba32>((Owner.PixelWidth, Owner.PixelHeight));
+                _data.Browser.GetHost().Invalidate(CefPaintElementType.View);",
+                @"                var host = _data.Browser.GetHost();
+                // Refresh CEF deviceScaleFactor without reloading the page.
+                host.NotifyScreenInfoChanged();
+                host.NotifyMoveOrResizeStarted();
+                var size = new Vector2i(Math.Max(1, Owner.PixelWidth), Math.Max(1, Owner.PixelHeight));
+                if (_data.Texture.Size != size)
+                {
+                    _data.Texture.Dispose();
+                    _data.Texture = _clyde.CreateBlankTexture<Rgba32>(size);
+                }
+                host.WasResized();
+                host.Invalidate(CefPaintElementType.View);"
+            }
+        };
+        var generated = new List<Microsoft.Build.Framework.ITaskItem>();
+        Directory.CreateDirectory(OutputDirectory);
+        foreach (var patch in patches)
+        {
+            var sourcePath = Path.Combine(SourceDirectory, patch[0]);
+            var source = File.ReadAllText(sourcePath).Replace("\r\n", "\n");
+            var anchor = patch[1].Replace("\r\n", "\n");
+            var first = source.IndexOf(anchor, StringComparison.Ordinal);
+            if (first < 0 || source.IndexOf(anchor, first + anchor.Length, StringComparison.Ordinal) >= 0)
+            {
+                Log.LogError("DeepLagoon WebView adapter: expected exactly one source anchor in {0}. Review the adapter for this engine version.", sourcePath);
+                return false;
+            }
+            var updated = source.Replace(anchor, patch[2].Replace("\r\n", "\n"));
+            var outputPath = Path.Combine(OutputDirectory, Path.GetFileName(patch[0]));
+            if (!File.Exists(outputPath) || File.ReadAllText(outputPath) != updated)
+                File.WriteAllText(outputPath, updated);
+            generated.Add(new TaskItem(outputPath));
+        }
+        GeneratedSources = generated.ToArray();
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <Target Name="DeepLagoonAdaptWebView" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectName)' == 'Robust.Client.WebView'">
+    <DeepLagoonPrepareWebView SourceDirectory="$(MSBuildProjectDirectory)"
+                             OutputDirectory="$(MSBuildProjectDirectory)/$(IntermediateOutputPath)DeepLagoonWebView">
+      <Output TaskParameter="GeneratedSources" ItemName="_DeepLagoonWebViewSources" />
+    </DeepLagoonPrepareWebView>
+    <ItemGroup>
+      <Compile Remove="WebViewControl.cs;Cef\WebViewManagerCef.Control.cs;Cef/WebViewManagerCef.Control.cs" />
+      <Compile Include="@(_DeepLagoonWebViewSources)" />
+      <FileWrites Include="@(_DeepLagoonWebViewSources)" />
+    </ItemGroup>
+  </Target>
+</Project>

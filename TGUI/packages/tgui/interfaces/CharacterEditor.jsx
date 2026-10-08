@@ -43,13 +43,14 @@ export const CharacterEditor = () => {
   if (!data.available) return <div className="CharacterEditor">Выберите персонажа.</div>;
   const matches = name => name.toLowerCase().includes(search.toLowerCase());
   return <div className={'CharacterEditor Chat ' + playerTheme(data.chatState).className + ' CharacterEditor--' + data.mode} style={playerTheme(data.chatState).style}>
+    {data.setup && <Button className="CharacterEditor__close" color="bad" onClick={()=>act('setup/close')}><span aria-hidden="true">×</span>Закрыть</Button>}
     <aside className="CharacterEditor__preview"><div className="CharacterEditor__previewSpace" />
       <div className="CharacterEditor__rotation"><Button onClick={()=>act('rotate',{value:-1})}>◀</Button><Button onClick={()=>act('rotate',{value:1})}>▶</Button><Button selected={data.showClothes} onClick={()=>act('clothes')}>Show</Button></div>
       <div className="CharacterEditor__slots">{(data.previewSlots||[]).map((slot,index)=><button type="button" key={slot.id} title={slot.name} style={{gridColumn:index%2?3:1,gridRow:Math.floor(index/2)+1}} aria-label={slot.name} aria-pressed={slot.selected} onClick={()=>act('preview-slot',{value:slot.id})}><div className="CharacterEditor__sprite">{(slot.images.length?slot.images:[{url:slot.background,color:"#ffffff"}]).map((image,i)=><TintedSprite key={i} image={image.url} color={image.color} />)}</div></button>)}</div>
     </aside>
     <main className="CharacterEditor__content">
     {data.setup && <>
-      <div className="CharacterEditor__tabs"><Button onClick={()=>setCharactersOpen(!charactersOpen)} selected={charactersOpen}>Персонажи</Button><Button onClick={()=>setStatsOpen(!statsOpen)} selected={statsOpen}>Статистика</Button><Button onClick={()=>act('setup/rules')}>Правила</Button>{data.setup.notes&&<Button onClick={()=>act('setup/notes')}>Заметки администрации</Button>}<Button onClick={()=>act('setup/close')}>Закрыть</Button></div>
+      <div className="CharacterEditor__tabs"><Button onClick={()=>setCharactersOpen(!charactersOpen)} selected={charactersOpen}>Персонажи</Button><Button onClick={()=>setStatsOpen(!statsOpen)} selected={statsOpen}>Статистика</Button>{data.setup.notes&&<Button onClick={()=>act('setup/notes')}>Заметки администрации</Button>}</div>
       {charactersOpen&&<Section title="Персонажи"><div className="CharacterEditor__traits">{data.setup.characters.map(character=><div key={character.slot}><Button fluid selected={character.slot===data.setup.selected} onClick={()=>act('setup/select',{slot:character.slot})}>{character.name} · {character.balance}</Button>{character.slot!==data.setup.selected&&<Button color="bad" onClick={()=>{if(deleteSlot===character.slot){act('setup/delete',{slot:character.slot});setDeleteSlot(null);}else setDeleteSlot(character.slot);}}>{deleteSlot===character.slot?'Подтвердить удаление':'Удалить'}</Button>}</div>)}</div><Button disabled={!data.setup.canCreate} onClick={()=>act('setup/create')}>Создать персонажа</Button>{deleteSlot!==null&&<Button onClick={()=>setDeleteSlot(null)}>Отмена</Button>}</Section>}
       {statsOpen&&<Section title={'Общее время: '+data.setup.overallTime}><table><thead><tr><th>Профессия</th><th>Время</th></tr></thead><tbody>{data.setup.playtimes.map(time=><tr key={time.name}><td>{time.name}</td><td>{time.time}</td></tr>)}</tbody></table></Section>}
     </>}
@@ -57,8 +58,8 @@ export const CharacterEditor = () => {
     <div className="CharacterEditor__identity"><DraftInput label="Имя" value={data.name} onCommit={change('name')} />
       <Button disabled={!data.dirty} color="good" onClick={()=>act('save')}>Сохранить</Button><Button disabled={!data.dirty} onClick={()=>act('reset')}>Сбросить</Button>
       <Button selected={data.showClothes} onClick={()=>act('clothes')}>Одежда</Button>
-      <Button onClick={()=>act('character-card')}>Просмотр профиля</Button><Button onClick={()=>act('random-name')}>Случайное имя</Button><Button onClick={()=>act('random-all')}>Случайный персонаж</Button>
-      <Button onClick={()=>act('import')}>Импорт</Button><Button onClick={()=>act('export')}>Экспорт</Button><Button onClick={()=>act('export-image')}>Изображение</Button><Button onClick={()=>act('open-images')}>Открыть изображения</Button>
+      <Button onClick={()=>act('random-name')}>Случайное имя</Button><Button onClick={()=>act('random-all')}>Случайный персонаж</Button>
+      <Button onClick={()=>act('import')}>Импорт</Button><Button onClick={()=>act('export')}>Экспорт</Button>
     </div>
     {data.mode === 'identity' && <>
       <Button fluid selected={data.showClothes} onClick={() => act('clothes')}>Показывать одежду</Button>
@@ -72,8 +73,6 @@ export const CharacterEditor = () => {
         <Button fluid disabled={!data.dirty} onClick={() => act('reset')}>Сбросить</Button>
         <Button fluid onClick={() => act('import')}>Импорт</Button>
         <Button fluid onClick={() => act('export')}>Экспорт</Button>
-        <Button fluid onClick={() => act('export-image')}>Экспорт изображения</Button>
-        <Button fluid onClick={() => act('open-images')}>Открыть изображения</Button>
       </div>
     </>}
     {data.mode === 'appearance' && <>
@@ -141,7 +140,7 @@ export const CharacterEditor = () => {
     {data.mode === 'saved' && <Section title="Сохранённые предметы"><div className="CharacterEditor__tiles">{(data.savedItems||[]).map((item,i)=><div key={i}><div className="CharacterEditor__sprite">{item.images.map((image,j)=><TintedSprite key={j} image={image.url} color={image.color} />)}</div>{item.name}</div>)}</div></Section>}
     {equipmentCache.current && <div style={{display:data.mode==='equipment'?'block':'none'}}><EquipmentBrowser data={equipmentCache.current} act={(action,payload)=>act('equipment/'+action,payload)} /></div>}
     {data.mode === 'flavor' && <>
-      <Section title="Headshot">{data.headshot&&<img className="CharacterEditor__headshot" src={data.headshot} alt="Headshot персонажа"/>}<Button onClick={()=>act('headshot-upload')}>{data.hasHeadshot?'Заменить изображение':'Загрузить изображение'}</Button><Button disabled={!data.hasHeadshot} onClick={()=>act('headshot-download')}>Скачать изображение</Button><small>PNG/JPEG, до 1 МБ, одно изображение на персонажа. Сначала сохраните нового персонажа. Изображение доступно только через игру.</small>{data.headshotStatus&&<p>{data.headshotStatus}</p>}</Section>
+      <Section title="Headshot">{data.headshot&&<img className="CharacterEditor__headshot" src={data.headshot} alt="Headshot персонажа"/>}<div><Button onClick={()=>act('headshot-upload')}>{data.hasHeadshot?'Заменить изображение':'Загрузить изображение'}</Button></div><div className="CharacterEditor__profileRow"><Button onClick={()=>act('character-card')}>Просмотр профиля</Button></div><Button disabled={!data.hasHeadshot} onClick={()=>act('headshot-download')}>Скачать изображение</Button><small>PNG/JPEG, до 1 МБ, одно изображение на персонажа. Сначала сохраните нового персонажа. Изображение доступно только через игру.</small>{data.headshotStatus&&<p>{data.headshotStatus}</p>}</Section>
       {[['flavor','Описание персонажа',data.flavorText],['ooc','OOC заметки',data.oocNotes]].map(([key,label,value])=><Section key={key} title={label}><textarea aria-label={label} value={value||''} maxLength={data.maxFlavorLength} onChange={e=>change(key)(e.target.value)}/><FormattingHint/><details><summary>Предпросмотр форматирования</summary><div className="CharacterText"><CharacterText text={value}/></div></details></Section>)}
     </>}
     {data.mode === 'markings' && <>
