@@ -19,7 +19,10 @@ export type TreeModel = {
   nodeById: Map<string, TreeNode>;
   /** Technology edges; `from` is the prerequisite. Indexed by `RoutedUnit.uses`. */
   edges: LayoutEdge[];
+  /** Pieces of the local edges, then one curve per hub edge (`hub`). */
   units: RoutedUnit[];
+  /** For each technology the hubs that open it directly; they have no line drawn by default. */
+  hubParents: Map<string, string[]>;
   width: number;
   height: number;
 };
@@ -58,12 +61,19 @@ export const buildTree = (techs: Tech[]): TreeModel => {
       height: NODE_HEIGHT,
     });
   }
+  const hubParents = new Map<string, string[]>();
+  layout.edges.forEach((edge, index) => {
+    if (layout.hubEdge[index]) {
+      hubParents.set(edge.to, [...(hubParents.get(edge.to) ?? []), edge.from]);
+    }
+  });
   cachedKey = key;
   cachedModel = {
     nodes,
     nodeById: new Map(nodes.map((node) => [node.id, node])),
     edges: layout.edges,
     units: routing.units,
+    hubParents,
     width: routing.width,
     height: layout.height,
   };

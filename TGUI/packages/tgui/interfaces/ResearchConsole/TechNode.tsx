@@ -30,10 +30,10 @@ export type Hint = {
   armed: boolean;
 };
 
-const TechIcon = ({ id }: { id: string }) => {
+const TechIcon = ({ id, className = '' }: { id: string; className?: string }) => {
   const layers = useTechIcon(id);
   return (
-    <div className="TechNode__icon">
+    <div className={`TechNode__icon ${className}`}>
       {layers.map((layer, index) =>
         layer.color.toLowerCase() === WHITE ? (
           <img key={index} src={layer.url} alt="" draggable={false} />
@@ -45,6 +45,9 @@ const TechIcon = ({ id }: { id: string }) => {
   );
 };
 
+/** A hub that opens a technology directly. Its line is only drawn on hover or selection. */
+export type Origin = { id: string; name: string; color: string };
+
 type TechNodeProps = {
   node: TreeNode;
   tech: Tech;
@@ -52,6 +55,7 @@ type TechNodeProps = {
   selected: boolean;
   /** Part of the chain of the focused technology. */
   inChain: boolean;
+  origins: Origin[];
   /** Only the selected technology has a hint. */
   hint: Hint | null;
   /** Grows each time the player clicks the selected technology and nothing can be done. */
@@ -69,6 +73,7 @@ export const TechNode = memo(function TechNode({
   state,
   selected,
   inChain,
+  origins,
   hint,
   attention,
   fx,
@@ -103,8 +108,19 @@ export const TechNode = memo(function TechNode({
           <span className="TechNode__cost">
             <Icon name="coins" /> {tech.cost}
           </span>
-          {hint?.armed && (
+          {hint?.armed ? (
             <span className="TechNode__go">{labels[STATE_LABEL.available]}</span>
+          ) : (
+            origins.map((origin) => (
+              <span
+                key={origin.id}
+                className="TechNode__origin"
+                title={origin.name}
+                style={{ borderColor: origin.color }}
+              >
+                <TechIcon id={origin.id} className="TechNode__icon--fill" />
+              </span>
+            ))
           )}
         </div>
       </div>

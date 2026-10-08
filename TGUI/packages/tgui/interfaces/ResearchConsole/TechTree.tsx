@@ -6,7 +6,7 @@ import { chainOf } from './chain';
 import { EdgeLayer } from './EdgeLayer';
 import { fitCamera, homeCamera, recenterCamera } from './focus';
 import type { Tech, TechState } from './model';
-import { type Hint, TechNode } from './TechNode';
+import { type Hint, type Origin, TechNode } from './TechNode';
 import type { ResearchFx } from './fx';
 import { collectEdges, type TreeModel, unitStates } from './tree';
 import { useTreeCamera } from './useTreeCamera';
@@ -25,6 +25,8 @@ type TechTreeProps = {
   onSelect: (id: string | null) => void;
   onActivate: (id: string) => void;
 };
+
+const NO_ORIGINS: Origin[] = [];
 
 const nodeFx = (fx: ResearchFx | null, id: string) => {
   if (fx?.snapped.has(id)) {
@@ -117,10 +119,26 @@ export const TechTree = ({
   );
 
   const edgeStates = useMemo(() => unitStates(tree, states), [tree, states]);
+  // Hub edges are left out here; they appear in the chain of the hovered or selected technology.
   const allEdges = useMemo(
-    () => collectEdges(tree, edgeStates, rendered, () => true),
+    () => collectEdges(tree, edgeStates, rendered, (index) => !tree.units[index].hub),
     [tree, edgeStates, rendered],
   );
+  const originsById = useMemo(() => {
+    const map = new Map<string, Origin[]>();
+    for (const [id, hubs] of tree.hubParents) {
+      map.set(
+        id,
+        hubs.flatMap((hubId) => {
+          const hub = techs.get(hubId);
+          return hub
+            ? [{ id: hubId, name: hub.name, color: disciplineColors.get(hub.discipline) ?? '#888888' }]
+            : [];
+        }),
+      );
+    }
+    return map;
+  }, [tree, techs, disciplineColors]);
   const chainEdges = useMemo(
     () =>
       chain
@@ -191,6 +209,7 @@ export const TechTree = ({
                 state={states.get(node.id) ?? 'locked'}
                 selected={node.id === selectedId}
                 inChain={chain?.nodes.has(node.id) === true}
+                origins={originsById.get(node.id) ?? NO_ORIGINS}
                 hint={node.id === selectedId ? selectedHint : null}
                 attention={node.id === selectedId ? attention : 0}
                 fx={nodeFx(fx, node.id)}
