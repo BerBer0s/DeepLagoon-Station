@@ -1,4 +1,7 @@
 using Content.Shared.Examine;
+using Content.Shared._DeepLagoon.CharacterInfo;
+using Robust.Shared.Network;
+using Robust.Shared.Player;
 using Content.Shared.IdentityManagement;
 using Content.Shared.Verbs;
 using Robust.Shared.Utility;
@@ -29,6 +32,15 @@ public sealed partial class DetailExaminableSystem : EntitySystem
         {
             Act = () =>
             {
+                if (ent.Comp.CharacterCard)
+                {
+                    // The verb already reaches the server as a predictive event.
+                    // Client reconciliation replays its Act on subsequent ticks;
+                    // sending another request here would repeatedly open the card.
+                    if (IoCManager.Resolve<INetManager>().IsServer && TryComp<ActorComponent>(user, out var actor))
+                        RaiseNetworkEvent(new CharacterInfoOpenEvent(GetNetEntity(ent)), actor.PlayerSession.Channel);
+                    return;
+                }
                 var markup = new FormattedMessage();
                 markup.AddMarkupPermissive(ent.Comp.Content);
                 _examine.SendExamineTooltip(user, ent, markup, false, false);

@@ -220,6 +220,7 @@ namespace Content.Client.Lobby.UI
             _personalLoadoutEditor.RoleNameChanged += role =>
             {
                 Profile = Profile?.WithLoadout(role);
+                RefreshPersonalLoadouts();
                 SetDirty();
             };
             _personalLoadoutEditor.SelectionChanged += role =>
@@ -640,7 +641,7 @@ namespace Content.Client.Lobby.UI
 
             EnforceSpeciesTraitRestrictions();
 
-            var traits = _prototypeManager.EnumeratePrototypes<TraitPrototype>().OrderBy(t => Loc.GetString(t.Name)).ToList();
+            var traits = _prototypeManager.EnumeratePrototypes<TraitPrototype>().Where(t => !t.Disabled).OrderBy(t => Loc.GetString(t.Name)).ToList();
             TabContainer.SetTabTitle(2, Loc.GetString("humanoid-profile-editor-traits-tab"));
 
             if (traits.Count < 1)

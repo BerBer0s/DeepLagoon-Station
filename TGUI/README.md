@@ -171,14 +171,15 @@ dotnet build Content.Server/Content.Server.csproj -c Debug
 
 ## Character editor and emote audio
 
-The character editor uses one `CharacterEditor.jsx` browser for appearance,
-jobs, traits and companies. Identity/save/import/export controls stay native
-on the left to avoid a second CEF renderer. The original left-side sprite/equipment
-preview, tab order and specialized markings/loadout/saved-item/flavor editors
-remain native. Web actions modify the same `HumanoidCharacterProfile` draft;
-Save/import/export use the existing controller callbacks. Species restrictions,
-job requirements and trait budgets are checked by the content code. Hair and
-beard expose RGB sliders, HEX input, presets and an immediate color swatch.
+The character editor uses one `CharacterEditor.jsx` browser for every tab,
+identity, profile selection and save/import/export controls. Only the transparent
+character sprite is drawn by the engine above the TGUI background. The editor
+inherits the player's chat theme and background animation. Collapsible hair and
+beard galleries show sprite previews; color squares open the color wheel.
+Equipment customization uses modal dialogs and the existing per-profile data,
+server validation and instance visuals. Paint dialogs also expose RGB and HSV.
+Web actions modify the same `HumanoidCharacterProfile` draft; saving uses the
+existing controller callbacks, species restrictions, prices and trait budgets.
 
 In a connected lobby, `tgui_preview character` opens the actual editor with a local test draft;
 it does not save an account profile. TGUI Dev Server/Fast Refresh works through

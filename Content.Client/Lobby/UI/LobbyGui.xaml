@@ -44,6 +44,7 @@
                                 </controls:StripeBack>
                             </BoxContainer>
                         </PanelContainer>
+                        <lobbyUi:LobbyCharacterPreviewPanel Name="CharacterPreview" Access="Public" MaxWidth="400" HorizontalAlignment="Left" />
                         <!-- Voting Popups -->
                         <BoxContainer Orientation="Vertical" SeparationOverride="4" Name="VoteContainer"
                                       Access="Public" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0 8" />
@@ -72,11 +73,8 @@
                         <Label Name="ServerName" Access="Public" StyleClasses="LabelHeadingBigger" VAlign="Center"
                                HorizontalExpand="True" HorizontalAlignment="Center" />
                     </BoxContainer>
-                    <!-- Gold line -->
-                    <controls:HLine Color="{x:Static style:StyleNano.NanoGold}" Thickness="2" />
-                    <controls:HSpacer Spacing="10" />
                     <!-- Voting & misc button bar -->
-                    <BoxContainer Orientation="Horizontal" MinSize="0 40" HorizontalAlignment="Right">
+                    <BoxContainer Name="LobbyActions" Orientation="Horizontal" MinSize="0 40" HorizontalAlignment="Left">
                         <Button Name="AHelpButton" Access="Public" Text="{Loc 'ui-lobby-ahelp-button'}"
                                 StyleClasses="ButtonBig" />
                         <vote:VoteCallMenuButton Name="CallVoteButton" StyleClasses="ButtonBig" />
@@ -85,7 +83,7 @@
                         <Button Name="LeaveButton" Access="Public" StyleClasses="ButtonBig"
                                 Text="{Loc 'ui-lobby-leave-button'}" />
                     </BoxContainer>
-                    <controls:HSpacer Spacing="10" />
+
                     <!-- Server info -->
                     <ScrollContainer Name="LobbyInfoScroll" HScrollEnabled="False" VScrollEnabled="True"
                                      ReturnMeasure="True" MaxHeight="320" HorizontalExpand="True">
@@ -96,30 +94,12 @@
                             <Label Name="StationTime" Access="Public" FontColorOverride="{x:Static maths:Color.LightGray}"
                                    Margin="3 3 3 3" HorizontalAlignment="Left" />
                             <controls:HSpacer Spacing="5" />
-                            <lobbyUi:LobbyCharacterPreviewPanel Name="CharacterPreview" Access="Public" />
+
                             <controls:HSpacer Spacing="5" />
                             <BoxContainer MinHeight="10" />
                         </BoxContainer>
                     </ScrollContainer>
-                    <!-- Gold line -->
-                    <controls:HLine Color="{x:Static style:StyleNano.NanoGold}" Thickness="2" Access="Public" />
-                    <controls:HSpacer Spacing="10" />
-                    <PanelContainer VerticalExpand="True" HorizontalExpand="True" Margin="6 6 6 6">
-                        <PanelContainer.PanelOverride>
-                            <graphics:StyleBoxFlat BorderThickness="3" BorderColor="#35434d" BackgroundColor="#141414"/>
-                        </PanelContainer.PanelOverride>
-                        <PanelContainer VerticalExpand="True" HorizontalExpand="True" Margin="0 0 0 0">
-                            <PanelContainer.PanelOverride>
-                                <graphics:StyleBoxFlat BorderThickness="3" BorderColor="#262626" BackgroundColor="#111111"/>
-                            </PanelContainer.PanelOverride>
-                            <PanelContainer VerticalExpand="True" HorizontalExpand="True" Margin="3 3">
-                                <PanelContainer.PanelOverride>
-                                    <graphics:StyleBoxFlat BorderThickness="3" BorderColor="#303030" BackgroundColor="#1f1f1f"/>
-                                </PanelContainer.PanelOverride>
-                    <widgets:ChatBox Name="Chat" Access="Public" VerticalExpand="True" Margin="3 3 3 3" MinHeight="50" />
-                            </PanelContainer>
-                        </PanelContainer>
-                    </PanelContainer>
+                    <widgets:ChatBox Name="Chat" Access="Public" VerticalExpand="True" HorizontalExpand="True" MinHeight="120" />
                 </BoxContainer>
             </PanelContainer>
         </SplitContainer>

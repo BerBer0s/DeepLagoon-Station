@@ -26,6 +26,7 @@ public partial class ChatBox
             ChatInput.UseVanillaLayout();
             return;
         }
+        MinSize = new System.Numerics.Vector2(0, 120);
         ChatInput.Visible = false;
         if (_webChat != null)
             return;

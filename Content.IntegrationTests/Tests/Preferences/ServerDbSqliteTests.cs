@@ -42,7 +42,9 @@ namespace Content.IntegrationTests.Tests.Preferences
             return new HumanoidCharacterProfile() // Frontier - added HumanoidCharacterProfile
             {
                 Name = "Charlie Charlieson",
-                FlavorText = "The biggest boy around.",
+                FlavorText = "**The biggest boy around.** -=#ff8800(цвет)=-",
+                OocNotes = "__Заметка от игрока__",
+                HeadshotId = "0123456789abcdef0123456789abcdef",
                 Species = "Human",
                 Age = 21,
                 Appearance = new(

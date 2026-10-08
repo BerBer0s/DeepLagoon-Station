@@ -85,7 +85,7 @@ public sealed partial class SeparatedChatGameScreen : InGameScreen
     {
         if (ScreenContainer.Width <= 0 || _applyingChatWidth) return;
         _applyingChatWidth = true;
-        ScreenContainer.SplitFraction = 1 - _chatWidth;
+        ScreenContainer.SplitFraction = 1 - Math.Clamp(_chatWidth, Math.Min(0.55f, 320f / ScreenContainer.Width), 0.55f);
         // Pane preferred sizes are intentionally independent of the split.
         // Force layout even when the measure result therefore stays unchanged.
         ScreenContainer.InvalidateArrange();
@@ -96,7 +96,7 @@ public sealed partial class SeparatedChatGameScreen : InGameScreen
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
-        if (Math.Abs(ScreenContainer.SplitFraction - (1 - _chatWidth)) > 0.001f)
+        if (ScreenContainer.Width > 0 && Math.Abs(ScreenContainer.SplitFraction - (1 - Math.Clamp(_chatWidth, Math.Min(0.55f, 320f / ScreenContainer.Width), 0.55f))) > 0.001f)
             ApplyChatWidth();
     }
 }

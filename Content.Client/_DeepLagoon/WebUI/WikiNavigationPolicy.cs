@@ -8,8 +8,10 @@ public static class WikiNavigationPolicy
     public static bool IsPage(string url, IReadOnlySet<string> paths)
     {
         return TryUri(url, out var uri) && IsWiki(uri) &&
-            uri.Query.Length == 0 && paths.Contains(uri.AbsolutePath);
+            uri.Query.Length == 0 && IsPath(uri.AbsolutePath) && (paths.Contains(uri.AbsolutePath) || uri.AbsolutePath == "/ru/in_game" || uri.AbsolutePath.StartsWith("/ru/in_game/", StringComparison.Ordinal));
     }
+
+    public static bool IsTreeRequest(string url) => TryUri(url, out var uri) && IsWiki(uri) && uri.AbsolutePath == "/graphql" && uri.Query.Length == 0;
 
     public static bool IsAsset(string url)
     {

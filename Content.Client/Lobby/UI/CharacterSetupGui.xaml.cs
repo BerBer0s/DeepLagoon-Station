@@ -1,3 +1,8 @@
+using System.Linq;
+using Content.Client._DeepLagoon.WebUI;
+using Content.Client.Players.PlayTimeTracking;
+using Content.Client.UserInterface.Systems.Guidebook;
+using Robust.Client.Console;
 using Content.Client.Info;
 using Content.Client.Info.PlaytimeStats;
 using Content.Client.Resources;
@@ -26,10 +31,9 @@ namespace Content.Client.Lobby.UI
         [Dependency] private IResourceCache _resourceCache = default!;
         [Dependency] private IConfigurationManager _cfg = default!;
 
-        private readonly Button _createNewCharacterButton;
-        private bool _sidebarChosen;
-        private bool _updatingSidebar;
 
+        private readonly HumanoidProfileEditor _editor;
+        public event Action? CloseRequested;
         public event Action<int>? SelectCharacter;
         public event Action<int>? DeleteCharacter;
 
@@ -48,96 +52,61 @@ namespace Content.Client.Lobby.UI
 
             BackgroundPanel.PanelOverride = back;
 
-            _createNewCharacterButton = new Button
-            {
-                Text = Loc.GetString("character-setup-gui-create-new-character-button"),
-            };
-
-            _createNewCharacterButton.OnPressed += args =>
-            {
-                _preferencesManager.CreateCharacter(HumanoidCharacterProfile.Random());
-                ReloadCharacterPickers();
-                args.Event.Handle();
-            };
-
+            _editor = profileEditor;
             CharEditor.AddChild(profileEditor);
-            CharactersToggle.OnToggled += args =>
-            {
-                if (!_updatingSidebar)
-                    _sidebarChosen = true;
-                CharactersSidebar.Visible = args.Pressed;
-                SidebarSeparator.Visible = args.Pressed;
-            };
-            RulesButton.OnPressed += _ => new RulesAndInfoWindow().Open();
-
-            StatsButton.OnPressed += _ => new PlaytimeStatsWindow().OpenCentered();
-
+            Header.Visible = CharactersSidebar.Visible = SidebarSeparator.Visible = false;
+            profileEditor.SetupState = CreateTguiSetupState;
+            profileEditor.SetupAction = HandleTguiSetupAction;
             _cfg.OnValueChanged(CCVars.SeeOwnNotes, p => AdminRemarksButton.Visible = p, true);
         }
 
         protected override void Resized()
         {
             base.Resized();
-            if (!_sidebarChosen)
+            Header.Visible = CharactersSidebar.Visible = SidebarSeparator.Visible = false;
+        }
+
+        private TguiData CreateTguiSetupState()
+        {
+            var preferences = _preferencesManager.Preferences;
+            var requirements = IoCManager.Resolve<JobRequirementsManager>();
+            return new TguiData().Number("selected", preferences?.SelectedCharacterIndex ?? -1)
+                .Bool("canCreate", _preferencesManager.ServerDataLoaded && preferences != null && preferences.Characters.Count < (_preferencesManager.Settings?.MaxCharacterSlots ?? 0))
+                .Bool("notes", _cfg.GetCVar(CCVars.SeeOwnNotes))
+                .String("overallTime", requirements.FetchOverallPlaytime().ToString())
+                .Array("playtimes", requirements.FetchPlaytimeByRoles().Select(time => new TguiData().String("name", Loc.GetString(time.Key)).String("time", time.Value.ToString())))
+                .Array("characters", preferences?.Characters.Select(entry => new TguiData().Number("slot", entry.Key).String("name", entry.Value.Name)
+                    .String("balance", entry.Value is HumanoidCharacterProfile profile ? profile.BankBalanceText : "")) ?? Enumerable.Empty<TguiData>());
+        }
+
+        private bool HandleTguiSetupAction(string action, TguiActionData args)
+        {
+            switch (action)
             {
-                _updatingSidebar = true;
-                var show = Size.X >= 1000;
-                CharactersToggle.Pressed = show;
-                CharactersSidebar.Visible = show;
-                SidebarSeparator.Visible = show;
-                _updatingSidebar = false;
+                case "close": CloseRequested?.Invoke(); return true;
+                case "rules": UserInterfaceManager.GetUIController<GuidebookUIController>().OpenWikiPage("Rules"); return true;
+                case "notes":
+                    if (!_cfg.GetCVar(CCVars.SeeOwnNotes)) return false;
+                    IoCManager.Resolve<IClientConsoleHost>().ExecuteCommand("adminremarks"); return true;
+                case "create":
+                    if (!_preferencesManager.ServerDataLoaded || _preferencesManager.Preferences == null || _preferencesManager.Preferences.Characters.Count >= _preferencesManager.Settings!.MaxCharacterSlots) return false;
+                    _preferencesManager.CreateCharacter(HumanoidCharacterProfile.Random()); ReloadCharacterPickers(); return true;
+                case "select": case "delete":
+                    if (!args.TryInt("slot", out var slot) || _preferencesManager.Preferences?.Characters.ContainsKey(slot) != true) return false;
+                    if (action == "select") SelectCharacter?.Invoke(slot);
+                    else
+                    {
+                        if (slot == _preferencesManager.Preferences.SelectedCharacterIndex) return false;
+                        DeleteCharacter?.Invoke(slot);
+                    }
+                    return true;
+                default: return false;
             }
-            Header.Orientation = Size.X < 1100
-                ? BoxContainer.LayoutOrientation.Vertical
-                : BoxContainer.LayoutOrientation.Horizontal;
         }
 
         /// <summary>
         /// Disposes and reloads all character picker buttons from the preferences data.
         /// </summary>
-        public void ReloadCharacterPickers()
-        {
-            if (!_createNewCharacterButton.Disposed) _createNewCharacterButton.Orphan();
-            Characters.RemoveAllChildren();
-
-            var numberOfFullSlots = 0;
-            var characterButtonsGroup = new ButtonGroup();
-
-            if (!_preferencesManager.ServerDataLoaded)
-            {
-                return;
-            }
-
-            _createNewCharacterButton.ToolTip =
-                Loc.GetString("character-setup-gui-create-new-character-button-tooltip",
-                    ("maxCharacters", _preferencesManager.Settings!.MaxCharacterSlots));
-
-            var selectedSlot = _preferencesManager.Preferences?.SelectedCharacterIndex;
-
-            foreach (var (slot, character) in _preferencesManager.Preferences!.Characters)
-            {
-                numberOfFullSlots++;
-                var characterPickerButton = new CharacterPickerButton(_entManager,
-                    _protomanager,
-                    characterButtonsGroup,
-                    character,
-                    slot == selectedSlot);
-
-                Characters.AddChild(characterPickerButton);
-
-                characterPickerButton.OnPressed += args =>
-                {
-                    SelectCharacter?.Invoke(slot);
-                };
-
-                characterPickerButton.OnDeletePressed += () =>
-                {
-                    DeleteCharacter?.Invoke(slot);
-                };
-            }
-
-            _createNewCharacterButton.Disabled = numberOfFullSlots >= _preferencesManager.Settings.MaxCharacterSlots;
-            Characters.AddChild(_createNewCharacterButton);
-        }
+        public void ReloadCharacterPickers() => _editor.RefreshTguiSetup();
     }
 }

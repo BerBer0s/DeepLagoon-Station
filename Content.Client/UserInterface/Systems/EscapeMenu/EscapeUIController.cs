@@ -72,7 +72,7 @@ public sealed partial class EscapeUIController : UIController, IOnStateEntered<G
         _escapeWindow.RulesButton.OnPressed += _ =>
         {
             CloseEscapeWindow();
-            _info.OpenWindow();
+            UIManager.GetUIController<Content.Client.UserInterface.Systems.Guidebook.GuidebookUIController>().OpenWikiPage("Rules");
         };
 
         _escapeWindow.DisconnectButton.OnPressed += _ =>

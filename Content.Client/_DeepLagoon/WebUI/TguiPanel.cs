@@ -23,6 +23,8 @@ public sealed class TguiPanel : Control
     private ScreenCoordinates _dragPointer;
     private Vector2 _dragOrigin;
     private bool _dragging;
+    private string _chatState = "";
+    private float _appearanceRefresh;
 
     public TguiPanel(bool suspendWhenHidden = false)
     {
@@ -83,6 +85,8 @@ public sealed class TguiPanel : Control
         if (args.Handled || args.IsRepeat || type != KeyEventType.Down || !VisibleInTree || !Web.IsReady ||
             FloatingWindow() is not { } window) return;
         var pointer = _input.MouseScreenPosition;
+        // Color wheels, sliders, selections and scrollbars own drags in the body.
+        if (pointer.Position.Y / UIScale - GlobalPosition.Y > 32) return;
         for (var hit = UserInterfaceManager.MouseGetControl(pointer); hit != null; hit = hit.Parent)
         {
             if (hit != this) continue;
@@ -149,6 +153,14 @@ public sealed class TguiPanel : Control
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
+        _appearanceRefresh -= args.DeltaSeconds;
+        if (_appearanceRefresh <= 0)
+        {
+            _appearanceRefresh = 0.2f;
+            var preferences = IoCManager.Resolve<Content.Client.Lobby.IClientPreferencesManager>();
+            var state = Content.Client.UserInterface.Systems.Chat.Controls.ChatTabsSettings.Deserialize(preferences.Preferences?.ChatPanelSettings ?? "")?.WebState ?? "";
+            if (state != _chatState) { _chatState = state; Publish(); }
+        }
         if (_dragWindow == null || _input == null) return;
         if (!VisibleInTree || FloatingWindow() != _dragWindow || !_input.IsKeyDown(Keyboard.Key.MouseLeft))
         {
@@ -169,6 +181,7 @@ public sealed class TguiPanel : Control
         if (_interface.Length == 0 || !Web.IsReady) return;
         Web.Send("update", "{\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
             ",\"title\":" + GameWebView.Quote(_title) +
-            ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":" + _data + "}");
+            ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":" + _data[..^1] +
+            (_data.Trim() == "{}" ? "" : ",") + "\"chatState\":" + GameWebView.Quote(_chatState) + "}}");
     }
 }

@@ -908,6 +908,9 @@ namespace Content.Server.Database.Migrations.Postgres
                         .HasColumnType("integer")
                         .HasColumnName("playful_consent");
 
+                    b.Property<string>("OocNotes").IsRequired().HasColumnType("text").HasColumnName("ooc_notes");
+                    b.Property<string>("HeadshotId").IsRequired().HasColumnType("text").HasColumnName("headshot_id");
+
                     b.Property<string>("FlavorText")
                         .IsRequired()
                         .HasColumnType("text")
