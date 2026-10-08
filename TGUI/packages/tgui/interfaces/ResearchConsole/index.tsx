@@ -10,10 +10,8 @@ import {
 } from 'react';
 
 import { sendMessage, useBackend } from '../../backend';
-import { Button } from '../../components';
 import { playerTheme } from '../../components/PlayerTheme';
 import { DetailsPanel, PANEL_STRIP_WIDTH, PANEL_WIDTH } from './DetailsPanel';
-import { DisciplineTabs } from './DisciplineTabs';
 import {
   buildDependents,
   buildStateMap,
@@ -23,9 +21,9 @@ import {
 } from './model';
 import './ResearchConsole.scss';
 import { buildSearchIndex, searchTechs } from './search';
-import { SearchBox } from './SearchBox';
 import { type CameraCommand, type CameraTarget, TechTree } from './TechTree';
 import { Tips } from './Tips';
+import { TopBar } from './TopBar';
 import { useResearchFx } from './useResearchFx';
 import { buildTree } from './tree';
 
@@ -226,27 +224,20 @@ export const ResearchConsole = () => {
       onMouseDown={suppressNativeDrag}
       onDragStart={suppressNativeDrag}
     >
-      <header className="ResearchConsole__header">
-        <span>
-          {labels['dl-research-points']}: <b>{data.points ?? 0}</b>
-        </span>
-        <DisciplineTabs
-          disciplines={disciplines ?? []}
-          active={activeDiscipline}
-          labels={labels}
-          onSelect={onTab}
-        />
-        <SearchBox
-          query={query}
-          results={results}
-          techs={techById}
-          disciplineColors={disciplineColors}
-          labels={labels}
-          onChange={setQuery}
-          onPick={pickResult}
-        />
-        <Button onClick={() => act('servers')}>{labels['dl-research-servers']}</Button>
-      </header>
+      <TopBar
+        points={data.points ?? 0}
+        disciplines={disciplines ?? []}
+        activeDiscipline={activeDiscipline}
+        query={query}
+        results={results}
+        techs={techById}
+        disciplineColors={disciplineColors}
+        labels={labels}
+        onDiscipline={onTab}
+        onQuery={setQuery}
+        onPick={pickResult}
+        onServers={() => act('servers')}
+      />
       {stateById.size === 0 && (
         <div className="ResearchConsole__notice">{labels['dl-research-no-server']}</div>
       )}

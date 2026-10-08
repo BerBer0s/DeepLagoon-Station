@@ -19,6 +19,8 @@ $dim-lines-far: 0.04;
 $panel-icon-size: 56px;
 $recipe-icon-size: 32px;
 $result-icon-size: 32px;
+// Below this window width the top bar drops the words from the points and the server button.
+$narrow-window: 900px;
 
 .ResearchConsole {
   --rc-border: #68788a;
@@ -43,16 +45,6 @@ $result-icon-size: 32px;
     -webkit-user-select: text;
   }
 
-  &__header {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: space-between;
-    gap: $space;
-    padding: $space ($space * 2);
-    border-bottom: 1px solid var(--rc-border);
-  }
-
   &__body {
     position: relative;
     display: flex;
@@ -70,14 +62,50 @@ $result-icon-size: 32px;
   }
 }
 
-// One chip per discipline, in its color; the tree is narrowed to the active one.
+.TopBar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: $space;
+  padding: $space ($space * 2);
+  border-bottom: 1px solid var(--rc-border);
+
+  &__points {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: $space * 0.5;
+    white-space: nowrap;
+  }
+
+  // The words go first when the window is narrow; the tips still have them.
+  @media (max-width: $narrow-window) {
+    padding: $space;
+
+    &__label {
+      display: none;
+    }
+  }
+}
+
+// One chip per discipline, in its color; the tree is narrowed to the active one. They scroll
+// sideways when the window is too narrow for all of them.
 .DisciplineTabs {
   display: flex;
   flex: 1 1 auto;
   gap: 4px;
   min-width: 0;
+  padding-bottom: 2px;
   overflow-x: auto;
-  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 2px;
+    background: var(--rc-border);
+  }
 }
 
 .DisciplineTab {
@@ -118,10 +146,10 @@ $result-icon-size: 32px;
 .SearchBox {
   position: relative;
   display: flex;
-  flex: 0 1 220px;
+  flex: 0 1 200px;
   align-items: center;
   gap: $space * 0.75;
-  min-width: 120px;
+  min-width: 110px;
   height: 28px;
   padding: 0 $space;
   box-sizing: border-box;
