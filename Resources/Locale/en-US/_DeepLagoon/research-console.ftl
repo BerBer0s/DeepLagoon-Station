@@ -1,0 +1,10 @@
+dl-research-servers = Servers
+dl-research-points = Research points
+dl-research-research = Research
+dl-research-researched = Researched
+dl-research-locked = Locked
+dl-research-unaffordable = Not enough points
+dl-research-no-access = No access
+dl-research-no-server = No research server connected
+dl-research-tier = Tier
+dl-research-cost = Cost

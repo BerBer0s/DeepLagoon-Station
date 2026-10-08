@@ -1,0 +1,10 @@
+dl-research-servers = Сервер
+dl-research-points = Очки исследований
+dl-research-research = Изучить
+dl-research-researched = Изучено
+dl-research-locked = Закрыто
+dl-research-unaffordable = Не хватает очков
+dl-research-no-access = Нет доступа
+dl-research-no-server = Нет подключённого сервера исследований
+dl-research-tier = Тир
+dl-research-cost = Стоимость
