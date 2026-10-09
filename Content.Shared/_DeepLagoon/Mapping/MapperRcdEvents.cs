@@ -1,3 +1,4 @@
+using Content.Shared.Atmos.Components;
 using Robust.Shared.Serialization;
 
 namespace Content.Shared._DeepLagoon.Mapping;
@@ -32,10 +33,17 @@ public sealed class MapperRcdStrokeEvent : EntityEventArgs
     public readonly NetEntity Grid;
     public readonly string EntryId;
     public readonly Direction Direction;
+
+    /// <summary>
+    /// Pipe layer chosen when the stroke started. Only used by pipe entries.
+    /// </summary>
+    public readonly AtmosPipeLayer PipeLayer;
+
     public readonly List<Vector2i> Cells;
 
-    public MapperRcdStrokeEvent(NetEntity tool, NetEntity grid, string entryId, Direction direction, List<Vector2i> cells)
+    public MapperRcdStrokeEvent(NetEntity tool, NetEntity grid, string entryId, Direction direction, AtmosPipeLayer pipeLayer, List<Vector2i> cells)
     {
+        PipeLayer = pipeLayer;
         Tool = tool;
         Grid = grid;
         EntryId = entryId;

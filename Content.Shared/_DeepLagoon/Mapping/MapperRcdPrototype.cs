@@ -68,6 +68,13 @@ public sealed partial class MapperRcdEntry
     public string? Name;
 
     /// <summary>
+    /// Localization key of a short qualifier shown after the name, e.g. "diagonal". Tells apart entities that
+    /// share a name with a sibling.
+    /// </summary>
+    [DataField]
+    public string? Suffix;
+
+    /// <summary>
     /// When null the entity prototype icon is used.
     /// </summary>
     [DataField]
@@ -111,4 +118,10 @@ public enum MapperRcdSlot : byte
     /// Atmos pipe or device. The pipe layer is taken from <c>AtmosPipeLayersComponent</c> of the prototype.
     /// </summary>
     Pipe,
+
+    /// <summary>
+    /// Placed on top of whatever is there (catwalks, firelocks). Replaces nothing, is blocked by nothing;
+    /// only an identical entity already on the tile makes the cell a no-op.
+    /// </summary>
+    Overlay,
 }

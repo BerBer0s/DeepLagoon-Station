@@ -1,4 +1,3 @@
-using Content.Shared.Interaction;
 using Robust.Shared.GameStates;
 
 namespace Content.Shared._DeepLagoon.Mapping;
@@ -19,8 +18,13 @@ public sealed partial class MapperRcdComponent : Component
     public string? SelectedEntry;
 
     /// <summary>
-    /// Maximum distance between the user and a painted tile. Obstructions are not checked.
+    /// Id of the catalog entry that removes structures. The secondary button always paints with it.
+    /// </summary>
+    public const string DeconstructEntryId = "MapperDeconstruct";
+
+    /// <summary>
+    /// Maximum distance in tiles between the user and a painted tile. Obstructions are not checked.
     /// </summary>
     [DataField]
-    public float Range = SharedInteractionSystem.InteractionRange;
+    public float Range = 50f;
 }

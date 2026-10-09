@@ -103,6 +103,15 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
 
     public string GetEntryName(MapperRcdEntry entry)
     {
+        var name = GetBaseEntryName(entry);
+
+        return entry.Suffix == null
+            ? name
+            : Loc.GetString("mapper-rcd-name-with-suffix", ("name", name), ("suffix", Loc.GetString(entry.Suffix)));
+    }
+
+    private string GetBaseEntryName(MapperRcdEntry entry)
+    {
         if (entry.Name != null)
             return Loc.GetString(entry.Name);
 
@@ -125,13 +134,13 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
         return entry.Prototype;
     }
 
-    private void OnSelect(Entity<MapperRcdComponent> ent, ref MapperRcdSelectMessage args)
+    private void OnSelect(EntityUid uid, MapperRcdComponent comp, MapperRcdSelectMessage args)
     {
         if (!TryGetEntry(args.EntryId, out _))
             return;
 
-        ent.Comp.SelectedEntry = args.EntryId;
-        Dirty(ent);
+        comp.SelectedEntry = args.EntryId;
+        Dirty(uid, comp);
     }
 
     private void OnExamined(Entity<MapperRcdComponent> ent, ref ExaminedEvent args)

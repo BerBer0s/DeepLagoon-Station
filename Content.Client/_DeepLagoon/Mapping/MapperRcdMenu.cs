@@ -111,7 +111,7 @@ public sealed partial class MapperRcdMenu : RadialMenu
             var button = new MapperRcdMenuButton
             {
                 SetSize = new Vector2(ButtonSize, ButtonSize),
-                ToolTip = _catalog.GetEntryName(entry),
+                ToolTip = GetEntryTooltip(entry),
                 EntryId = id,
             };
 
@@ -132,6 +132,16 @@ public sealed partial class MapperRcdMenu : RadialMenu
         {
             AddLayer(sub, children);
         }
+    }
+
+    private string GetEntryTooltip(MapperRcdEntry entry)
+    {
+        var name = _catalog.GetEntryName(entry);
+
+        // Siblings often share a name (airlocks, wasteland windows), the id tells them apart.
+        return entry.Mode == MapperRcdMode.Deconstruct
+            ? name
+            : Loc.GetString("mapper-rcd-tooltip", ("name", name), ("id", entry.EffectiveId));
     }
 
     private void AddIcon(Control button, Texture? texture)

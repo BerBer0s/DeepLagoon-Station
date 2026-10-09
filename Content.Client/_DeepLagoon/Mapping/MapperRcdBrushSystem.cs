@@ -1,6 +1,9 @@
 using Content.Client.Construction;
+using Content.Client.ContextMenu.UI;
 using Content.Client.Interaction;
+using Content.Client.Tabletop;
 using Content.Shared._DeepLagoon.Mapping;
+using Content.Shared.Atmos.Components;
 using Content.Shared.Hands.Components;
 using Content.Shared.Popups;
 using Content.Shared.RCD.Systems;
@@ -12,6 +15,7 @@ using Robust.Client.Player;
 using Robust.Shared.Input;
 using Robust.Shared.Input.Binding;
 using Robust.Shared.Map.Components;
+using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
 
 namespace Content.Client._DeepLagoon.Mapping;
@@ -19,7 +23,8 @@ namespace Content.Client._DeepLagoon.Mapping;
 /// <summary>
 /// Turns holding the use button with a mapper RCD into a brush stroke. Tiles the cursor passes over are
 /// collected (gaps between frames are filled with a Bresenham line), each tile once per stroke, and sent to
-/// the server in batches at most once per tick. The click is swallowed only while the tool is in the active
+/// the server in batches at most once per tick. The primary button paints with the selected entry, the
+/// secondary button always removes structures. A click is swallowed only while the tool is in the active
 /// hand with an entry selected, so the item never gets in the way of normal interaction otherwise.
 /// </summary>
 public sealed partial class MapperRcdBrushSystem : EntitySystem
@@ -35,6 +40,7 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
     [Dependency] private IClyde _clyde = default!;
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IPlacementManager _placement = default!;
+    [Dependency] private IPrototypeManager _protos = default!;
     [Dependency] private InputSystem _inputSystem = default!;
     [Dependency] private MapperRcdSystem _catalog = default!;
     [Dependency] private RCDSystem _rcd = default!;
@@ -48,7 +54,10 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
     private bool _active;
     private EntityUid _tool;
     private EntityUid _grid;
+    private BoundKeyFunction _key = EngineKeyFunctions.Use;
+    private string _selected = string.Empty;
     private string _entryId = string.Empty;
+    private AtmosPipeLayer _pipeLayer;
     private Vector2i _last;
     private GameTick _lastFlushTick;
 
@@ -60,8 +69,13 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
 
         CommandBinds.Builder
             .BindBefore(EngineKeyFunctions.Use,
-                new PointerInputCmdHandler(OnUse, ignoreUp: false, outsidePrediction: true),
+                new PointerInputCmdHandler((in PointerInputCmdHandler.PointerInputCmdArgs args) => OnKey(args, EngineKeyFunctions.Use),
+                    ignoreUp: false, outsidePrediction: true),
                 typeof(ConstructionSystem), typeof(DragDropSystem))
+            .BindBefore(EngineKeyFunctions.UseSecondary,
+                new PointerInputCmdHandler((in PointerInputCmdHandler.PointerInputCmdArgs args) => OnKey(args, EngineKeyFunctions.UseSecondary),
+                    ignoreUp: false, outsidePrediction: true),
+                typeof(EntityMenuUIController), typeof(TabletopSystem))
             .Register<MapperRcdBrushSystem>();
     }
 
@@ -81,12 +95,12 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
         _pending.Clear();
     }
 
-    private bool OnUse(in PointerInputCmdHandler.PointerInputCmdArgs args)
+    private bool OnKey(in PointerInputCmdHandler.PointerInputCmdArgs args, BoundKeyFunction key)
     {
         switch (args.State)
         {
             case BoundKeyState.Up:
-                if (!_active)
+                if (!_active || _key != key)
                     return false;
 
                 Flush();
@@ -94,18 +108,18 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
                 return true;
 
             case BoundKeyState.Down:
-                return BeginStroke(args);
+                return BeginStroke(args, key);
 
             default:
                 return false;
         }
     }
 
-    private bool BeginStroke(in PointerInputCmdHandler.PointerInputCmdArgs args)
+    private bool BeginStroke(in PointerInputCmdHandler.PointerInputCmdArgs args, BoundKeyFunction key)
     {
         CancelStroke();
 
-        if (!TryGetBrush(out var player, out var tool, out var entryId))
+        if (!TryGetBrush(out var player, out var tool, out var selected))
             return false;
 
         if (!args.Coordinates.IsValid(EntityManager) ||
@@ -117,7 +131,12 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
 
         _active = true;
         _tool = tool;
-        _entryId = entryId;
+        _key = key;
+        _selected = selected;
+
+        // The secondary button erases whatever entry is selected; pipes remember the layer picked by the cursor.
+        _entryId = key == EngineKeyFunctions.UseSecondary ? MapperRcdComponent.DeconstructEntryId : selected;
+        _pipeLayer = ReadPipeLayer(selected);
         _grid = gridData.Value.GridUid;
 
         var world = _transform.ToMapCoordinates(args.Coordinates).Position;
@@ -134,10 +153,10 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
             return;
 
         if (!_clyde.IsFocused ||
-            _inputSystem.CmdStates.GetState(EngineKeyFunctions.Use) != BoundKeyState.Down ||
-            !TryGetBrush(out _, out var tool, out var entryId) ||
+            _inputSystem.CmdStates.GetState(_key) != BoundKeyState.Down ||
+            !TryGetBrush(out _, out var tool, out var selected) ||
             tool != _tool ||
-            entryId != _entryId ||
+            selected != _selected ||
             !TryComp(_grid, out MapGridComponent? grid))
         {
             CancelStroke();
@@ -152,26 +171,41 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
             Flush();
     }
 
-    private bool TryGetBrush(out EntityUid player, out EntityUid tool, out string entryId)
+    private bool TryGetBrush(out EntityUid player, out EntityUid tool, out string selected)
     {
         player = default;
         tool = default;
-        entryId = string.Empty;
+        selected = string.Empty;
 
         if (_player.LocalEntity is not { } local ||
             !TryComp(local, out HandsComponent? hands) ||
             hands.ActiveHand?.HeldEntity is not { } held ||
             !TryComp(held, out MapperRcdComponent? rcd) ||
-            rcd.SelectedEntry is not { } selected ||
-            !_catalog.TryGetEntry(selected, out _))
+            rcd.SelectedEntry is not { } chosen ||
+            !_catalog.TryGetEntry(chosen, out _))
         {
             return false;
         }
 
         player = local;
         tool = held;
-        entryId = selected;
+        selected = chosen;
         return true;
+    }
+
+    private AtmosPipeLayer ReadPipeLayer(string selected)
+    {
+        // The pipe placement ghost swaps the placed prototype for the layer under the cursor.
+        if (!_catalog.TryGetEntry(selected, out var entry) ||
+            entry.Slot != MapperRcdSlot.Pipe ||
+            _placement.CurrentPermission?.EntityType is not { } id ||
+            !_protos.TryIndex<EntityPrototype>(id, out var proto) ||
+            !proto.TryGetComponent<AtmosPipeLayersComponent>(out var layers, EntityManager.ComponentFactory))
+        {
+            return AtmosPipeLayer.Primary;
+        }
+
+        return layers.CurrentPipeLayer;
     }
 
     private void AdvanceTo(Vector2i target)
@@ -233,7 +267,7 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
                 batch.Add(_pending[j]);
             }
 
-            RaiseNetworkEvent(new MapperRcdStrokeEvent(tool, grid, _entryId, direction, batch));
+            RaiseNetworkEvent(new MapperRcdStrokeEvent(tool, grid, _entryId, direction, _pipeLayer, batch));
         }
 
         _pending.Clear();

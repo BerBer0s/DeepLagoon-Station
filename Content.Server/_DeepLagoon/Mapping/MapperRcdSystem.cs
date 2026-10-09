@@ -3,6 +3,7 @@ using Content.Shared._DeepLagoon.Mapping;
 using Content.Shared.ActionBlocker;
 using Content.Shared.Administration.Logs;
 using Content.Shared.Atmos.Components;
+using Content.Shared.Atmos.EntitySystems;
 using Content.Shared.Database;
 using Content.Shared.Doors.Components;
 using Content.Shared.Hands.Components;
@@ -33,7 +34,9 @@ namespace Content.Server._DeepLagoon.Mapping;
 ///  - Everything else (cables, wall lights without hard fixtures) is ignored.
 /// A structure entry replaces structures and edges and is skipped if the tile has a blocker.
 /// An edge entry replaces edges facing the same way and is skipped if the tile has a structure or a blocker.
-/// A pipe entry replaces pipes on the same layer only; other layers, blockers and structures do not matter.
+/// A pipe entry replaces pipes on the same layer only (the layer comes from the stroke, not from the catalog entry);
+/// other layers, blockers and structures do not matter.
+/// An overlay entry (catwalks, firelocks) ignores all of the above and only skips a tile that already has the same prototype.
 /// An identical occupant (same prototype, same direction if the entry rotates) makes the cell a no-op.
 /// </summary>
 public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
@@ -51,6 +54,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
     [Dependency] private SharedMapSystem _map = default!;
     [Dependency] private SharedTransformSystem _transform = default!;
     [Dependency] private ActionBlockerSystem _actionBlocker = default!;
+    [Dependency] private SharedAtmosPipeLayersSystem _pipeLayers = default!;
 
     private readonly Dictionary<NetUserId, (TimeSpan WindowStart, int Used)> _budgets = new();
     private readonly HashSet<EntityUid> _intersecting = new();
@@ -132,7 +136,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
             var result = entry.Mode switch
             {
                 MapperRcdMode.Tile => PaintTile(gridUid, grid, cell, entry),
-                MapperRcdMode.Entity => PaintEntity(gridUid, grid, cell, entry, direction),
+                MapperRcdMode.Entity => PaintEntity(gridUid, grid, cell, entry, direction, ev.PipeLayer),
                 MapperRcdMode.Deconstruct => Deconstruct(gridUid, cell),
                 _ => CellResult.Skipped,
             };
@@ -187,15 +191,42 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         return current.Tile.IsEmpty ? CellResult.Placed : CellResult.Replaced;
     }
 
-    private CellResult PaintEntity(EntityUid gridUid, MapGridComponent grid, Vector2i cell, MapperRcdEntry entry, Direction direction)
+    private CellResult PaintEntity(EntityUid gridUid, MapGridComponent grid, Vector2i cell, MapperRcdEntry entry, Direction direction, AtmosPipeLayer pipeLayer)
     {
         if (entry.Prototype == null || !ProtoManager.TryIndex<EntityPrototype>(entry.Prototype, out var proto))
             return CellResult.Skipped;
 
         var wantedDir = entry.Rotatable ? direction : Direction.South;
         var wantedLayer = AtmosPipeLayer.Primary;
+
         if (entry.Slot == MapperRcdSlot.Pipe && proto.TryGetComponent<AtmosPipeLayersComponent>(out var layers, _compFactory))
-            wantedLayer = layers.CurrentPipeLayer;
+        {
+            // The entry holds the primary layer prototype; the requested layer swaps it for its alternative.
+            if (_pipeLayers.TryGetAlternativePrototype(layers, pipeLayer, out var altId) &&
+                ProtoManager.TryIndex<EntityPrototype>(altId, out var altProto))
+            {
+                proto = altProto;
+            }
+
+            if (proto.TryGetComponent<AtmosPipeLayersComponent>(out var resolved, _compFactory))
+                wantedLayer = resolved.CurrentPipeLayer;
+        }
+
+        if (entry.Slot == MapperRcdSlot.Overlay)
+        {
+            _intersecting.Clear();
+            _lookup.GetLocalEntitiesIntersecting(gridUid, cell, _intersecting, -0.05f, LookupFlags.Uncontained);
+
+            foreach (var uid in _intersecting)
+            {
+                if (!IsGone(uid) && MetaData(uid).EntityPrototype?.ID == proto.ID)
+                    return CellResult.Skipped;
+            }
+
+            var overlay = Spawn(proto.ID, _map.GridTileToLocal(gridUid, grid, cell));
+            _transform.SetLocalRotation(overlay, wantedDir.ToAngle());
+            return CellResult.Placed;
+        }
 
         GatherOccupants(gridUid, cell);
 

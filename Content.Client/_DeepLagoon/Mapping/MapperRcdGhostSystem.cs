@@ -1,8 +1,11 @@
+using Content.Client.Atmos;
 using Content.Shared._DeepLagoon.Mapping;
+using Content.Shared.Atmos.Components;
 using Content.Shared.Hands.Components;
 using Robust.Client.Placement;
 using Robust.Client.Player;
 using Robust.Shared.Enums;
+using Robust.Shared.Prototypes;
 
 namespace Content.Client._DeepLagoon.Mapping;
 
@@ -14,9 +17,17 @@ public sealed partial class MapperRcdGhostSystem : EntitySystem
 {
     [Dependency] private IPlayerManager _player = default!;
     [Dependency] private IPlacementManager _placement = default!;
+    [Dependency] private IPrototypeManager _protos = default!;
     [Dependency] private MapperRcdSystem _catalog = default!;
 
     private readonly string _placementMode = typeof(AlignMapperRcd).Name;
+    private readonly string _pipePlacementMode = typeof(AlignAtmosPipeLayers).Name;
+
+    /// <summary>
+    /// Entry the current ghost was made for. The pipe ghost changes its own prototype with the layer under the
+    /// cursor, so the placed prototype cannot be used to tell whether the ghost is up to date.
+    /// </summary>
+    private string? _ghostEntry;
 
     public override void Update(float frameTime)
     {
@@ -39,17 +50,24 @@ public sealed partial class MapperRcdGhostSystem : EntitySystem
             if (placerIsMapper)
                 _placement.Clear();
 
+            _ghostEntry = null;
             return;
         }
 
-        if (placerEntity == held && _placement.CurrentPermission?.EntityType == entry.Prototype)
+        if (placerEntity == held && _ghostEntry == selected && _placement.IsActive)
             return;
 
+        // Pipes use the stock layer-aware mode: the tile quarter under the cursor picks the pipe layer.
+        var layered = entry is { Mode: MapperRcdMode.Entity, Slot: MapperRcdSlot.Pipe } &&
+                      _protos.TryIndex<EntityPrototype>(entry.Prototype, out var proto) &&
+                      proto.TryGetComponent<AtmosPipeLayersComponent>(out _, EntityManager.ComponentFactory);
+
+        _ghostEntry = selected;
         _placement.Clear();
         _placement.BeginPlacing(new PlacementInformation
         {
             MobUid = held,
-            PlacementOption = _placementMode,
+            PlacementOption = layered ? _pipePlacementMode : _placementMode,
             EntityType = entry.Prototype,
             Range = (int) Math.Ceiling(rcd.Range),
             IsTile = entry.Mode == MapperRcdMode.Tile,
