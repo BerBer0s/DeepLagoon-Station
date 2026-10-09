@@ -3,8 +3,8 @@ export const playerTheme = state => {
   let settings={};
   try {settings=JSON.parse(state||'{}').settings||{};} catch (_) {}
   const light=settings.theme==='default'||settings.theme==='light';
-  // Embedded windows inherit colors, but chat animation would repaint their
-  // entire CEF texture continuously. Animation belongs to the chat document.
+  // Themes supply colors only. Interfaces that need animation explicitly
+  // configure the native layer so movement does not repaint their CEF texture.
   return {className:light?'theme-light':'theme-dark',
     style:{backgroundColor:settings.chatBgColor||(light?'#eeeeee':'#171c24'),color:settings.chatTextColor||(light?'#171c24':'#ddd'),
       '--player-surface':light?'#dedee3':'#252b35'}};

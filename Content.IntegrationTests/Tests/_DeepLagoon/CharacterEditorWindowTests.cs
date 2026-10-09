@@ -13,6 +13,41 @@ namespace Content.IntegrationTests.Tests._DeepLagoon;
 public sealed class CharacterEditorWindowTests
 {
     [Test]
+    public async Task RemovingPreviewClothingUpdatesDraftAndRebuildsPreview()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, InLobby = true });
+        await pair.Client.WaitAssertion(() =>
+        {
+            pair.Client.ResolveDependency<Robust.Shared.Configuration.IConfigurationManager>()
+                .SetCVar(Content.Shared.CCVar.CCVars.PersonalLoadoutsEnabled, true);
+            var ui = pair.Client.ResolveDependency<IUserInterfaceManager>();
+            var lobby = ui.GetUIController<LobbyUIController>();
+            lobby.OpenCharacterEditor();
+            var window = ui.WindowRoot.Children.OfType<CharacterEditorWindow>().Single();
+            var editor = (HumanoidProfileEditor)typeof(LobbyUIController).GetField("_profileEditor", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lobby)!;
+            const string personalId = "DLEELoadoutClothingJumpsuitSuitBlack";
+            Assert.That(editor.HandleTguiProfileAction("equipment/select", JsonSerializer.Serialize(new { id = personalId })), Is.True);
+            var entities = pair.Client.ResolveDependency<Robust.Shared.GameObjects.IEntityManager>();
+            var inventory = entities.System<Content.Shared.Inventory.InventorySystem>();
+            var personal = entities.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>();
+            Assert.That(inventory.TryGetSlotEntity(editor.PreviewDummy, "jumpsuit", out var worn), Is.True);
+            var before = editor.PreviewDummy;
+            var wornPrototype = entities.GetComponent<Robust.Shared.GameObjects.MetaDataComponent>(worn!.Value).EntityPrototype!.ID;
+            Assert.That(personal.GetSelections(editor.Profile!).Any(choice => choice.Prototype.Id == personalId), Is.True);
+            Assert.That(editor.HandleTguiProfileAction("preview-slot-remove", "{\"value\":\"not-a-slot\"}"), Is.False);
+            Assert.That(editor.HandleTguiProfileAction("preview-slot-remove", "{\"value\":\"jumpsuit\"}"), Is.True);
+            Assert.That(personal.GetSelections(editor.Profile!).Any(choice => choice.Prototype.Id == personalId), Is.False);
+            Assert.That(editor.IsDirty, Is.True);
+            Assert.That(editor.PreviewDummy, Is.Not.EqualTo(before));
+            if (inventory.TryGetSlotEntity(editor.PreviewDummy, "jumpsuit", out var after))
+                Assert.That(entities.GetComponent<Robust.Shared.GameObjects.MetaDataComponent>(after!.Value).EntityPrototype!.ID, Is.Not.EqualTo(wornPrototype));
+            editor.ResetToDefault();
+            window.CloseConfirmed();
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
     public async Task FloatingEditorKeepsDraftAndIsolatesAppearanceFromChat()
     {
         await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, InLobby = true });

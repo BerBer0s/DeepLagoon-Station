@@ -425,6 +425,8 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         var profile = _profile!.WithLoadout(role);
         if (pressed && _jobRole != null)
             profile = profile.WithLoadout(_entities.System<PersonalLoadoutSystem>().RemoveJobConflicts(profile, _jobRole, prototype));
+        if (pressed)
+            profile = _entities.System<PersonalLoadoutSystem>().RestoreEquipmentSlots(profile, _job, prototype);
         ProfileChanged?.Invoke(profile);
     }
 

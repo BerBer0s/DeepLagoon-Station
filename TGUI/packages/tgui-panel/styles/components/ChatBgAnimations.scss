@@ -15,15 +15,6 @@
 // Short alias for .Chat with any active background animation
 $bg: '.Chat[class*="Chat--bgAnim-"]';
 
-// Only the ancestor surfaces are transparent; message cards, controls and menus
-// retain their own backgrounds. The native layer supplies the original base.
-.dl-native-background-clear { background: transparent !important; }
-.Chat.Chat--native-background::before {
-  content: none !important;
-  animation: none !important;
-  will-change: auto !important;
-}
-
 // ============================================================
 // Base layer setup
 // ============================================================

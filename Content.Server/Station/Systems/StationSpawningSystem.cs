@@ -219,6 +219,14 @@ public sealed partial class StationSpawningSystem : SharedStationSpawningSystem
                     }
 
                     // Handle any extra data here.
+                    if (EntityManager.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>()
+                        .FullyUnequipped(loadoutProto, loadout.UnequippedSlots))
+                    {
+                        // An explicitly empty slot satisfies the user's choice;
+                        // do not charge for removed gear or restore a fallback.
+                        equippedItems.Add(loadoutProto.ID);
+                        continue;
+                    }
 
                     //Frontier - we handle bank stuff so we are wrapping each item spawn inside our own cached check.
                     //If the user's preferences haven't been loaded, only give them free items or fallbacks.
@@ -226,7 +234,7 @@ public sealed partial class StationSpawningSystem : SharedStationSpawningSystem
                     if (loadoutProto.Price <= bankBalance && (loadoutProto.Price <= 0 || hasBalance))
                     {
                         bankBalance -= int.Max(0, loadoutProto.Price); // Treat negatives as zero.
-                        EquipStartingGear(entity.Value, loadoutProto, raiseEvent: false, customization: items.Customization);
+                        EquipStartingGear(entity.Value, loadoutProto, raiseEvent: false, customization: items.Customization, unequippedSlots: loadout.UnequippedSlots);
                         equippedItems.Add(loadoutProto.ID);
 
                         // Add support for IPC encryption keys from loadout headsets
@@ -261,7 +269,7 @@ public sealed partial class StationSpawningSystem : SharedStationSpawningSystem
                             continue;
                         }
 
-                        EquipStartingGear(entity.Value, loadoutProto, raiseEvent: false);
+                        EquipStartingGear(entity.Value, loadoutProto, raiseEvent: false, unequippedSlots: loadout.UnequippedSlots);
                         equippedItems.Add(fallback);
 
                         // Add support for IPC encryption keys from loadout headsets
@@ -281,7 +289,7 @@ public sealed partial class StationSpawningSystem : SharedStationSpawningSystem
             // and deduct loadout costs from a bank account if we have one.
             if (prototype?.StartingGear is not null)
             {
-                EquipStartingGear(entity.Value, prototype.StartingGear, raiseEvent: false);
+                EquipStartingGear(entity.Value, prototype.StartingGear, raiseEvent: false, unequippedSlots: loadout.UnequippedSlots);
 
                 // Add support for IPC encryption keys from job starting gear headsets
                 if (HasComp<EncryptionKeyHolderComponent>(entity.Value) &&

@@ -27,6 +27,10 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
     [DataField]
     public Dictionary<string, PersonalLoadoutCustomization> Customizations = new();
 
+    /// <summary>Equipment slots explicitly left empty in the character editor.</summary>
+    [DataField]
+    public HashSet<string> UnequippedSlots = new();
+
     /// <summary>
     /// Loadout specific name.
     /// </summary>
@@ -54,6 +58,7 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
 
         weh.EntityName = EntityName;
         weh.Customizations = new(Customizations);
+        weh.UnequippedSlots = new(UnequippedSlots);
 
         return weh;
     }
@@ -65,6 +70,9 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
     {
         var groupRemove = new ValueList<string>();
         var protoManager = collection.Resolve<IPrototypeManager>();
+        if (UnequippedSlots.Count > 0)
+            UnequippedSlots.IntersectWith(collection.Resolve<IEntityManager>().System<PersonalLoadoutSystem>()
+                .EditableSlots(profile).Select(slot => slot.Name));
         foreach (var selected in SelectedLoadouts.Values.SelectMany(items => items))
             if (selected.Customization != null) Customizations.TryAdd(selected.Prototype.Id, selected.Customization);
         Customizations = Customizations.Where(entry => protoManager.TryIndex<LoadoutPrototype>(entry.Key, out _))
@@ -75,6 +83,7 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
         {
             EntityName = null;
             SelectedLoadouts.Clear();
+            UnequippedSlots.Clear();
             return;
         }
 
@@ -260,7 +269,10 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
             return;
 
         if (force)
+        {
             SelectedLoadouts.Clear();
+            UnequippedSlots.Clear();
+        }
 
         var collection = IoCManager.Instance!;
         var roleProto = protoManager.Index(Role);
@@ -480,6 +492,7 @@ public sealed partial class RoleLoadout : IEquatable<RoleLoadout>
         if (ReferenceEquals(this, other)) return true;
 
         if (!Role.Equals(other.Role) ||
+            !UnequippedSlots.SetEquals(other.UnequippedSlots) ||
             SelectedLoadouts.Count != other.SelectedLoadouts.Count ||
             Points != other.Points ||
             EntityName != other.EntityName || Customizations.Count != other.Customizations.Count ||

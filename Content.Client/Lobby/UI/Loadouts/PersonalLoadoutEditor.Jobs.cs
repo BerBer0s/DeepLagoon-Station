@@ -90,7 +90,8 @@ public sealed partial class PersonalLoadoutEditor
                 }
             }
         }
-        var cost = _jobRole?.SelectedLoadouts.Values.SelectMany(x => x).Sum(x => _prototypes.TryIndex(x.Prototype, out var item) ? item.Price : 0) ?? 0;
+        var cost = _jobRole?.SelectedLoadouts.Values.SelectMany(x => x).Sum(x => _prototypes.TryIndex(x.Prototype, out var item) &&
+            !_entities.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().FullyUnequipped(item, _jobRole!.UnequippedSlots) ? item.Price : 0) ?? 0;
         _jobCost.Text = Loc.GetString("frontier-loadout-cost", ("cost", BankSystemExtensions.ToSpesoString(cost)));
         _jobCount.Text = Loc.GetString("dl-loadout-job-count", ("count", _jobEntries.Count));
     }
@@ -113,7 +114,8 @@ public sealed partial class PersonalLoadoutEditor
         {
                 var role = _jobRole;
                 var item = entry.Item;
-                var selected = role.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(x => x.Prototype.Id == item.ID);
+                var stored = role.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(x => x.Prototype.Id == item.ID);
+                var selected = stored && !_entities.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().HasUnequippedSlots(_profile, _job, item);
                 var replacementProfile = _entities.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().RemovePersonalConflicts(_profile, item);
                 var valid = role.IsValid(replacementProfile, _session, item.ID, IoCManager.Instance!, out var reason);
                 if (!_showUnavailable.Pressed && !valid && !selected)
@@ -137,10 +139,15 @@ public sealed partial class PersonalLoadoutEditor
                 button.OnPressed += _ =>
                 {
                     if (button.Pressed)
-                        role.AddLoadout(entry.Group.ID, item.ID, _prototypes);
+                    {
+                        if (!stored) role.AddLoadout(entry.Group.ID, item.ID, _prototypes);
+                    }
                     else
                         role.RemoveLoadout(entry.Group.ID, item.ID, _prototypes);
-                    ProfileChanged?.Invoke((button.Pressed ? replacementProfile : _profile).WithLoadout(role));
+                    var updated = (button.Pressed ? replacementProfile : _profile).WithLoadout(role);
+                    if (button.Pressed)
+                        updated = _entities.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().RestoreEquipmentSlots(updated, _job, item);
+                    ProfileChanged?.Invoke(updated);
                 };
                 grid.AddChild(button);
         }

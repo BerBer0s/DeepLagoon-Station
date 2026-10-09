@@ -1,0 +1,7 @@
+// Shared by chat and interface bundles. Keep controls and message cards opaque.
+.dl-native-background-clear { background: transparent !important; }
+.Chat.Chat--native-background::before {
+  content: none !important;
+  animation: none !important;
+  will-change: auto !important;
+}

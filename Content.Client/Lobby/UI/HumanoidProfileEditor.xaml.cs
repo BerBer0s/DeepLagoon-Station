@@ -1220,7 +1220,7 @@ namespace Content.Client.Lobby.UI
             if (_entManager.EntityExists(PreviewDummy) && _previewEquipmentProfile is { } previous
                 && previous.Species == Profile.Species && _previewJob == job && _previewClothes == ShowClothes.Pressed
                 && previous.Loadouts.Count == Profile.Loadouts.Count
-                && previous.Loadouts.All(x => Profile.Loadouts.TryGetValue(x.Key, out var current) && x.Value.SelectedLoadouts.Count == current.SelectedLoadouts.Count && x.Value.SelectedLoadouts.All(g => current.SelectedLoadouts.TryGetValue(g.Key, out var items) && g.Value.SequenceEqual(items))))
+                && previous.Loadouts.All(x => Profile.Loadouts.TryGetValue(x.Key, out var current) && x.Value.UnequippedSlots.SetEquals(current.UnequippedSlots) && x.Value.SelectedLoadouts.Count == current.SelectedLoadouts.Count && x.Value.SelectedLoadouts.All(g => current.SelectedLoadouts.TryGetValue(g.Key, out var items) && g.Value.SequenceEqual(items))))
             {
                 // Unselected item customizations still change the catalogue's draft.
                 RefreshPersonalLoadouts();
