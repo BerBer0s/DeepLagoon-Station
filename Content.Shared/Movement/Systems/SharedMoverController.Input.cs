@@ -368,6 +368,9 @@ namespace Content.Shared.Movement.Systems
 
             if (moverComp == null) return;
 
+            // DeepLagoon: Shift is the aghost speed wheel modifier, so the admin ghost never switches to walking
+            if (HasComp<Content.Shared._DeepLagoon.Admin.AGhostSpeedComponent>(uid)) return;
+
             SetSprinting((uid, moverComp), subTick, walking);
         }
 
