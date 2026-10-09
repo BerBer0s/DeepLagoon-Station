@@ -120,7 +120,7 @@ public sealed partial class HumanoidProfileEditor
         if (Profile is not { } p) return data;
         data.Array("previewSlots", _personalLoadoutEditor.CreateTguiSlots(PreviewDummy));
         data.Array("tabs", Enumerable.Range(0, TabContainer.ChildCount).Select(i => new TguiData().Number("id", i)
-            .String("name", TguiTabMode(i) switch { "settings" => "Настройки", "appearance" => "Основное", "jobs" => "Профессии", "traits" => "Черты", "company" => "Компания", "markings" => "Маркинги", "equipment" => "Снаряжение", "saved" => "Сохранённые предметы", _ => "Описание" })
+            .String("name", TguiTabMode(i) switch { "settings" => "Настройки", "appearance" => "Основное", "jobs" => "Профессии", "traits" => "Черты", "company" => "Компания", "markings" => "Внешность", "equipment" => "Снаряжение", "saved" => "Сохранённые предметы", _ => "Описание" })
             .String("mode", TguiTabMode(i))));
         if (mode == "saved") data.Array("savedItems", _savedItemEntities.Where(_entManager.EntityExists).Select(entity =>
             new TguiData().String("name", _entManager.GetComponent<MetaDataComponent>(entity).EntityName)
@@ -369,6 +369,9 @@ public sealed partial class HumanoidProfileEditor
                 SetPreviewRotation(_previewRotation); break;
             case "preview-slot":
                 if (!_personalLoadoutEditor.SelectTguiSlot(PreviewDummy, value)) return false;
+                break;
+            case "preview-slot-remove":
+                if (!_personalLoadoutEditor.RemoveTguiSlot(PreviewDummy, value)) return false;
                 break;
             case "species":
                 if (!_species.Any(s => s.ID == value)) return false;

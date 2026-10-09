@@ -45,6 +45,46 @@ public sealed partial class PersonalLoadoutEditor
         return true;
     }
 
+    public bool RemoveTguiSlot(EntityUid preview, string name)
+    {
+        if (_profile == null || !_entities.EntityExists(preview)) return false;
+        var inventory = _entities.System<InventorySystem>();
+        if (!inventory.TryGetSlots(preview, out var slots)
+            || !slots.Any(s => s.Name == name && (s.SlotFlags & (SlotFlags.PREVENTEQUIP | SlotFlags.POCKET | SlotFlags.SUITSTORAGE)) == 0)
+            || !inventory.TryGetSlotEntity(preview, name, out var entity)
+            || _entities.GetComponent<MetaDataComponent>(entity.Value).EntityPrototype is not { } item) return false;
+
+        // Personal clothing overrides job gear; remove only the selection that
+        // produced the item currently visible in this slot.
+        var personal = GetRole();
+        foreach (var (group, choices) in personal.SelectedLoadouts)
+        {
+            var choice = choices.FirstOrDefault(c => _prototypes.TryIndex(c.Prototype, out var proto)
+                && proto.PersonalItems.Any(id => id.Id == item.ID));
+            if (choice == null || choices.Count <= _prototypes.Index(group).MinLimit) continue;
+            personal.RemoveLoadout(group, choice.Prototype, _prototypes);
+            _cachedTguiState = null;
+            ProfileChanged?.Invoke(_profile.WithLoadout(personal));
+            return true;
+        }
+
+        PrepareJobCatalog();
+        if (_jobRole == null) return false;
+        var role = _jobRole.Clone();
+        foreach (var (group, choices) in role.SelectedLoadouts)
+        {
+            if (_prototypes.Index(group).Hidden || choices.Count <= _prototypes.Index(group).MinLimit) continue;
+            var choice = choices.FirstOrDefault(c => _prototypes.TryIndex(c.Prototype, out var proto)
+                && (_prototypes.TryIndex(proto.StartingGear, out var gear) ? (IEquipmentLoadout) gear : proto).GetGear(name) == item.ID);
+            if (choice == null) continue;
+            role.RemoveLoadout(group, choice.Prototype, _prototypes);
+            _cachedTguiState = null;
+            ProfileChanged?.Invoke(_profile.WithLoadout(role));
+            return true;
+        }
+        return false;
+    }
+
     private HumanoidCharacterProfile? _cachedTguiProfile;
     private string? _cachedTguiJob;
     private SlotDefinition? _cachedTguiSlot;

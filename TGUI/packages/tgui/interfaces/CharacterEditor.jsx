@@ -43,8 +43,10 @@ export const CharacterEditor = () => {
   const [charactersOpen,setCharactersOpen]=useState(false),[statsOpen,setStatsOpen]=useState(false),[deleteSlot,setDeleteSlot]=useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const change = action => value => act(action, { value });
-  if (!data.available) return <div className="CharacterEditor"><header className="CharacterEditor__windowTitle">Редактор персонажа</header>
-    {data.setup && <Button className="CharacterEditor__close" color="bad" onClick={() => act('setup/close')}><span aria-hidden="true">×</span>Закрыть</Button>}
+  if (!data.available) return <div className="CharacterEditor"><header className="CharacterEditor__header">
+    <div className="CharacterEditor__windowTitle">Редактор персонажа</div>
+    {data.setup && <div className="CharacterEditor__headerActions"><Button icon="times" onClick={() => act('setup/close')}>Закрыть</Button></div>}
+    </header>
     Выберите персонажа.</div>;
   const matches = name => name.toLowerCase().includes(search.toLowerCase());
   const appearance = data.appearance || {};
@@ -52,12 +54,18 @@ export const CharacterEditor = () => {
   return <div className={'CharacterEditor Chat ' + theme.className + ' CharacterEditor--' + data.mode +
     (appearance.smoothScroll ? ' CharacterEditor--smooth' : '') + (appearance.hoverEffect ? ' CharacterEditor--hover' : '')}
     style={{ ...theme.style, ...editorAppearance(appearance) }}>
-    <header className="CharacterEditor__windowTitle">Редактор персонажа</header>
-    {data.setup && <Button className="CharacterEditor__close" color="bad" onClick={()=>act('setup/close')}><span aria-hidden="true">×</span>Закрыть</Button>}
+    <header className="CharacterEditor__header">
+      <div className="CharacterEditor__windowTitle">Редактор персонажа</div>
+      <div className="CharacterEditor__headerActions">
+        <Button disabled={!data.dirty} color="good" onClick={()=>act('save')}>Сохранить</Button>
+        <Button disabled={!data.dirty} onClick={()=>act('reset')}>Сбросить</Button>
+        {data.setup && <Button icon="times" onClick={()=>act('setup/close')}>Закрыть</Button>}
+      </div>
+    </header>
     <aside className="CharacterEditor__preview" onWheel={event=>{const bounds=event.currentTarget.getBoundingClientRect();if(event.clientX<bounds.left+64||event.clientX>bounds.right-64)return;event.preventDefault();act('rotate',{value:event.deltaY>0?1:-1});}}><div className="CharacterEditor__previewSpace" />
       <div className="CharacterEditor__floor" style={{ backgroundImage: data.previewFloor ? `url("${data.previewFloor}")` : undefined }} />
       <div className="CharacterEditor__rotation"><Button onClick={()=>act('rotate',{value:-1})}>◀</Button><Button onClick={()=>act('rotate',{value:1})}>▶</Button><Button selected={data.showClothes} onClick={()=>act('clothes')}>Show</Button></div>
-      <div className="CharacterEditor__slots">{(data.previewSlots||[]).map((slot,index)=><button type="button" key={slot.id} title={slot.name} style={{gridColumn:index%2?3:1,gridRow:Math.floor(index/2)+1}} aria-label={slot.name} aria-pressed={slot.selected} onClick={()=>act('preview-slot',{value:slot.id})}><div className="CharacterEditor__sprite">{(slot.images.length?slot.images:[{url:slot.background,color:"#ffffff"}]).map((image,i)=><TintedSprite key={i} image={image.url} color={image.color} />)}</div></button>)}</div>
+      <div className="CharacterEditor__slots">{(data.previewSlots||[]).map((slot,index)=><button type="button" key={slot.id} title={slot.name} style={{gridColumn:index%2?3:1,gridRow:Math.floor(index/2)+1}} aria-label={slot.name} aria-pressed={slot.selected} onClick={()=>act('preview-slot',{value:slot.id})} onContextMenu={event=>{event.preventDefault();act('preview-slot-remove',{value:slot.id});}}><div className="CharacterEditor__sprite">{(slot.images.length?slot.images:[{url:slot.background,color:"#ffffff"}]).map((image,i)=><TintedSprite key={i} image={image.url} color={image.color} />)}</div></button>)}</div>
     </aside>
     <main className="CharacterEditor__content">
     {data.setup && <>
@@ -67,28 +75,27 @@ export const CharacterEditor = () => {
     </>}
     <nav className="CharacterEditor__tabs CharacterEditor__editorTabs" role="tablist" aria-label="Редактор персонажа">{(data.tabs || []).map(tab=><button type="button" role="tab" aria-selected={tab.mode===data.mode} key={tab.id} onClick={()=>act('select-tab',{value:tab.id})}>{tab.name}</button>)}</nav>
     {data.mode === 'appearance' && <div className="CharacterEditor__identity">
-      <Button disabled={!data.dirty} color="good" onClick={()=>act('save')}>Сохранить</Button><Button disabled={!data.dirty} onClick={()=>act('reset')}>Сбросить</Button>
       <Button selected={data.showClothes} onClick={()=>act('clothes')}>Одежда</Button>
-      {data.mode==='appearance'&&<><Button onClick={()=>act('random-name')}>Случайное имя</Button><Button onClick={()=>act('random-all')}>Случайный персонаж</Button></>}
+      <Button onClick={()=>act('random-all')}>Случайный персонаж</Button>
       <Button onClick={()=>act('import')}>Импорт</Button><Button onClick={()=>act('export')}>Экспорт</Button>
     </div>}
     {data.mode === 'settings' && <CharacterEditorSettings settings={appearance} act={act} />}
     {data.mode === 'identity' && <>
       <Button fluid selected={data.showClothes} onClick={() => act('clothes')}>Показывать одежду</Button>
       <Section fitted>
-        <Button fluid onClick={() => act('random-name')}>Случайное имя</Button>
         <Button fluid onClick={() => act('random-all')}>Случайный персонаж</Button>
         <small className="CharacterEditor__warning">Имя должно соответствовать правилам именования выбранной расы.</small>
       </Section>
       <div className="CharacterEditor__buttons">
-        <Button fluid color="good" disabled={!data.dirty} onClick={() => act('save')}>Сохранить</Button>
-        <Button fluid disabled={!data.dirty} onClick={() => act('reset')}>Сбросить</Button>
         <Button fluid onClick={() => act('import')}>Импорт</Button>
         <Button fluid onClick={() => act('export')}>Экспорт</Button>
       </div>
     </>}
     {data.mode === 'appearance' && <>
-      <DraftInput label="Имя персонажа" value={data.name} onCommit={change('name')} />
+      <div className="CharacterEditor__nameRow">
+        <DraftInput label="Имя персонажа" value={data.name} onCommit={change('name')} />
+        <Button icon="dice" tooltip="Случайное имя" aria-label="Случайное имя" onClick={()=>act('random-name')} />
+      </div>
       <div className="CharacterEditor__grid">
         <div><Select label="Раса" value={data.species} options={data.speciesOptions} onChange={change('species')} />
           <Button icon="book" onClick={() => act('species-guide')}>Справка о расе</Button></div>
