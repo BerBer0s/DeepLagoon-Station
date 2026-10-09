@@ -1,8 +1,10 @@
 using Content.Client.Construction;
+using Content.Client.Examine;
 using Content.Client.Interaction;
 using Content.Shared._DeepLagoon.Mapping;
 using Content.Shared.Atmos.Components;
 using Content.Shared.Hands.Components;
+using Content.Shared.Input;
 using Content.Shared.Popups;
 using Content.Shared.RCD.Systems;
 using Robust.Client.GameObjects;
@@ -25,6 +27,9 @@ namespace Content.Client._DeepLagoon.Mapping;
 ///    line, each tile once per stroke, and sent in batches at most once per tick;
 ///  - line (shift): a straight line from the pressed tile to the tile under the cursor, sent on release;
 ///  - area (control): the rectangle between the pressed tile and the cursor tile, sent on release.
+/// With a modifier held the engine does not raise the use function at all but the one bound to that combination
+/// (examine for shift, pull for control), so each kind listens to its own function.
+/// Control with the middle button cycles the pipe layer of the device under the cursor.
 /// A click is swallowed only while the tool is in the active hand with an entry selected, so the item never
 /// gets in the way of normal interaction otherwise. Losing window focus, switching the item or the entry,
 /// or opening the menu drops the stroke without sending anything more.
@@ -68,6 +73,7 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
     private readonly List<Vector2i> _shape = new();
 
     private bool _active;
+    private BoundKeyFunction _key = EngineKeyFunctions.Use;
     private StrokeKind _kind;
     private EntityUid _tool;
     private EntityUid _grid;
@@ -85,8 +91,19 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
 
         CommandBinds.Builder
             .BindBefore(EngineKeyFunctions.Use,
-                new PointerInputCmdHandler(OnUse, ignoreUp: false, outsidePrediction: true),
+                new PointerInputCmdHandler((in PointerInputCmdHandler.PointerInputCmdArgs args) => OnKey(args, EngineKeyFunctions.Use),
+                    ignoreUp: false, outsidePrediction: true),
                 typeof(ConstructionSystem), typeof(DragDropSystem))
+            .BindBefore(ContentKeyFunctions.ExamineEntity,
+                new PointerInputCmdHandler((in PointerInputCmdHandler.PointerInputCmdArgs args) => OnKey(args, ContentKeyFunctions.ExamineEntity),
+                    ignoreUp: false, outsidePrediction: true),
+                typeof(ExamineSystem))
+            .Bind(ContentKeyFunctions.TryPullObject,
+                new PointerInputCmdHandler((in PointerInputCmdHandler.PointerInputCmdArgs args) => OnKey(args, ContentKeyFunctions.TryPullObject),
+                    ignoreUp: false, outsidePrediction: true))
+            .BindBefore(ContentKeyFunctions.EditorFlipObject,
+                new PointerInputCmdHandler(OnConfigure, outsidePrediction: true),
+                typeof(ConstructionSystem))
             .Register<MapperRcdBrushSystem>();
 
         _overlays.AddOverlay(new MapperRcdShapeOverlay(this));
@@ -120,24 +137,41 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
         return _active && _kind != StrokeKind.Brush && _shape.Count > 0;
     }
 
-    private bool OnUse(in PointerInputCmdHandler.PointerInputCmdArgs args)
+    private bool OnKey(in PointerInputCmdHandler.PointerInputCmdArgs args, BoundKeyFunction key)
     {
         switch (args.State)
         {
             case BoundKeyState.Up:
-                return EndStroke();
+                return EndStroke(key);
 
             case BoundKeyState.Down:
-                return BeginStroke(args);
+                return BeginStroke(args, key);
 
             default:
                 return false;
         }
     }
 
-    private bool EndStroke()
+    private bool OnConfigure(in PointerInputCmdHandler.PointerInputCmdArgs args)
     {
-        if (!_active)
+        if (!TryGetBrush(out _, out var tool, out _))
+            return false;
+
+        if (args.Coordinates.IsValid(EntityManager) && _rcd.TryGetMapGridData(args.Coordinates, out var gridData))
+        {
+            var world = _transform.ToMapCoordinates(args.Coordinates).Position;
+            var cell = _map.WorldToTile(gridData.Value.GridUid, gridData.Value.Component, world);
+            NetEntity? target = args.EntityUid.IsValid() ? GetNetEntity(args.EntityUid) : null;
+
+            RaiseNetworkEvent(new MapperRcdConfigureEvent(GetNetEntity(tool), GetNetEntity(gridData.Value.GridUid), cell, target));
+        }
+
+        return true;
+    }
+
+    private bool EndStroke(BoundKeyFunction key)
+    {
+        if (!_active || _key != key)
             return false;
 
         if (_kind != StrokeKind.Brush && TryComp(_grid, out MapGridComponent? grid))
@@ -155,7 +189,7 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
         return true;
     }
 
-    private bool BeginStroke(in PointerInputCmdHandler.PointerInputCmdArgs args)
+    private bool BeginStroke(in PointerInputCmdHandler.PointerInputCmdArgs args, BoundKeyFunction key)
     {
         CancelStroke();
 
@@ -170,6 +204,7 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
         }
 
         _active = true;
+        _key = key;
         _tool = tool;
         _entryId = selected;
         _grid = gridData.Value.GridUid;
@@ -178,9 +213,9 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
         var world = _transform.ToMapCoordinates(args.Coordinates).Position;
         _start = _last = _map.WorldToTile(_grid, gridData.Value.Component, world);
 
-        if (_input.IsKeyDown(Keyboard.Key.Control))
+        if (key == ContentKeyFunctions.TryPullObject)
             _kind = StrokeKind.Area;
-        else if (_input.IsKeyDown(Keyboard.Key.Shift))
+        else if (key == ContentKeyFunctions.ExamineEntity)
             _kind = StrokeKind.Line;
         else
             _kind = StrokeKind.Brush;
@@ -201,7 +236,7 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
             return;
 
         if (!_clyde.IsFocused ||
-            _inputSystem.CmdStates.GetState(EngineKeyFunctions.Use) != BoundKeyState.Down ||
+            _inputSystem.CmdStates.GetState(_key) != BoundKeyState.Down ||
             !TryGetBrush(out _, out var tool, out var selected) ||
             tool != _tool ||
             selected != _entryId ||

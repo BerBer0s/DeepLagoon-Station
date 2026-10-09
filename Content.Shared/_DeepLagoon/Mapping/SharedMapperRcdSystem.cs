@@ -25,6 +25,11 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
     /// </summary>
     protected readonly HashSet<string> EdgeProtos = new();
 
+    /// <summary>
+    /// Entity prototypes of under-slot entries (grilles).
+    /// </summary>
+    protected readonly HashSet<string> UnderProtos = new();
+
     private readonly Dictionary<string, MapperRcdFilter> _protoFilters = new();
 
     private bool _catalogDirty = true;
@@ -53,6 +58,7 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
         _entries.Clear();
         StructureProtos.Clear();
         EdgeProtos.Clear();
+        UnderProtos.Clear();
         _protoFilters.Clear();
 
         foreach (var category in ProtoManager.EnumeratePrototypes<MapperRcdCategoryPrototype>())
@@ -82,6 +88,9 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
                         break;
                     case MapperRcdSlot.Edge:
                         EdgeProtos.Add(entry.Prototype);
+                        break;
+                    case MapperRcdSlot.Under:
+                        UnderProtos.Add(entry.Prototype);
                         break;
                 }
             }
@@ -127,6 +136,12 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
     {
         EnsureCatalog();
         return StructureProtos;
+    }
+
+    protected HashSet<string> GetUnderProtos()
+    {
+        EnsureCatalog();
+        return UnderProtos;
     }
 
     protected HashSet<string> GetEdgeProtos()

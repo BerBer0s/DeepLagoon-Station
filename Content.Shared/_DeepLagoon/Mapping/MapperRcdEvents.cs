@@ -21,6 +21,30 @@ public sealed class MapperRcdSelectMessage : BoundUserInterfaceMessage
 }
 
 /// <summary>
+/// Cycles the pipe layer of a configurable device (vent, scrubber, port...) on one tile in place.
+/// </summary>
+[Serializable, NetSerializable]
+public sealed class MapperRcdConfigureEvent : EntityEventArgs
+{
+    public readonly NetEntity Tool;
+    public readonly NetEntity Grid;
+    public readonly Vector2i Cell;
+
+    /// <summary>
+    /// The entity under the cursor, preferred if it is configurable.
+    /// </summary>
+    public readonly NetEntity? Target;
+
+    public MapperRcdConfigureEvent(NetEntity tool, NetEntity grid, Vector2i cell, NetEntity? target)
+    {
+        Tool = tool;
+        Grid = grid;
+        Cell = cell;
+        Target = target;
+    }
+}
+
+/// <summary>
 /// A batch of tiles of one brush stroke. Cells are grid indices of <see cref="Grid"/> and are applied
 /// strictly in the order they are listed.
 /// </summary>

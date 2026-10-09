@@ -148,6 +148,12 @@ public enum MapperRcdSlot : byte
     Pipe,
 
     /// <summary>
+    /// Grilles: coexists with windows (a window goes on top of a grille and a grille goes under a window),
+    /// is replaced by another grille and by walls and doors, blocked by the same things as a structure.
+    /// </summary>
+    Under,
+
+    /// <summary>
     /// Placed on top of whatever is there (catwalks, firelocks). Replaces nothing, is blocked by nothing;
     /// only an identical entity already on the tile makes the cell a no-op.
     /// </summary>

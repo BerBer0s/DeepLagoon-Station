@@ -3,6 +3,7 @@ using Content.Shared._DeepLagoon.Mapping;
 using Content.Shared.ActionBlocker;
 using Content.Shared.Administration.Logs;
 using Content.Shared.Atmos.Components;
+using Content.Shared.Construction;
 using Content.Shared.Atmos.EntitySystems;
 using Content.Shared.Database;
 using Content.Shared.Doors.Components;
@@ -32,12 +33,15 @@ namespace Content.Server._DeepLagoon.Mapping;
 /// Replacement rule, per tile. Occupants are the uncontained entities touching the tile:
 ///  - Pipe: has a pipe node or <see cref="AtmosPipeLayersComponent"/>; its layer is the component layer (primary without one).
 ///  - Edge: its prototype is an edge-slot catalog entry (directional windows).
+///  - Under: a grille (a window can be built on top of it) or a prototype of an under-slot entry.
 ///  - Structure: anchored and (is an airlock, or its prototype is a structure-slot catalog entry, or it has a hard
 ///    fixture whose layer contains both HighImpassable and MidImpassable: walls, windows, grilles, diagonals).
 ///  - Blocker: every item and mob, and anything else with a hard fixture on a layer that stops walking
 ///    (Impassable, High, Mid or Low: machines, tables, crates...).
 ///  - Everything else (cables, wall lights without hard fixtures) is ignored.
-/// A structure entry replaces structures and edges and is skipped if the tile has a blocker.
+/// A structure entry replaces structures and edges and is skipped if the tile has a blocker; grilles are replaced too,
+/// except by windows, which are built on top of them. An under entry (grille) replaces other grilles and is skipped if
+/// the tile has a blocker or a structure that is not glass.
 /// An edge entry replaces edges facing the same way and is skipped if the tile has a structure or a blocker.
 /// A pipe entry replaces pipes on the same layer only (the layer comes from the stroke, not from the catalog entry);
 /// other layers, blockers and structures do not matter.
@@ -83,6 +87,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         Ignore,
         Pipe,
         Edge,
+        Under,
         Structure,
         Blocker,
     }
@@ -101,6 +106,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         base.Initialize();
 
         SubscribeNetworkEvent<MapperRcdStrokeEvent>(OnStroke);
+        SubscribeNetworkEvent<MapperRcdConfigureEvent>(OnConfigure);
     }
 
     private void OnStroke(MapperRcdStrokeEvent ev, EntitySessionEventArgs args)
@@ -196,6 +202,66 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
             $"{ToPrettyString(user):user} used mapper RCD ({entry.EffectiveId}) on grid {ToPrettyString(gridUid)}: {ev.Cells.Count} cells, placed {placed}, replaced {replaced}, removed {removed}");
     }
 
+    private void OnConfigure(MapperRcdConfigureEvent ev, EntitySessionEventArgs args)
+    {
+        if (args.SenderSession.AttachedEntity is not { } user)
+            return;
+
+        var tool = GetEntity(ev.Tool);
+        var gridUid = GetEntity(ev.Grid);
+
+        if (!TryComp(tool, out MapperRcdComponent? rcd) ||
+            !TryComp(user, out HandsComponent? hands) ||
+            hands.ActiveHand?.HeldEntity != tool ||
+            !_actionBlocker.CanInteract(user, tool) ||
+            !TryComp(gridUid, out MapGridComponent? grid) ||
+            !TrySpendBudget(args.SenderSession, 1) ||
+            Transform(user).MapID != Transform(gridUid).MapID)
+        {
+            return;
+        }
+
+        var cellPos = _map.GridTileToWorldPos(gridUid, grid, ev.Cell);
+        if ((cellPos - _transform.GetWorldPosition(user)).LengthSquared() > rcd.Range * rcd.Range)
+            return;
+
+        _intersecting.Clear();
+        _lookup.GetLocalEntitiesIntersecting(gridUid, ev.Cell, _intersecting, -0.05f, LookupFlags.Uncontained);
+
+        var preferred = ev.Target is { } net ? GetEntity(net) : EntityUid.Invalid;
+        EntityUid? chosen = null;
+
+        foreach (var uid in _intersecting)
+        {
+            if (IsGone(uid) || !TryComp(uid, out AtmosPipeLayersComponent? layers) ||
+                layers.PipeLayersLocked || layers.NumberOfPipeLayers <= 1)
+            {
+                continue;
+            }
+
+            if (uid == preferred)
+            {
+                chosen = uid;
+                break;
+            }
+
+            if (chosen == null || uid.Id < chosen.Value.Id)
+                chosen = uid;
+        }
+
+        if (chosen is not { } device)
+            return;
+
+        // No user or tool is passed on purpose: that would unanchor the device if the new layer overlaps another pipe.
+        _pipeLayers.SetNextPipeLayer((device, Comp<AtmosPipeLayersComponent>(device)));
+
+        var layer = (int) Comp<AtmosPipeLayersComponent>(device).CurrentPipeLayer + 1;
+        _popup.PopupEntity(Loc.GetString("mapper-rcd-layer-set", ("device", Name(device)), ("layer", layer)), user, user);
+
+        _adminLogger.Add(LogType.RCD, LogImpact.Low,
+            $"{ToPrettyString(user):user} used mapper RCD to set the pipe layer of {ToPrettyString(device)} to {layer}");
+    }
+
     /// <summary>
     /// Tells the user why a whole batch did nothing, so a silent skip is never a mystery.
     /// </summary>
@@ -278,8 +344,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
                     return CellResult.Skipped;
             }
 
-            var overlay = Spawn(proto.ID, _map.GridTileToLocal(gridUid, grid, cell));
-            _transform.SetLocalRotation(overlay, wantedDir.ToAngle());
+            SpawnAnchored(proto.ID, gridUid, grid, cell, wantedDir);
             return CellResult.Placed;
         }
 
@@ -287,6 +352,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
 
         EntityUid? blocker = null;
         EntityUid? structure = null;
+        EntityUid? solid = null;
 
         foreach (var (uid, kind, layer) in _occupants)
         {
@@ -297,6 +363,11 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
                     break;
                 case Kind.Structure:
                     structure ??= uid;
+
+                    // A grille goes under glass but not under a wall or a door.
+                    if (GetKind(uid) != MapperRcdFilter.Windows)
+                        solid ??= uid;
+
                     break;
             }
 
@@ -311,6 +382,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         {
             MapperRcdSlot.Structure => blocker,
             MapperRcdSlot.Edge => blocker ?? structure,
+            MapperRcdSlot.Under => blocker ?? solid,
             _ => null,
         };
 
@@ -322,11 +394,15 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
 
         var replaced = false;
 
+        // Windows are built on top of grilles; every other structure replaces them.
+        var keepUnder = GetProtoFilter(proto.ID) == MapperRcdFilter.Windows;
+
         foreach (var (uid, kind, layer) in _occupants)
         {
             var conflicts = entry.Slot switch
             {
-                MapperRcdSlot.Structure => kind is Kind.Structure or Kind.Edge,
+                MapperRcdSlot.Structure => kind is Kind.Structure or Kind.Edge || kind == Kind.Under && !keepUnder,
+                MapperRcdSlot.Under => kind == Kind.Under,
                 MapperRcdSlot.Edge => kind == Kind.Edge && Transform(uid).LocalRotation.GetCardinalDir() == wantedDir,
                 MapperRcdSlot.Pipe => kind == Kind.Pipe && layer == wantedLayer,
                 _ => false,
@@ -339,10 +415,23 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
             replaced = true;
         }
 
-        var spawned = Spawn(proto.ID, _map.GridTileToLocal(gridUid, grid, cell));
-        _transform.SetLocalRotation(spawned, wantedDir.ToAngle());
+        SpawnAnchored(proto.ID, gridUid, grid, cell, wantedDir);
 
         return replaced ? CellResult.Replaced : CellResult.Placed;
+    }
+
+    /// <summary>
+    /// Spawns a structure on the tile and anchors it. Some prototypes are only anchored by their construction
+    /// graph; left loose they would slide off the grid into space.
+    /// </summary>
+    private void SpawnAnchored(string protoId, EntityUid gridUid, MapGridComponent grid, Vector2i cell, Direction dir)
+    {
+        var spawned = Spawn(protoId, _map.GridTileToLocal(gridUid, grid, cell));
+        _transform.SetLocalRotation(spawned, dir.ToAngle());
+
+        var xform = Transform(spawned);
+        if (!xform.Anchored)
+            _transform.AnchorEntity(spawned, xform);
     }
 
     /// <summary>
@@ -358,11 +447,13 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         _lookup.GetLocalEntitiesIntersecting(gridUid, cell, _intersecting, -0.05f, LookupFlags.Uncontained);
 
         EntityUid? primary = null;
+        EntityUid? under = null;
         EntityUid? secondary = null;
 
         foreach (var uid in _intersecting)
         {
-            if (IsGone(uid) || !Transform(uid).Anchored || HasComp<ItemComponent>(uid) || HasComp<MobStateComponent>(uid))
+            // Pipes and many devices are items too, so only a loose item is left alone.
+            if (IsGone(uid) || !Transform(uid).Anchored || HasComp<MobStateComponent>(uid))
                 continue;
 
             if (filter != MapperRcdFilter.Any)
@@ -380,13 +471,18 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
                 if (primary == null || uid.Id > primary.Value.Id)
                     primary = uid;
             }
+            else if (kind == Kind.Under)
+            {
+                if (under == null || uid.Id > under.Value.Id)
+                    under = uid;
+            }
             else if (secondary == null || uid.Id > secondary.Value.Id)
             {
                 secondary = uid;
             }
         }
 
-        var target = primary ?? secondary;
+        var target = primary ?? under ?? secondary;
         if (target != null)
         {
             QueueDel(target.Value);
@@ -438,6 +534,8 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
                 return MapperRcdFilter.Pipes;
             case Kind.Edge:
                 return MapperRcdFilter.Windows;
+            case Kind.Under:
+                return MapperRcdFilter.Walls;
             case Kind.Structure:
                 // Walls stop light, glass does not.
                 return HasOpaqueFixture(uid) ? MapperRcdFilter.Walls : MapperRcdFilter.Windows;
@@ -488,6 +586,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         {
             MapperRcdSlot.Edge => Kind.Edge,
             MapperRcdSlot.Pipe => Kind.Pipe,
+            MapperRcdSlot.Under => Kind.Under,
             _ => Kind.Structure,
         };
     }
@@ -524,6 +623,9 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         if (protoId != null && GetEdgeProtos().Contains(protoId))
             return Kind.Edge;
 
+        if (HasComp<SharedCanBuildWindowOnTopComponent>(uid) || protoId != null && GetUnderProtos().Contains(protoId))
+            return Kind.Under;
+
         var stopsWalking = false;
         var structureLayer = false;
 
@@ -552,6 +654,8 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
             return Kind.Structure;
         }
 
-        return stopsWalking || HasComp<ItemComponent>(uid) || HasComp<MobStateComponent>(uid) ? Kind.Blocker : Kind.Ignore;
+        // An anchored item (a pipe, a device) is part of the building, only a loose one is in the way.
+        var looseItem = HasComp<ItemComponent>(uid) && !Transform(uid).Anchored;
+        return stopsWalking || looseItem || HasComp<MobStateComponent>(uid) ? Kind.Blocker : Kind.Ignore;
     }
 }
