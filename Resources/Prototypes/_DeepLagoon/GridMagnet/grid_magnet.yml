@@ -1,0 +1,30 @@
+# DeepLagoon: grid magnet, see Content.Server/_DeepLagoon/GridMagnet.
+# The sprite below is a placeholder (the salvage magnet). To use the real art, change the `sprite` line and the
+# two `state` lines; the layer names and the visualizer below stay as they are.
+- type: entity
+  parent: BaseMachinePowered
+  id: GridMagnet
+  name: grid magnet
+  description: A directional welding magnet. Two of them, bolted down on separate grids and facing each other, pull the grids together and weld them into one. It only pulls with its front side.
+  components:
+  - type: GridMagnet
+  - type: ApcPowerReceiver
+    powerLoad: 500 # same as the mini gravity generator; drawn all the time, like it
+  - type: Sprite
+    sprite: Structures/Machines/salvage.rsi
+    layers:
+    - state: salvage-magnet
+      map: [ "enum.GridMagnetVisualLayers.Base" ]
+    - state: salvage-magnet-ready-blinking
+      visible: false
+      map: [ "enum.GridMagnetVisualLayers.Active" ]
+  - type: Appearance
+  - type: GenericVisualizer
+    visuals:
+      enum.GridMagnetVisuals.Active:
+        enum.GridMagnetVisualLayers.Active:
+          True: { visible: true }
+          False: { visible: false }
+  - type: Transform
+    noRot: false
+  - type: Rotatable
