@@ -9,6 +9,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using NUnit.Framework;
+using Content.Shared.Preferences;
+using Robust.Shared.Configuration;
+using Robust.Shared.Log;
+using Robust.Shared.Network;
+using Moq;
+using Content.Server._DeepLagoon.Currency;
 
 namespace Content.Tests.Server;
 
@@ -100,6 +106,75 @@ public sealed class CurrencyDatabaseTests
         }
         await using var read = new SqliteServerDbContext(_options);
         Assert.That((await read.Preference.SingleAsync(p => p.UserId == _user)).Money, Is.Zero);
+    }
+
+    [Test]
+    public async Task BankAndMoneyCommitTogetherAndDelayedProfileSaveCannotUndoPayment()
+    {
+        var user = new NetUserId(_user);
+        var backend = new ServerDbSqlite(() => _options, true, Mock.Of<IConfigurationManager>(), true, Mock.Of<ISawmill>());
+        var profile = new HumanoidCharacterProfile().WithBankBalance(7);
+        await backend.SaveCharacterSlotAsync(user, profile, 0);
+        await using (var db = new SqliteServerDbContext(_options))
+            await AccountCurrencyOperations.PayWithBank(db, _user, 7, 15, profileSlot: 0);
+        // A profile captured before the purchase arrives after its transaction.
+        await backend.SaveCharacterSlotAsync(user, profile, 0);
+        await using var read = new SqliteServerDbContext(_options);
+        Assert.That((await read.Profile.SingleAsync()).BankBalance, Is.EqualTo(2));
+        Assert.That((await read.Preference.SingleAsync(p => p.UserId == _user)).Money, Is.Zero);
+        await using var rejected = new SqliteServerDbContext(_options);
+        Assert.ThrowsAsync<InvalidOperationException>(() => AccountCurrencyOperations.PayWithBank(rejected, _user, 7, 1, profileSlot: 0));
+    }
+
+    [Test]
+    public async Task TaxedDepositIsAtomicIncludingAnEntirelySavingsDeposit()
+    {
+        var backend = new ServerDbSqlite(() => _options, true, Mock.Of<IConfigurationManager>(), true, Mock.Of<ISawmill>());
+        await backend.SaveCharacterSlotAsync(new NetUserId(_user), new HumanoidCharacterProfile().WithBankBalance(7), 0);
+        await using (var db = new SqliteServerDbContext(_options))
+            await AccountCurrencyOperations.DepositWithBank(db, _user, 0, 7, 0, 9);
+        await using (var db = new SqliteServerDbContext(_options))
+            Assert.ThrowsAsync<OverflowException>(() => AccountCurrencyOperations.DepositWithBank(db, _user, 0, 7, int.MaxValue, 1));
+        await using var read = new SqliteServerDbContext(_options);
+        Assert.That((await read.Preference.SingleAsync(p => p.UserId == _user)).Money, Is.EqualTo(19));
+        Assert.That((await read.Profile.SingleAsync()).BankBalance, Is.EqualTo(7));
+    }
+
+    [Test]
+    public void PendingRewardsSurviveRestartAndCompletionRemovesOnlyTheirReceipt()
+    {
+        var path = _path + ".outbox";
+        var reward = new PendingLagoonCoinReward(_user, "round:3:ready", 5, "ready");
+        try
+        {
+            using (var outbox = new LagoonCoinOutbox(path))
+            {
+                Assert.That(outbox.Store(reward), Is.True);
+                Assert.That(outbox.Store(reward), Is.False);
+            }
+            using (var reopened = new LagoonCoinOutbox(path))
+            {
+                Assert.That(reopened.Load().Single(), Is.EqualTo(reward));
+                reopened.Complete(reward);
+                Assert.That(reopened.Load(), Is.Empty);
+            }
+        }
+        finally { SqliteConnection.ClearAllPools(); File.Delete(path); }
+    }
+
+    [Test]
+    public async Task AdditiveMigrationPreservesOldMoneyAndStartsLagoonWalletAtZero()
+    {
+        var options = new DbContextOptionsBuilder<SqliteServerDbContext>().UseSqlite("Data Source=:memory:").Options;
+        await using var db = new SqliteServerDbContext(options);
+        await db.Database.OpenConnectionAsync();
+        await db.GetService<IMigrator>().MigrateAsync("20261009160000_UnequippedLoadoutSlots");
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO preference (user_id, selected_character_slot, admin_ooc_color, mono_coins) VALUES ({_user}, 0, '#FF0000', 12345)");
+        await db.Database.MigrateAsync();
+        var row = await db.Preference.SingleAsync();
+        Assert.That(row.Money, Is.EqualTo(12345));
+        Assert.That(row.LagoonCoins, Is.Zero);
+        Assert.That(row.LagoonCoinPlayedTicks, Is.Zero);
     }
 
     [Test]

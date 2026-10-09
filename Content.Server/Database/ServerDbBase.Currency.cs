@@ -35,10 +35,18 @@ public abstract partial class ServerDbBase
     }
 
     public async Task<MoneyPayment> PayMoneyWithBankAsync(NetUserId user, int bankBalance, int amount,
-        CancellationToken cancel = default)
+        CancellationToken cancel = default, int? profileSlot = null, bool useSavings = true)
     {
         await using var db = await GetDb(cancel);
-        return await AccountCurrencyOperations.PayWithBank(db.DbContext, user.UserId, bankBalance, amount, cancel);
+        return await AccountCurrencyOperations.PayWithBank(db.DbContext, user.UserId, bankBalance, amount, cancel, profileSlot, useSavings);
+    }
+
+    public async Task<long> DepositMoneyWithBankAsync(NetUserId user, int profileSlot, int expectedBankBalance,
+        int bankAmount, long moneyAmount, CancellationToken cancel = default)
+    {
+        await using var db = await GetDb(cancel);
+        return await AccountCurrencyOperations.DepositWithBank(db.DbContext, user.UserId, profileSlot,
+            expectedBankBalance, bankAmount, moneyAmount, cancel);
     }
 
     public async Task<long> GetLagoonCoinsAsync(NetUserId user, CancellationToken cancel = default)

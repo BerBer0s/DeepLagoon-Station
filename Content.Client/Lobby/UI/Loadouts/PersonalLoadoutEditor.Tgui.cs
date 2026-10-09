@@ -74,13 +74,16 @@ public sealed partial class PersonalLoadoutEditor
     private SlotDefinition? _cachedTguiSlot;
     private TguiData? _cachedTguiState;
     private int _cachedTguiPoints;
+    private long _cachedTguiMoney = -1;
 
     public TguiData CreateTguiState()
     {
         var system = _entities.System<PersonalLoadoutSystem>();
         var points = system.GetPoints(_session);
-        if (_cachedTguiPoints == points && _cachedTguiState != null && ReferenceEquals(_profile, _cachedTguiProfile) && _job == _cachedTguiJob && ReferenceEquals(_slotFilter, _cachedTguiSlot)) return _cachedTguiState;
+        var money = _coins.GetLastKnownBalance();
+        if (_cachedTguiPoints == points && _cachedTguiMoney == money && _cachedTguiState != null && ReferenceEquals(_profile, _cachedTguiProfile) && _job == _cachedTguiJob && ReferenceEquals(_slotFilter, _cachedTguiSlot)) return _cachedTguiState;
         _cachedTguiPoints = points;
+        _cachedTguiMoney = money;
         _cachedTguiProfile = _profile;
         _cachedTguiJob = _job;
         _cachedTguiSlot = _slotFilter;

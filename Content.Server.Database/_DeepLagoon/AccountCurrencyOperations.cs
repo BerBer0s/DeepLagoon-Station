@@ -13,7 +13,7 @@ public readonly record struct LagoonCoinResult(long Balance, long Awarded, bool 
 /// <summary>All writers lock the preference row before reading it. Works across server processes.</summary>
 public static class AccountCurrencyOperations
 {
-    private static async Task Lock(ServerDbContext db, Guid user, CancellationToken cancel)
+    public static async Task LockAccount(ServerDbContext db, Guid user, CancellationToken cancel = default)
     {
         // An UPDATE takes a row lock in PostgreSQL and a writer lock in SQLite. No cached balance is trusted.
         var count = await db.Preference.Where(p => p.UserId == user)
@@ -26,7 +26,7 @@ public static class AccountCurrencyOperations
         CancellationToken cancel = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancel);
-        await Lock(db, user, cancel);
+        await LockAccount(db, user, cancel);
         var row = await db.Preference.SingleAsync(p => p.UserId == user, cancel);
         var balance = set ? amount : checked(row.Money + amount);
         if (balance < 0)
@@ -44,8 +44,8 @@ public static class AccountCurrencyOperations
             throw new ArgumentException("A transfer requires two different accounts and a positive amount.");
         await using var transaction = await db.Database.BeginTransactionAsync(cancel);
         // Deterministic locking order prevents opposite-direction transfers from deadlocking.
-        await Lock(db, sender.CompareTo(recipient) < 0 ? sender : recipient, cancel);
-        await Lock(db, sender.CompareTo(recipient) < 0 ? recipient : sender, cancel);
+        await LockAccount(db, sender.CompareTo(recipient) < 0 ? sender : recipient, cancel);
+        await LockAccount(db, sender.CompareTo(recipient) < 0 ? recipient : sender, cancel);
         var from = await db.Preference.SingleAsync(p => p.UserId == sender, cancel);
         var to = await db.Preference.SingleAsync(p => p.UserId == recipient, cancel);
         if (from.Money < amount)
@@ -60,21 +60,46 @@ public static class AccountCurrencyOperations
 
     /// <summary>Spend savings first; return the remaining cost payable by the character bank.</summary>
     public static async Task<MoneyPayment> PayWithBank(ServerDbContext db, Guid user, int bankBalance,
-        int amount, CancellationToken cancel = default)
+        int amount, CancellationToken cancel = default, int? profileSlot = null, bool useSavings = true)
     {
         if (amount <= 0 || bankBalance < 0)
             throw new ArgumentOutOfRangeException(nameof(amount));
         await using var transaction = await db.Database.BeginTransactionAsync(cancel);
-        await Lock(db, user, cancel);
+        await LockAccount(db, user, cancel);
         var row = await db.Preference.SingleAsync(p => p.UserId == user, cancel);
-        var moneyCost = Math.Min(row.Money, amount);
+        var moneyCost = useSavings ? Math.Min(row.Money, amount) : 0;
         var bankCost = checked((int)(amount - moneyCost));
         if (bankCost > bankBalance)
             throw new InvalidOperationException("Insufficient Money and bank balance.");
+        if (profileSlot != null)
+        {
+            var profile = await db.Profile.SingleAsync(p => p.PreferenceId == row.Id && p.Slot == profileSlot, cancel);
+            if (profile.BankBalance != bankBalance)
+                throw new InvalidOperationException("Character bank balance changed; retry the payment.");
+            profile.BankBalance -= bankCost;
+        }
         row.Money -= moneyCost;
         await db.SaveChangesAsync(cancel);
         await transaction.CommitAsync(cancel);
         return new MoneyPayment(row.Money, bankCost);
+    }
+
+    public static async Task<long> DepositWithBank(ServerDbContext db, Guid user, int profileSlot,
+        int expectedBankBalance, int bankAmount, long moneyAmount, CancellationToken cancel = default)
+    {
+        if (bankAmount < 0 || moneyAmount < 0 || (bankAmount == 0 && moneyAmount == 0))
+            throw new ArgumentOutOfRangeException(nameof(bankAmount));
+        await using var transaction = await db.Database.BeginTransactionAsync(cancel);
+        await LockAccount(db, user, cancel);
+        var row = await db.Preference.SingleAsync(p => p.UserId == user, cancel);
+        var profile = await db.Profile.SingleAsync(p => p.PreferenceId == row.Id && p.Slot == profileSlot, cancel);
+        if (profile.BankBalance != expectedBankBalance)
+            throw new InvalidOperationException("Character bank balance changed; retry the deposit.");
+        profile.BankBalance = checked(profile.BankBalance + bankAmount);
+        row.Money = checked(row.Money + moneyAmount);
+        await db.SaveChangesAsync(cancel);
+        await transaction.CommitAsync(cancel);
+        return row.Money;
     }
 
     public static async Task<LagoonCoinResult> AwardLagoonCoins(ServerDbContext db, Guid user,
@@ -83,10 +108,10 @@ public static class AccountCurrencyOperations
     {
         if (string.IsNullOrWhiteSpace(operationId) || operationId.Length > 200 ||
             string.IsNullOrWhiteSpace(reason) || reason.Length > 500 || amount < 0 ||
-            playedTicks < 0 || subscriberTicks < 0 || subscriberTicks > playedTicks)
+            playedTicks < 0 || subscriberTicks < 0 || subscriberTicks > playedTicks || (playedTicks > 0 && amount != 0))
             throw new ArgumentException("Invalid Lagoon Coin operation.");
         await using var transaction = await db.Database.BeginTransactionAsync(cancel);
-        await Lock(db, user, cancel);
+        await LockAccount(db, user, cancel);
         var row = await db.Preference.SingleAsync(p => p.UserId == user, cancel);
         var previous = await db.LagoonCoinOperations.SingleOrDefaultAsync(
             p => p.UserId == user && p.OperationId == operationId, cancel);

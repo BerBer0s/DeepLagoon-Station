@@ -55,7 +55,10 @@ namespace Content.Server.Database
         Task<long> SetMoneyAsync(NetUserId userId, long balance, CancellationToken cancel = default);
         Task<long> AddMoneyAsync(NetUserId userId, long amount, CancellationToken cancel = default);
         Task<MoneyTransfer> TransferMoneyAsync(NetUserId sender, NetUserId recipient, long amount, CancellationToken cancel = default);
-        Task<MoneyPayment> PayMoneyWithBankAsync(NetUserId user, int bankBalance, int amount, CancellationToken cancel = default);
+        Task<MoneyPayment> PayMoneyWithBankAsync(NetUserId user, int bankBalance, int amount, CancellationToken cancel = default,
+            int? profileSlot = null, bool useSavings = true);
+        Task<long> DepositMoneyWithBankAsync(NetUserId user, int profileSlot, int expectedBankBalance,
+            int bankAmount, long moneyAmount, CancellationToken cancel = default);
         Task<long> GetLagoonCoinsAsync(NetUserId user, CancellationToken cancel = default);
         Task<LagoonCoinResult> AwardLagoonCoinsAsync(NetUserId user, string operationId, long amount, string reason,
             NetUserId? actor = null, long playedTicks = 0, long subscriberTicks = 0, CancellationToken cancel = default);

@@ -14,10 +14,17 @@ public sealed partial class ServerDbManager
     }
 
     public Task<MoneyPayment> PayMoneyWithBankAsync(NetUserId user, int bankBalance, int amount,
-        CancellationToken cancel = default)
+        CancellationToken cancel = default, int? profileSlot = null, bool useSavings = true)
     {
         DbWriteOpsMetric.Inc();
-        return RunDbCommand(() => _db.PayMoneyWithBankAsync(user, bankBalance, amount, cancel));
+        return RunDbCommand(() => _db.PayMoneyWithBankAsync(user, bankBalance, amount, cancel, profileSlot, useSavings));
+    }
+
+    public Task<long> DepositMoneyWithBankAsync(NetUserId user, int profileSlot, int expectedBankBalance,
+        int bankAmount, long moneyAmount, CancellationToken cancel = default)
+    {
+        DbWriteOpsMetric.Inc();
+        return RunDbCommand(() => _db.DepositMoneyWithBankAsync(user, profileSlot, expectedBankBalance, bankAmount, moneyAmount, cancel));
     }
 
     public Task<long> GetLagoonCoinsAsync(NetUserId user, CancellationToken cancel = default)

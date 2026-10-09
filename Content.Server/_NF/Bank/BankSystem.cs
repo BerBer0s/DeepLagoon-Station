@@ -14,7 +14,6 @@ using Content.Shared._Mono.Traits.Physical;
 using Content.Shared._NF.Bank.Events;
 using Content.Shared.GameTicking;
 using Robust.Shared.Network;
-using Robust.Shared.Asynchronous;
 
 namespace Content.Server._NF.Bank;
 
@@ -24,7 +23,6 @@ public sealed partial class BankSystem : SharedBankSystem
     [Dependency] private ISharedPlayerManager _playerManager = default!;
     [Dependency] private IServerDbManager _db = default!;
     [Dependency] private MoneyManager _coins = default!;
-    [Dependency] private ITaskManager _tasks = default!;
     private readonly HashSet<NetUserId> _moneyPayments = new();
 
     private ISawmill _log = default!;
@@ -173,13 +171,9 @@ public sealed partial class BankSystem : SharedBankSystem
             GetTaxedDepositAmount(amount, bank.Balance, out var afterTax, out var taxedAway);
             toSector = afterTax;
             toLongTerm = taxedAway;
-            if (prefs.IndexOfCharacter(profile) == -1 ||
-                (long)profile.BankBalance + toSector > int.MaxValue ||
-                (taxedAway > 0 && !_coins.TryAddMoney(session.UserId, taxedAway)))
-                return false;
         }
 
-        if (TryBankDeposit(session, prefs, profile, toSector, out var newBalance))
+        if (TryBankDeposit(session, prefs, profile, toSector, out var newBalance, toLongTerm))
         {
             bank.Balance = newBalance.Value;
             Dirty(mobUid, bank);
@@ -218,35 +212,18 @@ public sealed partial class BankSystem : SharedBankSystem
         }
         if (!_moneyPayments.Add(session.UserId))
             return false;
-        var moneySpent = 0;
         try
         {
-            var bankCost = amount;
-            if (spendLongTerm)
-            {
-                if (!_coins.TryPayWithBank(session.UserId, profile.BankBalance, amount, out bankCost))
-                    return false;
-                moneySpent = amount - bankCost;
-            }
-            else if (profile.BankBalance < amount)
+            if (!_coins.TryPayWithBank(session.UserId, profile.BankBalance, amount, index, spendLongTerm, out var bankCost))
                 return false;
-
             var balance = profile.BankBalance - bankCost;
-            var save = _prefsManager.SetProfile(session.UserId, index, profile.WithBankBalance(balance));
-            _tasks.BlockWaitOnTask(save);
-            save.GetAwaiter().GetResult();
+            _prefsManager.SetProfile(session.UserId, index, profile.WithBankBalance(balance), persist: false)
+                .GetAwaiter().GetResult();
             newBalance = balance;
         }
         catch (Exception e)
         {
             _log.Error($"Bank payment failed for {session.UserId}: {e}");
-            // No item is issued on failure. Restore the cache and compensate committed savings.
-            var restore = _prefsManager.SetProfile(session.UserId, index, profile);
-            _tasks.BlockWaitOnTask(restore);
-            try { restore.GetAwaiter().GetResult(); }
-            catch (Exception restoreError) { _log.Error($"Bank restore failed: {restoreError}"); }
-            if (moneySpent > 0 && !_coins.TryAddMoney(session.UserId, moneySpent))
-                _log.Error($"Money compensation requires reconciliation: {session.UserId}, {moneySpent}");
             return false;
         }
         finally { _moneyPayments.Remove(session.UserId); }
@@ -265,10 +242,10 @@ public sealed partial class BankSystem : SharedBankSystem
     /// <param name="amount">The number of spesos to be deposited.</param>
     /// <param name="newBalance">The new value of the bank account.</param>
     /// <returns>true if the transaction was successful, false if it was not.  When successful, newBalance contains the character's new balance.</returns>
-    public bool TryBankDeposit(ICommonSession session, PlayerPreferences prefs, HumanoidCharacterProfile profile, int amount, [NotNullWhen(true)] out int? newBalance)
+    public bool TryBankDeposit(ICommonSession session, PlayerPreferences prefs, HumanoidCharacterProfile profile, int amount, [NotNullWhen(true)] out int? newBalance, long savingsAmount = 0)
     {
         newBalance = null; // Default return
-        if (amount <= 0)
+        if (amount < 0 || savingsAmount < 0 || (amount == 0 && savingsAmount == 0))
         {
             _log.Info($"TryBankDeposit: {amount} is invalid. Admin add money variation.");
             return false;
@@ -276,16 +253,23 @@ public sealed partial class BankSystem : SharedBankSystem
 
         if ((long)profile.BankBalance + amount > int.MaxValue)
             return false;
-        newBalance = profile.BankBalance + amount;
-
-        var newProfile = profile.WithBankBalance(newBalance.Value);
         var index = prefs.IndexOfCharacter(profile);
         if (index == -1)
         {
             _log.Info($"{session.UserId} tried to adjust the balance of {profile.Name}, but they were not in the user's character set.");
             return false;
         }
-        _prefsManager.SetProfile(session.UserId, index, newProfile);
+        if (!_moneyPayments.Add(session.UserId))
+            return false;
+        try
+        {
+            if (!_coins.TryDepositWithBank(session.UserId, index, profile.BankBalance, amount, savingsAmount))
+                return false;
+            newBalance = profile.BankBalance + amount;
+            _prefsManager.SetProfile(session.UserId, index, profile.WithBankBalance(newBalance.Value), persist: false)
+                .GetAwaiter().GetResult();
+        }
+        finally { _moneyPayments.Remove(session.UserId); }
         // Update any active admin UI with new balance
         RaiseLocalEvent(new BalanceChangedEvent(session, newBalance.Value));
         return true;
@@ -326,16 +310,13 @@ public sealed partial class BankSystem : SharedBankSystem
             return false;
         }
 
-        // Update preferences in cache if the player data exists
-        if (_prefsManager.TryGetCachedPreferences(userId, out var cachedPrefs))
+        try
         {
-            _prefsManager.SetProfile(userId, index, newProfile);
+            await _db.PayMoneyWithBankAsync(userId, profile.BankBalance, amount, profileSlot: index, useSavings: false);
         }
-        else
-        {
-            // If not in cache, save directly to database
-            await _db.SaveCharacterSlotAsync(userId, newProfile, index);
-        }
+        catch (Exception e) { _log.Warning($"Offline withdrawal rejected: {e.Message}"); return false; }
+        if (_prefsManager.TryGetCachedPreferences(userId, out _))
+            await _prefsManager.SetProfile(userId, index, newProfile, persist: false);
 
         _log.Info($"Offline player {userId} withdrew {amount}");
         return true;
@@ -358,6 +339,7 @@ public sealed partial class BankSystem : SharedBankSystem
             return false;
         }
 
+        if ((long)profile.BankBalance + amount > int.MaxValue) return false;
         int newBalance = profile.BankBalance + amount;
 
         var newProfile = profile.WithBankBalance(newBalance);
@@ -368,16 +350,13 @@ public sealed partial class BankSystem : SharedBankSystem
             return false;
         }
 
-        // Update preferences in cache if the player data exists
-        if (_prefsManager.TryGetCachedPreferences(userId, out var cachedPrefs))
+        try
         {
-            _prefsManager.SetProfile(userId, index, newProfile);
+            await _db.DepositMoneyWithBankAsync(userId, index, profile.BankBalance, amount, 0);
         }
-        else
-        {
-            // If not in cache, save directly to database
-            await _db.SaveCharacterSlotAsync(userId, newProfile, index);
-        }
+        catch (Exception e) { _log.Warning($"Offline deposit rejected: {e.Message}"); return false; }
+        if (_prefsManager.TryGetCachedPreferences(userId, out _))
+            await _prefsManager.SetProfile(userId, index, newProfile, persist: false);
 
         _log.Info($"Offline player {userId} deposited {amount}");
         return true;

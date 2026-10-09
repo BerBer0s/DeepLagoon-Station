@@ -98,7 +98,7 @@ namespace Content.Server.Preferences.Managers
         }
 
         public async Task SetProfile(NetUserId userId, int slot, ICharacterProfile profile,
-            bool authoritative = true) // Mono
+            bool authoritative = true, bool persist = true) // Mono
         {
             if (!_cachedPlayerPrefs.TryGetValue(userId, out var prefsData) || !prefsData.PrefsLoaded)
             {
@@ -136,7 +136,8 @@ namespace Content.Server.Preferences.Managers
 
             prefsData.Prefs = new PlayerPreferences(profiles, slot, curPrefs.AdminOOCColor, curPrefs.ChatPanelSettings);
 
-            if (ShouldStorePrefs(session.Channel.AuthType))
+            // Currency transactions already saved the bank balance atomically with account savings.
+            if (persist && ShouldStorePrefs(session.Channel.AuthType))
                 await _db.SaveCharacterSlotAsync(userId, profile, slot);
         }
 

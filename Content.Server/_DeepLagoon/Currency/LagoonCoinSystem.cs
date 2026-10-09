@@ -1,6 +1,8 @@
 using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 using Content.Server.Afk;
+using Content.Server.Afk.Events;
 using Content.Server.Database;
 using Content.Server.GameTicking;
 using Content.Server.GameTicking.Events;
@@ -13,8 +15,11 @@ using Content.Shared.Mind;
 using Content.Shared.Mobs;
 using Content.Shared.Mobs.Components;
 using Content.Shared.Roles;
+using Content.Shared.Players;
+using System.Threading;
 using Robust.Server.Player;
 using Robust.Shared.Asynchronous;
+using Robust.Shared.ContentPack;
 using Robust.Shared.Enums;
 using Robust.Shared.Network;
 using Robust.Shared.Player;
@@ -29,6 +34,7 @@ public sealed class LagoonCoinSystem : EntitySystem
     [Dependency] private readonly IPlayerManager _players = default!;
     [Dependency] private readonly IGameTiming _timing = default!;
     [Dependency] private readonly ITaskManager _tasks = default!;
+    [Dependency] private readonly IResourceManager _resources = default!;
     [Dependency] private readonly IAfkManager _afk = default!;
     [Dependency] private readonly GameTicker _ticker = default!;
     [Dependency] private readonly SharedDiscordBoostSystem _supporters = default!;
@@ -47,6 +53,8 @@ public sealed class LagoonCoinSystem : EntitySystem
     private TimeSpan _nextSave;
     private TimeSpan _retryAt;
     private Task _drainTask = Task.CompletedTask;
+    private LagoonCoinOutbox _outbox = default!;
+    private readonly SemaphoreSlim _walletOperations = new(1, 1);
 
     private sealed class Participation
     {
@@ -63,9 +71,32 @@ public sealed class LagoonCoinSystem : EntitySystem
     public override void Initialize()
     {
         base.Initialize();
+        var root = _resources.UserData.RootDir;
+        // Virtual in-memory user data is used by the integration test server.
+        _outbox = new LagoonCoinOutbox(root == null ? ":memory:" : Path.Combine(root, "lagoon-coin-outbox.db"));
+        foreach (var saved in _outbox.Load())
+            _pending.Enqueue(new Reward(new NetUserId(saved.User), saved.Key, saved.Amount, saved.Reason,
+                saved.Actor == null ? null : new NetUserId(saved.Actor.Value), saved.Played, saved.Bonus));
         SubscribeNetworkEvent<LagoonCoinBalanceRequest>(OnBalanceRequest);
         SubscribeLocalEvent<RoundStartingEvent>(_ => _spawned.Clear());
         SubscribeLocalEvent<PlayerSpawnCompleteEvent>(OnSpawn);
+        SubscribeLocalEvent<PlayerAttachedEvent>(ev => Accumulate(ev.Player));
+        SubscribeLocalEvent<PlayerDetachedEvent>(ev =>
+        {
+            Accumulate(ev.Player);
+            _participation[ev.Player].Active = false;
+        });
+        SubscribeLocalEvent<PlayerJoinedLobbyEvent>(ev =>
+        {
+            Accumulate(ev.PlayerSession);
+            _participation[ev.PlayerSession].Active = false;
+        });
+        SubscribeLocalEvent<MobStateChangedEvent>(ev =>
+        {
+            if (TryComp<ActorComponent>(ev.Target, out var actor)) Accumulate(actor.PlayerSession);
+        });
+        SubscribeLocalEvent<AFKEvent>(OnAfk);
+        SubscribeLocalEvent<UnAFKEvent>(OnUnAfk);
         SubscribeLocalEvent<RoundStartedEvent>(OnStarted);
         SubscribeLocalEvent<RoundEndedEvent>(OnEnded);
         SubscribeLocalEvent<RoundRestartCleanupEvent>(_ =>
@@ -85,7 +116,8 @@ public sealed class LagoonCoinSystem : EntitySystem
         _drainTask = Drain();
         _tasks.BlockWaitOnTask(_drainTask);
         if (_pending.Count != 0)
-            Log.Error($"Shutdown with {_pending.Count} uncommitted Lagoon Coin rewards; database is unavailable.");
+            Log.Warning($"{_pending.Count} Lagoon Coin rewards remain in the outbox for the next server start.");
+        _outbox.Dispose();
         base.Shutdown();
     }
 
@@ -113,6 +145,7 @@ public sealed class LagoonCoinSystem : EntitySystem
     {
         SaveParticipation();
         _roundEnded = true;
+        foreach (var data in _participation.Values) data.Active = false;
         var query = EntityQueryEnumerator<MindComponent>();
         while (query.MoveNext(out var mindId, out var mind))
         {
@@ -120,7 +153,7 @@ public sealed class LagoonCoinSystem : EntitySystem
                 continue;
             foreach (var objective in mind.Objectives.Distinct())
             {
-                if (!EntityManager.EntityExists(objective) || _objectives.GetProgress(objective) is not > 0.99f)
+                if (!Exists(objective) || !_objectives.IsCompleted(objective))
                     continue;
                 Queue(new Reward(user, $"round:{ev.RoundId}:objective:{objective}",
                     LagoonCoinRules.ObjectiveReward, "antagonist-objective"));
@@ -185,9 +218,23 @@ public sealed class LagoonCoinSystem : EntitySystem
         Accumulate(ev.Session);
         if (_participation.Remove(ev.Session, out var data)) Flush(ev.Session, data);
         _requests.Remove(ev.Session.UserId);
+        _ready.Remove(ev.Session.UserId);
     }
 
-    private void Queue(Reward reward) => _pending.Enqueue(reward);
+    private void OnAfk(ref AFKEvent ev)
+    {
+        Accumulate(ev.Session);
+        _participation[ev.Session].Active = false;
+    }
+    private void OnUnAfk(ref UnAFKEvent ev) => Accumulate(ev.Session);
+
+    private static PendingLagoonCoinReward Pending(Reward reward)
+        => new(reward.User.UserId, reward.Key, reward.Amount, reward.Reason, reward.Actor?.UserId, reward.Played, reward.Bonus);
+
+    private void Queue(Reward reward)
+    {
+        if (_outbox.Store(Pending(reward))) _pending.Enqueue(reward);
+    }
 
     private async Task Drain()
     {
@@ -195,20 +242,26 @@ public sealed class LagoonCoinSystem : EntitySystem
         _draining = true;
         try
         {
-            while (_pending.TryPeek(out var reward))
+            var count = _pending.Count;
+            while (count-- > 0 && _pending.TryDequeue(out var reward))
             {
                 try
                 {
-                    var result = await _db.AwardLagoonCoinsAsync(reward.User, reward.Key, reward.Amount,
-                        reward.Reason, reward.Actor, reward.Played, reward.Bonus);
-                    _pending.Dequeue();
-                    SendBalance(reward.User, result.Balance);
+                    await _walletOperations.WaitAsync();
+                    try
+                    {
+                        var result = await _db.AwardLagoonCoinsAsync(reward.User, reward.Key, reward.Amount,
+                            reward.Reason, reward.Actor, reward.Played, reward.Bonus);
+                        _outbox.Complete(Pending(reward));
+                        SendBalance(reward.User, result.Balance);
+                    }
+                    finally { _walletOperations.Release(); }
                 }
                 catch (Exception e)
                 {
                     Log.Error($"Lagoon Coin reward {reward.Key} not committed; retrying the same key: {e}");
                     _retryAt = _timing.RealTime + TimeSpan.FromSeconds(30);
-                    break;
+                    _pending.Enqueue(reward);
                 }
             }
         }
@@ -218,9 +271,14 @@ public sealed class LagoonCoinSystem : EntitySystem
     public async Task<LagoonCoinResult> Grant(NetUserId user, long amount, string reason, NetUserId? actor)
     {
         if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
-        var result = await _db.AwardLagoonCoinsAsync(user, $"admin:{Guid.NewGuid():N}", amount, reason, actor);
-        SendBalance(user, result.Balance);
-        return result;
+        await _walletOperations.WaitAsync();
+        try
+        {
+            var result = await _db.AwardLagoonCoinsAsync(user, $"admin:{Guid.NewGuid():N}", amount, reason, actor);
+            SendBalance(user, result.Balance);
+            return result;
+        }
+        finally { _walletOperations.Release(); }
     }
 
     private void SendBalance(NetUserId user, long balance)
@@ -234,7 +292,9 @@ public sealed class LagoonCoinSystem : EntitySystem
         var user = args.SenderSession.UserId;
         if (_requests.TryGetValue(user, out var last) && _timing.RealTime - last < TimeSpan.FromSeconds(1)) return;
         _requests[user] = _timing.RealTime;
+        await _walletOperations.WaitAsync();
         try { SendBalance(user, await _db.GetLagoonCoinsAsync(user)); }
         catch (Exception e) { Log.Error($"Could not fetch Lagoon Coin balance for {user}: {e}"); }
+        finally { _walletOperations.Release(); }
     }
 }

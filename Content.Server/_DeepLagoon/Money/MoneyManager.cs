@@ -101,12 +101,12 @@ public sealed partial class MoneyManager
         finally { _operations.Release(); }
     }
 
-    private async Task<MoneyPayment> PayWithBankAsync(NetUserId user, int bankBalance, int amount)
+    private async Task<MoneyPayment> PayWithBankAsync(NetUserId user, int bankBalance, int amount, int slot, bool useSavings)
     {
         await _operations.WaitAsync();
         try
         {
-            var result = await _db.PayMoneyWithBankAsync(user, bankBalance, amount);
+            var result = await _db.PayMoneyWithBankAsync(user, bankBalance, amount, profileSlot: slot, useSavings: useSavings);
             Publish(user, result.MoneyBalance);
             return result;
         }
@@ -114,12 +114,12 @@ public sealed partial class MoneyManager
     }
 
     /// <summary>The spawning API is synchronous; confirm payment before equipping purchased gear.</summary>
-    public bool TryPayWithBank(NetUserId user, int bankBalance, int amount, out int bankCost)
+    public bool TryPayWithBank(NetUserId user, int bankBalance, int amount, int slot, bool useSavings, out int bankCost)
     {
         bankCost = 0;
         try
         {
-            var task = PayWithBankAsync(user, bankBalance, amount);
+            var task = PayWithBankAsync(user, bankBalance, amount, slot, useSavings);
             _tasks.BlockWaitOnTask(task);
             bankCost = task.GetAwaiter().GetResult().BankCost;
             return true;
@@ -143,6 +143,29 @@ public sealed partial class MoneyManager
         catch (Exception e)
         {
             Logger.ErrorS("money", $"Money deposit rejected for {user}: {e}");
+            return false;
+        }
+    }
+
+    private async Task DepositWithBankAsync(NetUserId user, int slot, int balance, int bankAmount, long moneyAmount)
+    {
+        await _operations.WaitAsync();
+        try { Publish(user, await _db.DepositMoneyWithBankAsync(user, slot, balance, bankAmount, moneyAmount)); }
+        finally { _operations.Release(); }
+    }
+
+    public bool TryDepositWithBank(NetUserId user, int slot, int balance, int bankAmount, long moneyAmount)
+    {
+        try
+        {
+            var task = DepositWithBankAsync(user, slot, balance, bankAmount, moneyAmount);
+            _tasks.BlockWaitOnTask(task);
+            task.GetAwaiter().GetResult();
+            return true;
+        }
+        catch (Exception e)
+        {
+            Logger.ErrorS("money", $"Bank/Money deposit rejected for {user}: {e}");
             return false;
         }
     }

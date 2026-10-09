@@ -88,11 +88,14 @@ namespace Content.Server.Database
         public async Task SaveCharacterSlotAsync(NetUserId userId, ICharacterProfile? profile, int slot)
         {
             await using var db = await GetDb();
+            await using var transaction = await db.DbContext.Database.BeginTransactionAsync();
+            await AccountCurrencyOperations.LockAccount(db.DbContext, userId.UserId);
 
             if (profile is null)
             {
                 await DeleteCharacterSlot(db.DbContext, userId, slot);
                 await db.DbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
                 return;
             }
 
@@ -116,7 +119,11 @@ namespace Content.Server.Database
                 .AsSplitQuery()
                 .SingleOrDefault(h => h.Slot == slot);
 
+            // Existing bank balances are changed only by currency transactions. A delayed editor/profile
+            // save must not overwrite a payment that has already committed.
+            var bankBalance = oldProfile?.BankBalance;
             var newProfile = ConvertProfiles(humanoid, slot, oldProfile);
+            if (bankBalance != null) newProfile.BankBalance = bankBalance.Value;
             if (oldProfile == null)
             {
                 var prefs = await db.DbContext
@@ -128,6 +135,7 @@ namespace Content.Server.Database
             }
 
             await db.DbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
 
         private static async Task DeleteCharacterSlot(ServerDbContext db, NetUserId userId, int slot)

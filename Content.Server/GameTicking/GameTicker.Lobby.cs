@@ -157,6 +157,8 @@ namespace Content.Server.GameTicking
                 if (!_playerManager.TryGetSessionById(playerUserId, out var playerSession))
                     continue;
                 _playerGameStatuses[playerUserId] = ready && !DiscordAdmission.CanEnterRound(playerSession) ? PlayerGameStatus.NotReadyToPlay : status;
+                if (!ready)
+                    EntityManager.System<Content.Server._DeepLagoon.Currency.LagoonCoinSystem>().SetReady(playerSession, false);
                 RaiseNetworkEvent(GetStatusMsg(playerSession), playerSession.Channel);
             }
         }

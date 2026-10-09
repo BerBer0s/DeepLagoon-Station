@@ -22,6 +22,6 @@ namespace Content.Server.Preferences.Managers
         bool HavePreferencesLoaded(ICommonSession session);
         Task RefreshPreferencesAsync(ICommonSession session, CancellationToken cancel);
         Task SetProfile(NetUserId userId, int slot, ICharacterProfile profile,
-            bool authoritative = true); // Mono
+            bool authoritative = true, bool persist = true); // Mono
     }
 }
