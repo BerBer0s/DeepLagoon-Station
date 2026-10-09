@@ -1,0 +1,197 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Content.Server.Database;
+using Content.Shared._DeepLagoon.Currency;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using NUnit.Framework;
+
+namespace Content.Tests.Server;
+
+[TestFixture]
+public sealed class CurrencyDatabaseTests
+{
+    private string _path;
+    private DbContextOptions<SqliteServerDbContext> _options;
+    private Guid _user;
+    private Guid _recipient;
+
+    [SetUp]
+    public async Task Setup()
+    {
+        SQLitePCL.Batteries_V2.Init();
+        _path = Path.Combine(Path.GetTempPath(), $"lagoon-currency-{Guid.NewGuid():N}.db");
+        _options = new DbContextOptionsBuilder<SqliteServerDbContext>()
+            .UseSqlite($"Data Source={_path};Default Timeout=30;Pooling=False").Options;
+        _user = Guid.NewGuid();
+        _recipient = Guid.NewGuid();
+        await using var db = new SqliteServerDbContext(_options);
+        await db.Database.MigrateAsync();
+        db.Preference.Add(new Preference { UserId = _user, AdminOOCColor = "#FF0000", Money = 10 });
+        db.Preference.Add(new Preference { UserId = _recipient, AdminOOCColor = "#FF0000" });
+        await db.SaveChangesAsync();
+    }
+
+    [TearDown]
+    public void Cleanup() => File.Delete(_path);
+
+    [Test]
+    public async Task ConcurrentMoneyChangesAreNotLost()
+    {
+        await Task.WhenAll(Enumerable.Range(0, 12).Select(async _ =>
+        {
+            await using var db = new SqliteServerDbContext(_options);
+            await AccountCurrencyOperations.ChangeMoney(db, _user, 1);
+        }));
+        await using var read = new SqliteServerDbContext(_options);
+        Assert.That((await read.Preference.SingleAsync(p => p.UserId == _user)).Money, Is.EqualTo(22));
+    }
+
+    [Test]
+    public async Task ConcurrentTransfersCannotSpendTheSameMoneyTwice()
+    {
+        async Task<bool> Transfer()
+        {
+            await using var db = new SqliteServerDbContext(_options);
+            try { await AccountCurrencyOperations.TransferMoney(db, _user, _recipient, 8); return true; }
+            catch (InvalidOperationException) { return false; }
+        }
+        var outcomes = await Task.WhenAll(Transfer(), Transfer());
+        await using var read = new SqliteServerDbContext(_options);
+        var balances = await read.Preference.Select(p => p.Money).ToArrayAsync();
+        Assert.Multiple(() =>
+        {
+            Assert.That(outcomes.Count(p => p), Is.EqualTo(1));
+            Assert.That(balances.Sum(), Is.EqualTo(10));
+            Assert.That(balances, Does.Contain(2));
+            Assert.That(balances, Does.Contain(8));
+        });
+    }
+
+    [Test]
+    public async Task FailedTransferAndOverflowLeaveBothAccountsUnchanged()
+    {
+        await using (var db = new SqliteServerDbContext(_options))
+            await AccountCurrencyOperations.ChangeMoney(db, _recipient, long.MaxValue, set: true);
+        await using (var db = new SqliteServerDbContext(_options))
+            Assert.ThrowsAsync<OverflowException>(() => AccountCurrencyOperations.TransferMoney(db, _user, _recipient, 1));
+        await using (var db = new SqliteServerDbContext(_options))
+            Assert.ThrowsAsync<InvalidOperationException>(() => AccountCurrencyOperations.ChangeMoney(db, _user, -11));
+        await using (var db = new SqliteServerDbContext(_options))
+            Assert.ThrowsAsync<InvalidOperationException>(() => AccountCurrencyOperations.TransferMoney(db, _user, Guid.NewGuid(), 1));
+        await using var read = new SqliteServerDbContext(_options);
+        Assert.That((await read.Preference.SingleAsync(p => p.UserId == _user)).Money, Is.EqualTo(10));
+        Assert.That((await read.Preference.SingleAsync(p => p.UserId == _recipient)).Money, Is.EqualTo(long.MaxValue));
+    }
+
+    [Test]
+    public async Task PaymentConfirmsSavingsAndRejectsInsufficientFunds()
+    {
+        await using (var db = new SqliteServerDbContext(_options))
+            Assert.ThrowsAsync<InvalidOperationException>(() => AccountCurrencyOperations.PayWithBank(db, _user, 2, 13));
+        await using (var db = new SqliteServerDbContext(_options))
+        {
+            var payment = await AccountCurrencyOperations.PayWithBank(db, _user, 2, 12);
+            Assert.That(payment, Is.EqualTo(new MoneyPayment(0, 2)));
+        }
+        await using var read = new SqliteServerDbContext(_options);
+        Assert.That((await read.Preference.SingleAsync(p => p.UserId == _user)).Money, Is.Zero);
+    }
+
+    [Test]
+    public async Task RewardsAreIdempotentAndSeparateFromMoney()
+    {
+        async Task<LagoonCoinResult> Award()
+        {
+            await using var db = new SqliteServerDbContext(_options);
+            return await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "round:1:ready", 5, "ready");
+        }
+        var results = await Task.WhenAll(Award(), Award());
+        await using (var db = new SqliteServerDbContext(_options))
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "round:1:goal:1", 2, "objective");
+        await using var read = new SqliteServerDbContext(_options);
+        var row = await read.Preference.SingleAsync(p => p.UserId == _user);
+        Assert.Multiple(() =>
+        {
+            Assert.That(results.Count(p => p.Applied), Is.EqualTo(1));
+            Assert.That(row.LagoonCoins, Is.EqualTo(7));
+            Assert.That(row.Money, Is.EqualTo(10));
+        });
+        Assert.That(await read.LagoonCoinOperations.CountAsync(), Is.EqualTo(2));
+    }
+
+    [TestCase(false, 2)]
+    [TestCase(true, 4)]
+    public async Task IncompleteHourSurvivesSessionsAndDoesNotRewardTwice(bool subscribed, long expected)
+    {
+        var halfHour = TimeSpan.TicksPerHour / 2;
+        await using (var db = new SqliteServerDbContext(_options))
+        {
+            var result = await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "session:1", 0, "playtime",
+                playedTicks: halfHour, subscriberTicks: subscribed ? halfHour : 0);
+            Assert.That(result.Balance, Is.Zero);
+        }
+        await using (var db = new SqliteServerDbContext(_options))
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "session:2", 0, "playtime",
+                playedTicks: halfHour, subscriberTicks: subscribed ? halfHour : 0);
+        await using (var db = new SqliteServerDbContext(_options))
+        {
+            var replay = await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "session:2", 0, "playtime",
+                playedTicks: halfHour, subscriberTicks: subscribed ? halfHour : 0);
+            Assert.That(replay.Applied, Is.False);
+            Assert.That(replay.Balance, Is.EqualTo(expected));
+        }
+    }
+
+    [Test]
+    public async Task SubscriptionChangeWithinHourAwardsThreeCoins()
+    {
+        await using (var db = new SqliteServerDbContext(_options))
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "time:1", 0, "playtime", playedTicks: TimeSpan.TicksPerHour / 2);
+        await using var second = new SqliteServerDbContext(_options);
+        var result = await AccountCurrencyOperations.AwardLagoonCoins(second, _user, "time:2", 0, "playtime",
+            playedTicks: TimeSpan.TicksPerHour / 2, subscriberTicks: TimeSpan.TicksPerHour / 2);
+        Assert.That(result.Balance, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void GhostLobbyAfkAndDisconnectedPlayersNeverCountAsPlayedTime()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(LagoonCoinRules.CountsTime(true, true, true, false, true, false), Is.True);
+            Assert.That(LagoonCoinRules.CountsTime(true, true, true, true, true, false), Is.False);
+            Assert.That(LagoonCoinRules.CountsTime(false, true, true, false, true, false), Is.False);
+            Assert.That(LagoonCoinRules.CountsTime(true, false, true, false, true, false), Is.False);
+            Assert.That(LagoonCoinRules.CountsTime(true, true, false, false, true, false), Is.False);
+            Assert.That(LagoonCoinRules.CountsTime(true, true, true, false, false, false), Is.False);
+            Assert.That(LagoonCoinRules.CountsTime(true, true, true, false, true, true), Is.False);
+        });
+    }
+
+    [TestCase(0, false)]
+    [TestCase(1, true)]
+    [TestCase(2, true)]
+    [TestCase(3, true)]
+    public void EverySubscriptionTierQualifies(int tier, bool expected)
+        => Assert.That(LagoonCoinRules.HasSubscription(tier), Is.EqualTo(expected));
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void MigrationIsAdditiveAndModelsAgree(bool postgres)
+    {
+        using DbContext db = postgres
+            ? new PostgresServerDbContext(new DbContextOptionsBuilder<PostgresServerDbContext>()
+                .UseNpgsql("Host=localhost;Database=unused;Username=unused").Options)
+            : new SqliteServerDbContext(_options);
+        Assert.That(db.Database.HasPendingModelChanges(), Is.False);
+        var sql = db.GetService<IMigrator>().GenerateScript("20261009160000_UnequippedLoadoutSlots");
+        Assert.That(sql, Does.Contain("lagoon_coins"));
+        Assert.That(sql, Does.Not.Contain("DROP COLUMN mono_coins"));
+        Assert.That(sql, Does.Not.Contain("RENAME COLUMN mono_coins"));
+    }
+}

@@ -783,7 +783,7 @@ namespace Content.Server.Database.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("admin_ooc_color");
 
-                    b.Property<long>("MonoCoins")
+                    b.Property<long>("Money")
                         .HasColumnType("INTEGER")
                         .HasColumnName("mono_coins");
 

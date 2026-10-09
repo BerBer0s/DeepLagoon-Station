@@ -1,5 +1,5 @@
 using System.IO;
-using Content.Server._Mono.MonoCoins;
+using Content.Server._DeepLagoon.Money;
 using Content.Server.Administration.Logs;
 using Content.Server.Database;
 using Content.Server.GameTicking;
@@ -45,7 +45,7 @@ public sealed partial class SafetyDepositBoxSystem : EntitySystem
     [Dependency] private GameTicker _gameTicker = default!;
     [Dependency] private IComponentFactory _componentFactory = default!;
     [Dependency] private MapLoaderSystem _loader = default!;
-    [Dependency] private MonoCoinsManager _coinBase = default!; // I had to.
+    [Dependency] private MoneyManager _coinBase = default!; // I had to.
     [Dependency] private ISharedPlayerManager _playerManager = default!;
 
     private readonly HashSet<Guid> _pendingBoxes = new();
@@ -203,7 +203,7 @@ public sealed partial class SafetyDepositBoxSystem : EntitySystem
         }
 
         long initialBankBalance = bank.Balance;
-        initialBankBalance += _coinBase.GetMonoCoinsBalance(userId) ?? 0L;
+        initialBankBalance += _coinBase.GetMoneyBalance(userId) ?? 0L;
         var bankBalance = initialBankBalance;
         bankBalance -= cost;
 

@@ -225,7 +225,7 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             return false;
         context.ResponseHeaders["Cache-Control"] = "no-store";
         if (context.RequestMethod != HttpMethod.Post ||
-            path is not ("/deeplagoon/discord/supporter" or "/deeplagoon/discord/boost" or "/deeplagoon/discord/restore_discord" or "/deeplagoon/discord/reassign_discord" or "/deeplagoon/discord/enroll_launcher" or "/deeplagoon/discord/link" or "/deeplagoon/discord/lookup" or "/deeplagoon/discord/whitelist" or "/deeplagoon/discord/remove_whitelist" or "/deeplagoon/discord/unlink_discord"))
+            path is not ("/deeplagoon/discord/moderation" or "/deeplagoon/discord/supporter" or "/deeplagoon/discord/boost" or "/deeplagoon/discord/restore_discord" or "/deeplagoon/discord/reassign_discord" or "/deeplagoon/discord/enroll_launcher" or "/deeplagoon/discord/link" or "/deeplagoon/discord/lookup" or "/deeplagoon/discord/whitelist" or "/deeplagoon/discord/remove_whitelist" or "/deeplagoon/discord/unlink_discord"))
         {
             await context.RespondErrorAsync(HttpStatusCode.NotFound);
             return true;
@@ -243,6 +243,8 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             await context.RespondErrorAsync(HttpStatusCode.Unauthorized);
             return true;
         }
+        if (path.EndsWith("/moderation", StringComparison.Ordinal))
+            return await HandleModerationApi(context);
         ApiRequest? request;
         try
         {

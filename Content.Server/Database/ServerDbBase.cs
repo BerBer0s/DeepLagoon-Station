@@ -436,51 +436,7 @@ namespace Content.Server.Database
         }
         #endregion
 
-        #region MonoCoins
 
-        public async Task<long> GetMonoCoinsAsync(NetUserId userId, CancellationToken cancel = default)
-        {
-            await using var db = await GetDb(cancel);
-
-            var prefs = await db.DbContext.Preference
-                .SingleOrDefaultAsync(p => p.UserId == userId.UserId, cancel);
-
-            return prefs?.MonoCoins ?? 0l;
-        }
-
-        public async Task SetMonoCoinsAsync(NetUserId userId, long balance, CancellationToken cancel = default)
-        {
-            await using var db = await GetDb(cancel);
-
-            var prefs = await db.DbContext.Preference
-                .SingleOrDefaultAsync(p => p.UserId == userId.UserId, cancel);
-
-            if (prefs != null)
-            {
-                prefs.MonoCoins = Math.Max(0l, balance); // Ensure balance is never negative
-                await db.DbContext.SaveChangesAsync(cancel);
-            }
-        }
-
-        public async Task<long> AddMonoCoinsAsync(NetUserId userId, long amount, CancellationToken cancel = default)
-        {
-            await using var db = await GetDb(cancel);
-
-            var prefs = await db.DbContext.Preference
-                .SingleOrDefaultAsync(p => p.UserId == userId.UserId, cancel);
-
-            if (prefs != null)
-            {
-                prefs.MonoCoins += amount;
-                prefs.MonoCoins = Math.Max(0l, prefs.MonoCoins); // Ensure balance is never negative
-                await db.DbContext.SaveChangesAsync(cancel);
-                return prefs.MonoCoins;
-            }
-
-            return 0;
-        }
-
-        #endregion
 
         #region Bans
         /*

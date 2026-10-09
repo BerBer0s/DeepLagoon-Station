@@ -139,6 +139,9 @@ public sealed partial class BanManager : IBanManager, IPostInjectInit
 
     #region Server Bans
     public async void CreateServerBan(NetUserId? target, string? targetUsername, NetUserId? banningAdmin, (IPAddress, int)? addressRange, ImmutableTypedHwid? hwid, uint? minutes, NoteSeverity severity, string reason)
+        => await CreateServerBanAsync(target, targetUsername, banningAdmin, addressRange, hwid, minutes, severity, reason);
+
+    public async Task CreateServerBanAsync(NetUserId? target, string? targetUsername, NetUserId? banningAdmin, (IPAddress, int)? addressRange, ImmutableTypedHwid? hwid, uint? minutes, NoteSeverity severity, string reason)
     {
         DateTimeOffset? expires = null;
         if (minutes > 0)
@@ -236,6 +239,9 @@ public sealed partial class BanManager : IBanManager, IPostInjectInit
     // If you are trying to remove timeOfBan, please don't. It's there because the note system groups role bans by time, reason and banning admin.
     // Removing it will clutter the note list. Please also make sure that department bans are applied to roles with the same DateTimeOffset.
     public async void CreateRoleBan(NetUserId? target, string? targetUsername, NetUserId? banningAdmin, (IPAddress, int)? addressRange, ImmutableTypedHwid? hwid, string role, uint? minutes, NoteSeverity severity, string reason, DateTimeOffset timeOfBan)
+        => await CreateRoleBanAsync(target, targetUsername, banningAdmin, addressRange, hwid, role, minutes, severity, reason, timeOfBan);
+
+    public async Task CreateRoleBanAsync(NetUserId? target, string? targetUsername, NetUserId? banningAdmin, (IPAddress, int)? addressRange, ImmutableTypedHwid? hwid, string role, uint? minutes, NoteSeverity severity, string reason, DateTimeOffset timeOfBan)
     {
         if (!_prototypeManager.TryIndex(role, out JobPrototype? _))
         {

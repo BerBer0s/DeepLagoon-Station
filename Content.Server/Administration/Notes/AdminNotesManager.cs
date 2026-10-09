@@ -68,7 +68,10 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
         await ui.UpdateNotes();
     }
 
-    public async Task AddAdminRemark(ICommonSession createdBy, Guid player, NoteType type, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime)
+    public Task AddAdminRemark(ICommonSession createdBy, Guid player, NoteType type, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime)
+        => AddAdminRemark(createdBy.UserId, createdBy.Name, player, type, message, severity, secret, expiryTime);
+
+    public async Task AddAdminRemark(NetUserId actorId, string actorName, Guid player, NoteType type, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime)
     {
         message = message.Trim();
 
@@ -78,7 +81,7 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
         if (await _db.GetPlayerRecordByUserId((NetUserId) player) is null)
             return;
 
-        var sb = new StringBuilder($"{createdBy.Name} added a");
+        var sb = new StringBuilder($"{actorName} added a");
 
         if (secret && type == NoteType.Note)
         {
@@ -126,14 +129,14 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
             case NoteType.Note:
                 if (severity is null)
                     throw new ArgumentException("Severity cannot be null for a note", nameof(severity));
-                noteId = await _db.AddAdminNote(roundId, player, playtime, message, severity.Value, secret, createdBy.UserId, createdAt, expiryTime);
+                noteId = await _db.AddAdminNote(roundId, player, playtime, message, severity.Value, secret, actorId, createdAt, expiryTime);
                 break;
             case NoteType.Watchlist:
                 secret = true;
-                noteId = await _db.AddAdminWatchlist(roundId, player, playtime, message, createdBy.UserId, createdAt, expiryTime);
+                noteId = await _db.AddAdminWatchlist(roundId, player, playtime, message, actorId, createdAt, expiryTime);
                 break;
             case NoteType.Message:
-                noteId = await _db.AddAdminMessage(roundId, player, playtime, message, createdBy.UserId, createdAt, expiryTime);
+                noteId = await _db.AddAdminMessage(roundId, player, playtime, message, actorId, createdAt, expiryTime);
                 seen = false;
                 break;
             case NoteType.ServerBan: // Add bans using the ban panel, not note edit
@@ -152,8 +155,8 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
             message,
             severity,
             secret,
-            createdBy.Name,
-            createdBy.Name,
+            actorName,
+            actorName,
             createdAt,
             createdAt,
             expiryTime,
@@ -178,12 +181,15 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
         };
     }
 
-    public async Task DeleteAdminRemark(int noteId, NoteType type, ICommonSession deletedBy)
+    public Task DeleteAdminRemark(int noteId, NoteType type, ICommonSession deletedBy)
+        => DeleteAdminRemark(noteId, type, deletedBy.UserId, deletedBy.Name);
+
+    public async Task DeleteAdminRemark(int noteId, NoteType type, NetUserId actorId, string actorName)
     {
         var note = await GetAdminRemark(noteId, type);
         if (note == null)
         {
-            _sawmill.Warning($"Player {deletedBy.Name} has tried to delete non-existent {type} {noteId}");
+            _sawmill.Warning($"Player {actorName} has tried to delete non-existent {type} {noteId}");
             return;
         }
 
@@ -192,29 +198,32 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
         switch (type)
         {
             case NoteType.Note:
-                await _db.DeleteAdminNote(noteId, deletedBy.UserId, deletedAt);
+                await _db.DeleteAdminNote(noteId, actorId, deletedAt);
                 break;
             case NoteType.Watchlist:
-                await _db.DeleteAdminWatchlist(noteId, deletedBy.UserId, deletedAt);
+                await _db.DeleteAdminWatchlist(noteId, actorId, deletedAt);
                 break;
             case NoteType.Message:
-                await _db.DeleteAdminMessage(noteId, deletedBy.UserId, deletedAt);
+                await _db.DeleteAdminMessage(noteId, actorId, deletedAt);
                 break;
             case NoteType.ServerBan:
-                await _db.HideServerBanFromNotes(noteId, deletedBy.UserId, deletedAt);
+                await _db.HideServerBanFromNotes(noteId, actorId, deletedAt);
                 break;
             case NoteType.RoleBan:
-                await _db.HideServerRoleBanFromNotes(noteId, deletedBy.UserId, deletedAt);
+                await _db.HideServerRoleBanFromNotes(noteId, actorId, deletedAt);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown note type");
         }
 
-        _sawmill.Info($"{deletedBy.Name} has deleted {type} {noteId}");
+        _sawmill.Info($"{actorName} has deleted {type} {noteId}");
         NoteDeleted?.Invoke(note);
     }
 
-    public async Task ModifyAdminRemark(int noteId, NoteType type, ICommonSession editedBy, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime)
+    public Task ModifyAdminRemark(int noteId, NoteType type, ICommonSession editedBy, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime)
+        => ModifyAdminRemark(noteId, type, editedBy.UserId, editedBy.Name, message, severity, secret, expiryTime);
+
+    public async Task ModifyAdminRemark(int noteId, NoteType type, NetUserId actorId, string actorName, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime)
     {
         message = message.Trim();
 
@@ -230,7 +239,7 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
             return;
         }
 
-        var sb = new StringBuilder($"{editedBy.Name} has modified {type} {noteId}");
+        var sb = new StringBuilder($"{actorName} has modified {type} {noteId}");
 
         if (note.Message != message)
         {
@@ -272,23 +281,23 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
             case NoteType.Note:
                 if (severity is null)
                     throw new ArgumentException("Severity cannot be null for a note", nameof(severity));
-                await _db.EditAdminNote(noteId, message, severity.Value, secret, editedBy.UserId, editedAt, expiryTime);
+                await _db.EditAdminNote(noteId, message, severity.Value, secret, actorId, editedAt, expiryTime);
                 break;
             case NoteType.Watchlist:
-                await _db.EditAdminWatchlist(noteId, message, editedBy.UserId, editedAt, expiryTime);
+                await _db.EditAdminWatchlist(noteId, message, actorId, editedAt, expiryTime);
                 break;
             case NoteType.Message:
-                await _db.EditAdminMessage(noteId, message, editedBy.UserId, editedAt, expiryTime);
+                await _db.EditAdminMessage(noteId, message, actorId, editedAt, expiryTime);
                 break;
             case NoteType.ServerBan:
                 if (severity is null)
                     throw new ArgumentException("Severity cannot be null for a ban", nameof(severity));
-                await _db.EditServerBan(noteId, message, severity.Value, expiryTime, editedBy.UserId, editedAt);
+                await _db.EditServerBan(noteId, message, severity.Value, expiryTime, actorId, editedAt);
                 break;
             case NoteType.RoleBan:
                 if (severity is null)
                     throw new ArgumentException("Severity cannot be null for a role ban", nameof(severity));
-                await _db.EditServerRoleBan(noteId, message, severity.Value, expiryTime, editedBy.UserId, editedAt);
+                await _db.EditServerRoleBan(noteId, message, severity.Value, expiryTime, actorId, editedAt);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown note type");
@@ -300,7 +309,7 @@ public sealed partial class AdminNotesManager : IAdminNotesManager, IPostInjectI
             NoteSeverity = severity,
             Secret = secret,
             LastEditedAt = editedAt,
-            EditedByName = editedBy.Name,
+            EditedByName = actorName,
             ExpiryTime = expiryTime
         };
         NoteModified?.Invoke(newNote);

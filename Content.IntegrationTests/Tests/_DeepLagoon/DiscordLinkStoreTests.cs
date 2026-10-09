@@ -36,6 +36,23 @@ public sealed class DiscordLinkStoreTests
     }
 
     [Test]
+    public void StaffGrantPersistsAcrossRestartAndRemoval()
+    {
+        var uid = Guid.NewGuid();
+        using (var store = new DiscordLinkStore(_path))
+            store.SetStaffGrant(uid, "trial", 17);
+        using (var store = new DiscordLinkStore(_path))
+        {
+            Assert.That(store.StaffGrant(uid), Is.EqualTo(("trial", 17)));
+            store.SetStaffGrant(uid, "admin", 18);
+            Assert.That(store.StaffGrant(uid), Is.EqualTo(("admin", 18)));
+            store.RemoveStaffGrant(uid);
+        }
+        using (var store = new DiscordLinkStore(_path))
+            Assert.That(store.StaffGrant(uid), Is.Null);
+    }
+
+    [Test]
     public void BoostyTierDowngradesAndExpiresWhilePaletteSurvivesRestart()
     {
         const string discord = "1554565156657299597";

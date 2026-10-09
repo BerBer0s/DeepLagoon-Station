@@ -7,16 +7,16 @@ using Robust.Server.Player;
 using Robust.Shared.Console;
 using Robust.Shared.Player;
 
-namespace Content.Server._Mono.MonoCoins;
+namespace Content.Server._DeepLagoon.Money;
 
 /// <summary>
-/// Player command for transferring MonoCoins to other players.
+/// Player command for transferring Money to other players.
 /// </summary>
 [AnyCommand]
 public sealed partial class CurrencyTransferCommand : LocalizedCommands
 {
     [Dependency] private IPlayerManager _playerManager = default!;
-    [Dependency] private MonoCoinsManager _coins = default!;
+    [Dependency] private MoneyManager _coins = default!;
     [Dependency] private IChatManager _chatManager = default!;
 
     public override string Command => "currency:transfer";
@@ -80,17 +80,9 @@ public sealed partial class CurrencyTransferCommand : LocalizedCommands
 
         try
         {
-            // Check if sender has enough MonoCoins
-            var senderBalance = await _coins.GetMonoCoinsBalanceAsync(senderUserId);
-            if (senderBalance < amount)
-            {
-                shell.WriteError($"Insufficient currency. You have ${senderBalance}, cannot transfer ${amount}.");
-                return;
-            }
-
-            // Perform the transfer (subtract from sender, add to target)
-            var newSenderBalance = await _coins.AddMonoCoinsAsync(senderUserId, -amount);
-            var newTargetBalance = await _coins.AddMonoCoinsAsync(targetUserId, amount);
+            var transfer = await _coins.TransferMoneyAsync(senderUserId, targetUserId, amount);
+            var newSenderBalance = transfer.SenderBalance;
+            var newTargetBalance = transfer.RecipientBalance;
 
             // Notify both players
             shell.WriteLine($"Successfully transferred ${amount} to {targetPlayerName}. New balance: ${newSenderBalance}");

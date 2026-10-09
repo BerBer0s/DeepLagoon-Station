@@ -1,2 +1,4 @@
-server-currency-loading = Loading account savings..
-server-currency-text = Account savings: ${$balance}
+server-currency-loading = Money: loading…
+server-currency-text = Money: ${$balance}
+lagoon-coin-loading = Lagoon Coin: loading…
+lagoon-coin-balance = Lagoon Coin: {$balance} LC

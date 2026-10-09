@@ -1,6 +1,6 @@
 using System.Linq;
 using Content.Client._Mono.Company; // Mono
-using Content.Client._Mono.MonoCoins;
+using Content.Client._DeepLagoon.Money;
 using Content.Client.Guidebook;
 using Content.Client.Humanoid;
 using Content.Client.Inventory;
@@ -43,7 +43,8 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
     [Dependency] private JobRequirementsManager _requirements = default!;
     [Dependency] private MarkingManager _markings = default!;
     [Dependency] private CompanyManager _companyManager = default!; // Mono
-    [Dependency] private MonoCoinsManager _monoCoins = default!; // Mono
+    [Dependency] private MoneyManager _money = default!; // Mono
+    [UISystemDependency] private readonly Content.Client._DeepLagoon.Currency.LagoonCoinSystem _lagoonCoins = default!;
     [UISystemDependency] private readonly HumanoidAppearanceSystem _humanoid = default!;
     [UISystemDependency] private readonly ClientInventorySystem _inventory = default!;
     [UISystemDependency] private readonly StationSpawningSystem _spawn = default!;
@@ -83,38 +84,44 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
         _configurationManager.OnValueChanged(CCVars.GameRoleWhitelist, _ => RefreshProfileEditor());
     }
 
-    private bool _monoCoinsSubscribed = false;
+    private bool _moneySubscribed = false;
 
     /// <summary>
-    /// Safely subscribes to MonoCoins balance updates if not already subscribed.
+    /// Safely subscribes to Money balance updates if not already subscribed.
     /// </summary>
-    private void EnsureMonoCoinsSubscription()
+    private void EnsureMoneySubscription()
     {
-        if (!_monoCoinsSubscribed && _monoCoins != null)
+        if (!_moneySubscribed && _money != null)
         {
-            _monoCoins.BalanceUpdated += OnMonoCoinsBalanceUpdated;
-            _monoCoinsSubscribed = true;
+            _money.BalanceUpdated += OnMoneyBalanceUpdated;
+            _lagoonCoins.BalanceUpdated += OnLagoonCoinBalanceUpdated;
+            _moneySubscribed = true;
         }
     }
 
     /// <summary>
-    /// Called when MonoCoins balance is updated from the server.
+    /// Called when Money balance is updated from the server.
     /// </summary>
-    private void OnMonoCoinsBalanceUpdated(long balance)
+    private void OnMoneyBalanceUpdated(long balance)
     {
-        UpdateMonoCoinsDisplay();
+        UpdateMoneyDisplay();
     }
 
+    private void OnLagoonCoinBalanceUpdated(long balance) => UpdateMoneyDisplay();
+
     /// <summary>
-    /// Updates the MonoCoins display in the lobby preview panel.
+    /// Updates the Money display in the lobby preview panel.
     /// </summary>
-    private void UpdateMonoCoinsDisplay()
+    private void UpdateMoneyDisplay()
     {
         if (PreviewPanel == null)
             return;
 
-        var balance = _monoCoins?.GetLastKnownBalance() ?? -1;
-        PreviewPanel.SetMonoCoinsText(Loc.GetString("server-currency-text", ("balance", balance)));
+        var balance = _money?.GetLastKnownBalance() ?? -1;
+        PreviewPanel.SetMoneyText(balance < 0 ? Loc.GetString("server-currency-loading") :
+            Loc.GetString("server-currency-text", ("balance", balance)));
+        PreviewPanel.SetLagoonCoinText(_lagoonCoins.Balance < 0 ? Loc.GetString("lagoon-coin-loading") :
+            Loc.GetString("lagoon-coin-balance", ("balance", _lagoonCoins.Balance)));
     }
 
     private LobbyCharacterPreviewPanel? GetLobbyPreview()
@@ -185,9 +192,10 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
         PreviewPanel?.SetLoaded(_preferencesManager.ServerDataLoaded);
         ReloadCharacterSetup();
 
-        // Ensure MonoCoins subscription and request balance when entering lobby
-        EnsureMonoCoinsSubscription();
-        _monoCoins?.RequestBalance();
+        // Ensure Money subscription and request balance when entering lobby
+        EnsureMoneySubscription();
+        _money?.RequestBalance();
+        _lagoonCoins.RequestBalance();
     }
 
     public void OnStateExited(LobbyState state)
@@ -239,7 +247,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
             PreviewPanel.SetSummaryText(string.Empty);
             PreviewPanel.SetBankBalanceText(string.Empty); // Frontier
             PreviewPanel.SetCompanyText(string.Empty); // Company Display
-            PreviewPanel.SetMonoCoinsText("server-currency-loading"); // MonoCoins Display
+            PreviewPanel.SetMoneyText(Loc.GetString("server-currency-loading")); // Money Display
             return;
         }
 
@@ -274,10 +282,11 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
             PreviewPanel.SetCompanyText($"[color=white]Company:[/color] [color=yellow]{companyId}[/color]");
         }
 
-        // MonoCoins Display - Request balance from server and update display
-        EnsureMonoCoinsSubscription();
-        _monoCoins?.RequestBalance();
-        UpdateMonoCoinsDisplay();
+        // Money Display - Request balance from server and update display
+        EnsureMoneySubscription();
+        _money?.RequestBalance();
+        _lagoonCoins.RequestBalance();
+        UpdateMoneyDisplay();
     }
 
     private void RefreshProfileEditor()

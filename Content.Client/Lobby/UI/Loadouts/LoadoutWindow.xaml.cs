@@ -10,7 +10,7 @@ using Robust.Client.UserInterface.XAML;
 using Robust.Shared.Player;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
-using Content.Client._Mono.MonoCoins; // Mono
+using Content.Client._DeepLagoon.Money; // Mono
 using Content.Shared._NF.Bank; // Frontier
 
 namespace Content.Client.Lobby.UI.Loadouts;
@@ -18,7 +18,7 @@ namespace Content.Client.Lobby.UI.Loadouts;
 [GenerateTypedNameReferences]
 public sealed partial class LoadoutWindow : FancyWindow
 {
-    [Dependency] private MonoCoinsManager _coins = default!; // Mono
+    [Dependency] private MoneyManager _coins = default!; // Mono
 
     public event Action<string>? OnNameChanged;
     public event Action<ProtoId<LoadoutGroupPrototype>, ProtoId<LoadoutPrototype>>? OnLoadoutPressed;

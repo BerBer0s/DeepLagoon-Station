@@ -20,6 +20,7 @@ namespace Content.Server.Database
         }
 
         public DbSet<Preference> Preference { get; set; } = null!;
+        public DbSet<LagoonCoinOperation> LagoonCoinOperations { get; set; } = null!;
         public DbSet<Profile> Profile { get; set; } = null!;
         public DbSet<AssignedUserId> AssignedUserId { get; set; } = null!;
         public DbSet<Player> Player { get; set; } = default!;
@@ -52,6 +53,9 @@ namespace Content.Server.Database
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<LagoonCoinOperation>().HasKey(p => new { p.UserId, p.OperationId });
+            modelBuilder.Entity<LagoonCoinOperation>().Property(p => p.OperationId).HasMaxLength(200);
+            modelBuilder.Entity<LagoonCoinOperation>().Property(p => p.Reason).HasMaxLength(500);
             modelBuilder.Entity<Preference>()
                 .HasIndex(p => p.UserId)
                 .IsUnique();
@@ -434,7 +438,7 @@ namespace Content.Server.Database
         public Guid UserId { get; set; }
         public int SelectedCharacterSlot { get; set; }
         public string AdminOOCColor { get; set; } = null!;
-        public long MonoCoins { get; set; } = 0;
+        [Column("mono_coins")] public long Money { get; set; } = 0;
         public List<Profile> Profiles { get; } = new();
     }
 

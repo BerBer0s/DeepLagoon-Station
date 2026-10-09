@@ -26,6 +26,7 @@ public sealed class DiscordLinkStore : IDisposable
         _db.Open();
         Execute("""
             PRAGMA journal_mode=WAL;
+            CREATE TABLE IF NOT EXISTS discord_staff_grants (ss14_uid TEXT PRIMARY KEY, kind TEXT NOT NULL, rank_id INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS discord_boosty (discord_id TEXT PRIMARY KEY, tier INTEGER NOT NULL, expires_at INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS discord_supporter_palette (id INTEGER PRIMARY KEY CHECK(id=1), boost INTEGER NOT NULL, tier1 INTEGER NOT NULL, tier2 INTEGER NOT NULL, tier3 INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS discord_boosts (discord_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
@@ -59,6 +60,20 @@ public sealed class DiscordLinkStore : IDisposable
             command.Parameters.AddWithValue(name, value);
         return command;
     }
+
+    public (string Kind, int RankId)? StaffGrant(Guid uid)
+    {
+        using var command = Command("SELECT kind,rank_id FROM discord_staff_grants WHERE ss14_uid=$uid", ("$uid", uid.ToString()));
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? (reader.GetString(0), reader.GetInt32(1)) : null;
+    }
+
+    public void SetStaffGrant(Guid uid, string kind, int rankId)
+        => Execute("INSERT INTO discord_staff_grants VALUES($uid,$kind,$rank) ON CONFLICT(ss14_uid) DO UPDATE SET kind=excluded.kind,rank_id=excluded.rank_id",
+            ("$uid", uid.ToString()), ("$kind", kind), ("$rank", rankId));
+
+    public void RemoveStaffGrant(Guid uid)
+        => Execute("DELETE FROM discord_staff_grants WHERE ss14_uid=$uid", ("$uid", uid.ToString()));
 
     private void Execute(string sql, params (string Name, object Value)[] parameters)
     {

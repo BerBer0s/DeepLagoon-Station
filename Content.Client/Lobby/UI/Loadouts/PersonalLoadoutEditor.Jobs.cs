@@ -15,7 +15,7 @@ namespace Content.Client.Lobby.UI.Loadouts;
 
 public sealed partial class PersonalLoadoutEditor
 {
-    [Dependency] private readonly Content.Client._Mono.MonoCoins.MonoCoinsManager _coins = default!;
+    [Dependency] private readonly Content.Client._DeepLagoon.Money.MoneyManager _coins = default!;
     private readonly OptionButton _jobSelector = new() { HorizontalExpand = true };
     private readonly List<string> _equipmentJobs = new();
     private readonly Label _jobBalance = new();

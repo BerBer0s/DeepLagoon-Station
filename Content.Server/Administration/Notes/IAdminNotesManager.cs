@@ -3,6 +3,7 @@ using Content.Server.Database;
 using Content.Shared.Administration.Notes;
 using Content.Shared.Database;
 using Robust.Shared.Player;
+using Robust.Shared.Network;
 
 namespace Content.Server.Administration.Notes;
 
@@ -19,8 +20,11 @@ public interface IAdminNotesManager
     Task OpenEui(ICommonSession admin, Guid notedPlayer);
     Task OpenUserNotesEui(ICommonSession player);
     Task AddAdminRemark(ICommonSession createdBy, Guid player, NoteType type, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime);
+    Task AddAdminRemark(NetUserId actorId, string actorName, Guid player, NoteType type, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime);
     Task DeleteAdminRemark(int noteId, NoteType type, ICommonSession deletedBy);
+    Task DeleteAdminRemark(int noteId, NoteType type, NetUserId actorId, string actorName);
     Task ModifyAdminRemark(int noteId, NoteType type, ICommonSession editedBy, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime);
+    Task ModifyAdminRemark(int noteId, NoteType type, NetUserId actorId, string actorName, string message, NoteSeverity? severity, bool secret, DateTime? expiryTime);
     /// <summary>
     /// Queries the database and retrieves all notes, secret and visible
     /// </summary>

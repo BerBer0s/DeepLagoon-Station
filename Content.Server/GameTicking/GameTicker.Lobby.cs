@@ -195,6 +195,7 @@ namespace Content.Server.GameTicking
             // Mono/BF14 end
             var status = ready ? PlayerGameStatus.ReadyToPlay : PlayerGameStatus.NotReadyToPlay;
             _playerGameStatuses[player.UserId] = ready ? PlayerGameStatus.ReadyToPlay : PlayerGameStatus.NotReadyToPlay;
+            EntityManager.System<Content.Server._DeepLagoon.Currency.LagoonCoinSystem>().SetReady(player, ready);
             RaiseNetworkEvent(GetStatusMsg(player), player.Channel);
             // update server info to reflect new ready count
             UpdateInfoText();

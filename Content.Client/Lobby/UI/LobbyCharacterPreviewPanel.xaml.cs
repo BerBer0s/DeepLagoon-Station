@@ -53,12 +53,13 @@ public sealed partial class LobbyCharacterPreviewPanel : Control
     }
     // End Company Display
 
-    // MonoCoins Display
-    public void SetMonoCoinsText(string value)
+    // Money Display
+    public void SetMoneyText(string value)
     {
-        MonoCoins.Text = value;
+        Money.Text = value;
     }
-    // End MonoCoins Display
+    public void SetLagoonCoinText(string value) => LagoonCoins.Text = value;
+    // End Money Display
 
     public void SetSprite(EntityUid uid)
     {

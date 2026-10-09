@@ -2,12 +2,12 @@ using Robust.Shared.Network;
 using Robust.Shared.Serialization;
 using Lidgren.Network;
 
-namespace Content.Shared._Mono.MonoCoins;
+namespace Content.Shared._DeepLagoon.Money;
 
 /// <summary>
-/// Sent from the server to client to message updated MonoCoins balance.
+/// Sent from the server to client to message updated Money balance.
 /// </summary>
-public sealed class MsgMonoCoins : NetMessage
+public sealed class MsgMoney : NetMessage
 {
     public override MsgGroups MsgGroup => MsgGroups.EntityEvent;
 
@@ -24,7 +24,7 @@ public sealed class MsgMonoCoins : NetMessage
     }
 }
 
-public sealed class MsgMonoCoinsRequest : NetMessage
+public sealed class MsgMoneyRequest : NetMessage
 {
     public override MsgGroups MsgGroup => MsgGroups.EntityEvent;
 

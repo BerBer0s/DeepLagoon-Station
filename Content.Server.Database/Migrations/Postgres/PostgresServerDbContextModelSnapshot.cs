@@ -829,7 +829,7 @@ namespace Content.Server.Database.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("admin_ooc_color");
 
-                    b.Property<long>("MonoCoins")
+                    b.Property<long>("Money")
                         .HasColumnType("bigint")
                         .HasColumnName("mono_coins");
 

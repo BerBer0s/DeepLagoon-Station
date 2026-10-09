@@ -1,5 +1,5 @@
 using System.Threading;
-using Content.Server._Mono.MonoCoins;
+using Content.Server._DeepLagoon.Money;
 using Content.Server.Database;
 using Content.Server.Preferences.Managers;
 using Content.Server.GameTicking;
@@ -14,6 +14,7 @@ using Content.Shared._Mono.Traits.Physical;
 using Content.Shared._NF.Bank.Events;
 using Content.Shared.GameTicking;
 using Robust.Shared.Network;
+using Robust.Shared.Asynchronous;
 
 namespace Content.Server._NF.Bank;
 
@@ -22,9 +23,18 @@ public sealed partial class BankSystem : SharedBankSystem
     [Dependency] private IServerPreferencesManager _prefsManager = default!;
     [Dependency] private ISharedPlayerManager _playerManager = default!;
     [Dependency] private IServerDbManager _db = default!;
-    [Dependency] private MonoCoinsManager _coins = default!;
+    [Dependency] private MoneyManager _coins = default!;
+    [Dependency] private ITaskManager _tasks = default!;
+    private readonly HashSet<NetUserId> _moneyPayments = new();
 
     private ISawmill _log = default!;
+
+    public void SetConfirmedBankBalance(EntityUid uid, int balance)
+    {
+        var bank = EnsureComp<BankAccountComponent>(uid);
+        bank.Balance = balance;
+        Dirty(uid, bank);
+    }
 
     public override void Initialize()
     {
@@ -163,7 +173,10 @@ public sealed partial class BankSystem : SharedBankSystem
             GetTaxedDepositAmount(amount, bank.Balance, out var afterTax, out var taxedAway);
             toSector = afterTax;
             toLongTerm = taxedAway;
-            _ = _coins.AddMonoCoinsAsync(session.UserId, taxedAway);
+            if (prefs.IndexOfCharacter(profile) == -1 ||
+                (long)profile.BankBalance + toSector > int.MaxValue ||
+                (taxedAway > 0 && !_coins.TryAddMoney(session.UserId, taxedAway)))
+                return false;
         }
 
         if (TryBankDeposit(session, prefs, profile, toSector, out var newBalance))
@@ -197,40 +210,46 @@ public sealed partial class BankSystem : SharedBankSystem
             return false;
         }
 
-        int balance = profile.BankBalance;
-        long totalBalance = balance;
-
-        if (spendLongTerm)
-        {
-            var longTermBank = _coins.GetMonoCoinsBalance(session.UserId);
-            totalBalance += longTermBank ?? 0l;
-        }
-
-        if (totalBalance < amount)
-        {
-            _log.Info($"TryBankWithdraw: {session.UserId} tried to withdraw {amount}, but has insufficient funds ({balance})");
-            return false;
-        }
-
-        int leftoverAmount = amount;
-        if (spendLongTerm)
-        {
-            var longTermBalance = totalBalance - balance;
-            var toSpend = (int)Math.Min(longTermBalance, (long)leftoverAmount);
-            leftoverAmount -= toSpend;
-            _ = _coins.AddMonoCoinsAsync(session.UserId, -toSpend);
-        }
-        balance -= leftoverAmount;
-
-        var newProfile = profile.WithBankBalance(balance);
         var index = prefs.IndexOfCharacter(profile);
         if (index == -1)
         {
             _log.Info($"TryBankWithdraw: {session.UserId} tried to adjust the balance of {profile.Name}, but they were not in the user's character set.");
             return false;
         }
-        _prefsManager.SetProfile(session.UserId, index, newProfile);
-        newBalance = balance;
+        if (!_moneyPayments.Add(session.UserId))
+            return false;
+        var moneySpent = 0;
+        try
+        {
+            var bankCost = amount;
+            if (spendLongTerm)
+            {
+                if (!_coins.TryPayWithBank(session.UserId, profile.BankBalance, amount, out bankCost))
+                    return false;
+                moneySpent = amount - bankCost;
+            }
+            else if (profile.BankBalance < amount)
+                return false;
+
+            var balance = profile.BankBalance - bankCost;
+            var save = _prefsManager.SetProfile(session.UserId, index, profile.WithBankBalance(balance));
+            _tasks.BlockWaitOnTask(save);
+            save.GetAwaiter().GetResult();
+            newBalance = balance;
+        }
+        catch (Exception e)
+        {
+            _log.Error($"Bank payment failed for {session.UserId}: {e}");
+            // No item is issued on failure. Restore the cache and compensate committed savings.
+            var restore = _prefsManager.SetProfile(session.UserId, index, profile);
+            _tasks.BlockWaitOnTask(restore);
+            try { restore.GetAwaiter().GetResult(); }
+            catch (Exception restoreError) { _log.Error($"Bank restore failed: {restoreError}"); }
+            if (moneySpent > 0 && !_coins.TryAddMoney(session.UserId, moneySpent))
+                _log.Error($"Money compensation requires reconciliation: {session.UserId}, {moneySpent}");
+            return false;
+        }
+        finally { _moneyPayments.Remove(session.UserId); }
         // Update any active admin UI with new balance
         RaiseLocalEvent(new BalanceChangedEvent(session, newBalance.Value));
         return true;
@@ -255,6 +274,8 @@ public sealed partial class BankSystem : SharedBankSystem
             return false;
         }
 
+        if ((long)profile.BankBalance + amount > int.MaxValue)
+            return false;
         newBalance = profile.BankBalance + amount;
 
         var newProfile = profile.WithBankBalance(newBalance.Value);

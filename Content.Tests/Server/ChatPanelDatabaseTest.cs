@@ -68,7 +68,7 @@ public sealed class ChatPanelDatabaseTest
         Assert.Multiple(() =>
         {
             Assert.That(saved.ChatPanelSettings, Is.EqualTo(payload));
-            Assert.That(saved.MonoCoins, Is.EqualTo(42));
+            Assert.That(saved.Money, Is.EqualTo(42));
             Assert.That(saved.AdminOOCColor, Is.EqualTo("#FF0000"));
         });
         Assert.That((await read.Preference.SingleAsync(p => p.UserId == other.UserId)).ChatPanelSettings, Is.Empty);
