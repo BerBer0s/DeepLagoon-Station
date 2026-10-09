@@ -116,6 +116,7 @@
     - Biological
     - Inorganic
   - type: ShowSyndicateIcons # Monolith
+  - type: AGhostSpeed # DeepLagoon: Shift + mouse wheel changes the speed, Shift no longer walks
 
 - type: entity
   id: ActionAGhostShowSolar

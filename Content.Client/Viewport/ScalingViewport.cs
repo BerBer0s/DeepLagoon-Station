@@ -128,6 +128,14 @@ namespace Content.Client.Viewport
             RectClipContent = true;
         }
 
+        // DeepLagoon: the wheel is not a bindable key, so Shift + wheel (aghost speed) is forwarded from here
+        protected override void MouseWheel(GUIMouseWheelEventArgs args)
+        {
+            base.MouseWheel(args);
+
+            _entityManager.System<Content.Client._DeepLagoon.Admin.AGhostSpeedSystem>().OnViewportWheel(this, args);
+        }
+
         protected override void KeyBindDown(GUIBoundKeyEventArgs args)
         {
             base.KeyBindDown(args);
