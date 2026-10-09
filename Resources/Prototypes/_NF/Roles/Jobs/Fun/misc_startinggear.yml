@@ -24,6 +24,7 @@
     - BluespaceBeaker
     - Omnitool
     - SyringeBluespace
+    - MapperRCD # DeepLagoon: mapper RCD in the aghost backpack by default
 
 - type: startingGear
   id: MobClippyGear
