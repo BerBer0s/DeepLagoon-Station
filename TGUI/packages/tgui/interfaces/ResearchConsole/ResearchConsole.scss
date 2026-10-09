@@ -1,0 +1,888 @@
+$space: 8px;
+$radius: 6px;
+$icon-size: 64px;
+$badge-size: 20px;
+$origin-size: 22px;
+$fade-duration: 0.12s;
+$nudge-duration: 0.25s;
+// Research animation: the node snaps, then its lines to newly open technologies light up, then
+// those technologies wake up. All of it ends within 0.4s; only transform and opacity change.
+$snap-duration: 0.26s;
+$flash-duration: 0.32s;
+$ignite-delay: 0.12s;
+$ignite-duration: 0.28s;
+$wake-delay: 0.2s;
+$wake-duration: 0.2s;
+$dim-nodes: 0.3;
+$dim-lines: 0.12;
+$dim-lines-far: 0.04;
+$panel-icon-size: 56px;
+$recipe-icon-size: 32px;
+$result-icon-size: 32px;
+// Below this window width the top bar drops the words from the points and the server button.
+$narrow-window: 900px;
+
+.ResearchConsole {
+  --rc-border: #68788a;
+  --rc-accent: #83bbfa;
+  --rc-good: #7ac779;
+  --rc-warn: #e0b45a;
+  --rc-select: #ffffff;
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: ResearchConsole-fade $fade-duration ease-out;
+
+  input,
+  textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  &__body {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  &__notice {
+    flex: 0 0 auto;
+    margin: $space ($space * 2) 0;
+    padding: $space * 1.5;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius;
+    background: var(--player-surface);
+  }
+}
+
+.TopBar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: $space;
+  padding: $space ($space * 2);
+  border-bottom: 1px solid var(--rc-border);
+
+  &__points {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: $space * 0.5;
+    white-space: nowrap;
+  }
+
+  // The words go first when the window is narrow; the tips still have them.
+  @media (max-width: $narrow-window) {
+    padding: $space;
+
+    &__label {
+      display: none;
+    }
+  }
+}
+
+// One chip per discipline, in its color; the tree is narrowed to the active one. They scroll
+// sideways when the window is too narrow for all of them.
+.DisciplineTabs {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+  padding-bottom: 2px;
+  overflow-x: auto;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 2px;
+    background: var(--rc-border);
+  }
+}
+
+.DisciplineTab {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 30px;
+  height: 28px;
+  padding: 0 $space;
+  border: 1px solid var(--rc-border);
+  border-bottom: 3px solid var(--discipline, var(--rc-border));
+  border-radius: $radius;
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+
+  img {
+    width: 18px;
+    height: 18px;
+    image-rendering: pixelated;
+    -webkit-user-drag: none;
+  }
+
+  &:hover {
+    background: color-mix(in srgb, currentcolor 10%, transparent);
+  }
+
+  &--active {
+    border-color: var(--discipline, var(--rc-accent));
+    background: color-mix(in srgb, var(--discipline, var(--rc-accent)) 35%, transparent);
+  }
+}
+
+.SearchBox {
+  position: relative;
+  display: flex;
+  flex: 0 1 200px;
+  align-items: center;
+  gap: $space * 0.75;
+  min-width: 110px;
+  height: 28px;
+  padding: 0 $space;
+  box-sizing: border-box;
+  border: 1px solid var(--rc-border);
+  border-radius: $radius;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+  }
+
+  &:focus-within {
+    border-color: var(--rc-accent);
+  }
+
+  &__clear {
+    display: flex;
+    padding: 0;
+    border: none;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  // Right-aligned under the field: the field sits at the right end of the header.
+  &__list {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 5;
+    box-sizing: border-box;
+    width: 340px;
+    max-width: calc(100vw - #{$space * 2});
+    padding: 4px;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius;
+    background: var(--player-surface);
+  }
+
+  &__empty,
+  &__more {
+    padding: 4px $space;
+    font-size: 12px;
+    opacity: 0.75;
+  }
+}
+
+.SearchResult {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: $space;
+  width: 100%;
+  padding: 3px $space 3px 3px;
+  border: none;
+  border-left: 4px solid var(--discipline, var(--rc-border));
+  border-radius: $radius * 0.6;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+
+  &--current {
+    background: color-mix(in srgb, var(--rc-accent) 22%, transparent);
+  }
+
+  &__icon {
+    flex: 0 0 $result-icon-size;
+    width: $result-icon-size;
+    height: $result-icon-size;
+  }
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__name {
+    font-weight: bold;
+    overflow-wrap: anywhere;
+  }
+
+  &__recipe {
+    font-size: 12px;
+    opacity: 0.8;
+    overflow-wrap: anywhere;
+  }
+}
+
+.ResearchTree {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+
+  &--dragging {
+    cursor: grabbing;
+  }
+
+  &__world {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+
+    // Promoted to its own layer only while the camera moves (see useTreeCamera).
+    &--moving {
+      will-change: transform;
+    }
+
+    &[data-lod='far'] .TechNode__text,
+    &[data-lod='tiny'] .TechNode__text,
+    &[data-lod='tiny'] .TechNode__icon,
+    &[data-lod='tiny'] .TechNode__badge {
+      display: none;
+    }
+  }
+
+  &__edges {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+  }
+
+  // The state of a line shows in its width and style as well as its color: done is thick and
+  // solid, open is medium, locked is thin and faint. Arrowheads point at the dependent technology.
+  &__edge {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+
+    &--locked {
+      stroke: color-mix(in srgb, currentcolor 35%, transparent);
+      stroke-width: 1.5;
+    }
+
+    &--open {
+      stroke: var(--rc-accent);
+      stroke-width: 2.5;
+    }
+
+    &--done {
+      stroke: var(--rc-good);
+      stroke-width: 3.5;
+    }
+  }
+
+  &__arrow {
+    stroke: none;
+
+    &--locked {
+      fill: color-mix(in srgb, currentcolor 35%, transparent);
+    }
+
+    &--open {
+      fill: var(--rc-accent);
+    }
+
+    &--done {
+      fill: var(--rc-good);
+    }
+  }
+
+  // The chain of the focused technology is drawn again on top, thicker; a closed part is dashed.
+  &__chain &__edge {
+    &--locked {
+      stroke: color-mix(in srgb, currentcolor 70%, transparent);
+      stroke-width: 2.5;
+      stroke-dasharray: 7 6;
+    }
+
+    &--open {
+      stroke-width: 4;
+    }
+
+    &--done {
+      stroke-width: 5;
+    }
+  }
+
+  &__chain &__arrow--locked {
+    fill: color-mix(in srgb, currentcolor 70%, transparent);
+  }
+
+  &__world[data-focus='true'] &__lines,
+  &__world[data-dim='true'] &__lines {
+    opacity: $dim-lines;
+  }
+
+  &__world[data-focus='true'][data-lod='far'] &__lines,
+  &__world[data-focus='true'][data-lod='tiny'] &__lines,
+  &__world[data-dim='true'][data-lod='far'] &__lines,
+  &__world[data-dim='true'][data-lod='tiny'] &__lines {
+    opacity: $dim-lines-far;
+  }
+
+  &__world[data-lod='far'] &__arrow,
+  &__world[data-lod='tiny'] &__arrow {
+    display: none;
+  }
+
+  // Lines from a technology just researched to those it has just opened.
+  &__ignite {
+    opacity: 0;
+    animation: ResearchTree-ignite $ignite-duration ease-out $ignite-delay;
+  }
+
+  &__ignite &__edge {
+    stroke: var(--rc-accent);
+    stroke-width: 7;
+  }
+
+  &__ignite &__arrow {
+    fill: var(--rc-accent);
+  }
+
+  &__toolbar {
+    position: absolute;
+    top: $space;
+    // Beside the details panel, which lies over the right edge of the tree.
+    right: calc(var(--rc-inset, 0px) + #{$space});
+    display: flex;
+    gap: $space * 0.5;
+  }
+}
+
+// An icon is one or more stacked images that fill the box their user gives it.
+.TechIcon {
+  position: relative;
+
+  img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+}
+
+.TechNode {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: $space;
+  padding: $space;
+  border: 2px solid var(--rc-border);
+  border-left: 6px solid var(--discipline);
+  border-radius: $radius;
+  background: var(--player-surface);
+  cursor: pointer;
+
+  &--researched {
+    border-color: var(--rc-good);
+    border-left-color: var(--discipline);
+    background: color-mix(in srgb, var(--discipline) 30%, var(--player-surface));
+  }
+
+  &--available {
+    border-color: var(--rc-accent);
+    border-left-color: var(--discipline);
+  }
+
+  &--unaffordable {
+    border-style: dashed;
+    border-color: var(--rc-warn);
+    border-left: 6px solid var(--discipline);
+
+    .TechNode__cost {
+      color: var(--rc-warn);
+    }
+  }
+
+  &--locked {
+    border-style: dotted;
+    border-left: 6px solid var(--discipline);
+    opacity: 0.55;
+  }
+
+  &--dim {
+    opacity: $dim-nodes;
+  }
+
+  &--selected {
+    z-index: 2;
+    outline: 3px solid var(--rc-select);
+    outline-offset: 3px;
+  }
+
+  &--armed {
+    background: color-mix(in srgb, var(--rc-accent) 22%, var(--player-surface));
+  }
+
+  .ResearchTree__world[data-focus='true'] &:not(&--chain) {
+    opacity: $dim-nodes;
+  }
+
+  .ResearchTree__world[data-focus='true'] &--chain#{&}--locked {
+    opacity: 0.85;
+  }
+
+  &--snap {
+    z-index: 2;
+    animation: TechNode-snap $snap-duration ease-out;
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      border-radius: $radius;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    // Fill flash over the node, and a ring that grows away from it.
+    &::before {
+      inset: 0;
+      background: var(--rc-good);
+      animation: TechNode-flash $flash-duration ease-out;
+    }
+
+    &::after {
+      inset: -4px;
+      border: 2px solid var(--rc-good);
+      animation: TechNode-ring $flash-duration ease-out;
+    }
+
+    .TechNode__badge {
+      animation: TechNode-pop $snap-duration ease-out 0.06s backwards;
+    }
+  }
+
+  &--wake {
+    animation: TechNode-wake $wake-duration ease-out $wake-delay backwards;
+  }
+
+  &__icon {
+    flex: 0 0 $icon-size;
+    width: $icon-size;
+    height: $icon-size;
+  }
+
+  // Which hub opens the technology; the hub is a node with a lot of children and no line by default.
+  &__origin {
+    position: relative;
+    flex: 0 0 $origin-size;
+    width: $origin-size;
+    height: $origin-size;
+    overflow: hidden;
+    border: 2px solid var(--rc-border);
+    border-radius: 50%;
+    box-sizing: border-box;
+    background: var(--player-surface);
+  }
+
+  &__icon--fill {
+    flex: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    height: 100%;
+  }
+
+  &__name {
+    display: -webkit-box;
+    overflow: hidden;
+    font-weight: bold;
+    line-height: 1.25;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  &__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $space * 0.5;
+  }
+
+  &__cost {
+    white-space: nowrap;
+  }
+
+  &__go {
+    padding: 1px $space * 0.75;
+    border-radius: $radius;
+    font-weight: bold;
+    color: #171c24;
+    background: var(--rc-accent);
+  }
+
+  // Under the selected node: what a second click does, or why it cannot do anything.
+  &__hint {
+    position: absolute;
+    top: calc(100% + #{$space + 3px});
+    right: 0;
+    left: 0;
+    box-sizing: border-box;
+    padding: $space * 0.5 $space * 0.75;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius;
+    font-size: 12px;
+    line-height: 1.25;
+    text-align: center;
+    pointer-events: none;
+    background: var(--player-surface);
+
+    &--go {
+      border-color: var(--rc-accent);
+      font-weight: bold;
+    }
+
+    &--attention {
+      border-color: var(--rc-warn);
+      animation: TechNode-nudge $nudge-duration ease-out;
+    }
+  }
+
+  .ResearchTree__world[data-lod='far'] &__hint,
+  .ResearchTree__world[data-lod='tiny'] &__hint {
+    display: none;
+  }
+
+  &__badge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: $badge-size;
+    height: $badge-size;
+    border-radius: 50%;
+    font-size: 11px;
+    color: #171c24;
+    background: var(--rc-border);
+  }
+
+  &--researched &__badge {
+    background: var(--rc-good);
+  }
+
+  &--available &__badge {
+    background: var(--rc-accent);
+  }
+
+  &--unaffordable &__badge {
+    background: var(--rc-warn);
+  }
+}
+
+.Tip {
+  position: fixed;
+  z-index: 10;
+  box-sizing: border-box;
+  max-width: 260px;
+  padding: 4px $space;
+  border: 1px solid var(--rc-border);
+  border-radius: $radius;
+  font-size: 12px;
+  line-height: 1.25;
+  pointer-events: none;
+  background: var(--player-surface);
+}
+
+.Details {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: $space;
+  padding: $space * 1.5;
+  border-left: 1px solid var(--rc-border);
+  background: var(--player-surface);
+
+  &--collapsed {
+    align-items: center;
+    padding: $space * 0.5;
+  }
+
+  &__head {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    gap: $space;
+  }
+
+  &__icon {
+    flex: 0 0 $panel-icon-size;
+    width: $panel-icon-size;
+    height: $panel-icon-size;
+    border-radius: $radius;
+    border-left: 4px solid var(--discipline);
+    box-sizing: border-box;
+  }
+
+  &__title {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px $space;
+    margin-top: 4px;
+  }
+
+  &__discipline {
+    font-weight: bold;
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 5px;
+      border-radius: 2px;
+      background: var(--discipline);
+    }
+  }
+
+  &__reason {
+    flex: 0 0 auto;
+    font-size: 12px;
+    text-align: center;
+    opacity: 0.8;
+  }
+
+  &__scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    margin-right: -$space * 0.5;
+    padding-right: $space * 0.5;
+  }
+
+  &__section {
+    margin-bottom: $space * 1.5;
+
+    h3 {
+      margin: 0 0 $space * 0.5;
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+  }
+
+  &__effects,
+  &__recipes {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__effects li {
+    margin-bottom: 4px;
+  }
+
+  &__recipes li {
+    display: flex;
+    align-items: center;
+    gap: $space;
+    padding: 2px 0;
+  }
+
+  &__recipeIcon {
+    flex: 0 0 $recipe-icon-size;
+    width: $recipe-icon-size;
+    height: $recipe-icon-size;
+    box-sizing: border-box;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius * 0.6;
+  }
+}
+
+.DetailsLink {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: $space;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 5px $space;
+  border: 1px solid var(--rc-border);
+  border-left: 4px solid var(--discipline, var(--rc-border));
+  border-radius: $radius;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+
+  &:is(button) {
+    cursor: pointer;
+
+    &:hover {
+      background: color-mix(in srgb, currentcolor 10%, transparent);
+    }
+  }
+
+  &--researched .fas {
+    color: var(--rc-good);
+  }
+
+  &--available .fas {
+    color: var(--rc-accent);
+  }
+
+  &--unaffordable .fas {
+    color: var(--rc-warn);
+  }
+
+  &--locked {
+    opacity: 0.7;
+  }
+
+  &__name {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__tag {
+    flex: 0 0 auto;
+    padding: 0 $space * 0.75;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius;
+    font-size: 11px;
+  }
+}
+
+@keyframes TechNode-snap {
+  35% {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes TechNode-flash {
+  from {
+    opacity: 0.55;
+  }
+}
+
+@keyframes TechNode-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes TechNode-pop {
+  from {
+    transform: scale(0.3);
+  }
+
+  60% {
+    transform: scale(1.3);
+  }
+}
+
+@keyframes TechNode-wake {
+  from {
+    opacity: 0.55;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes ResearchTree-ignite {
+  40% {
+    opacity: 1;
+  }
+}
+
+@keyframes TechNode-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes ResearchConsole-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

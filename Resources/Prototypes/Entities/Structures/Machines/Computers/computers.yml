@@ -595,7 +595,7 @@
   - type: UserInterface
     interfaces:
       enum.ResearchConsoleUiKey.Key:
-        type: FancyResearchConsoleBoundUserInterface # R&D Console rework
+        type: ResearchConsoleTguiBoundUserInterface # DeepLagoon: TGUI R&D console (was FancyResearchConsoleBoundUserInterface)
       enum.ResearchClientUiKey.Key:
         type: ResearchClientBoundUserInterface
       enum.WiresUiKey.Key:
