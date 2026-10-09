@@ -170,6 +170,7 @@
     prototype: ReinforcedGirder
   - mode: Entity
     prototype: Grille
+    slot: Under
   - mode: Entity
     prototype: GrilleDiagonal
     suffix: mapper-rcd-suffix-diagonal
@@ -498,7 +499,9 @@
     rotatable: true
   - mode: Entity
     prototype: GasPipeManifold
-    icon: /Textures/Interface/Radial/RPD/fourway.png
+    icon:
+      sprite: Structures/Piping/Atmospherics/manifold.rsi
+      state: pipeManifold
     slot: Pipe
     rotatable: true
   - mode: Deconstruct

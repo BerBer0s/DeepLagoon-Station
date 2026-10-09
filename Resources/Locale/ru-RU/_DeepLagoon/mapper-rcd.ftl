@@ -63,6 +63,7 @@ mapper-rcd-delete-Windows = Удалить окна
 mapper-rcd-delete-Pipes = Удалить трубы и устройства
 mapper-rcd-delete-Floors = Удалить пол (мостик, слой тайла)
 mapper-rcd-delete-Doors = Удалить двери
+mapper-rcd-layer-set = { $device }: слой труб { $layer }.
 mapper-rcd-blocked = Мешает: { $what }.
 mapper-rcd-out-of-range = Слишком далеко: предел { $range } тайлов.
 mapper-rcd-examine-selected = Кисть настроена на [color=yellow]{ $name }[/color].

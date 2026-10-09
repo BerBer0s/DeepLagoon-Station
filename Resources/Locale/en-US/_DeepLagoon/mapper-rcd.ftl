@@ -63,6 +63,7 @@ mapper-rcd-delete-Windows = Delete windows
 mapper-rcd-delete-Pipes = Delete pipes and devices
 mapper-rcd-delete-Floors = Delete floor (catwalk, tile layer)
 mapper-rcd-delete-Doors = Delete doors
+mapper-rcd-layer-set = { $device }: pipe layer { $layer }.
 mapper-rcd-blocked = Blocked by { $what }.
 mapper-rcd-out-of-range = Too far: the limit is { $range } tiles.
 mapper-rcd-examine-selected = The brush is set to [color=yellow]{ $name }[/color].
