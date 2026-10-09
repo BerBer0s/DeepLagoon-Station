@@ -16,6 +16,7 @@
   parent: MapperRcdRoot
   order: 1
   icon: /Textures/Interface/Radial/RCD/solid_wall.png
+  filter: Walls
 
 - type: mapperRcdCategory
   id: MapperRcdWallsStation
@@ -51,6 +52,12 @@
     prototype: WallSolidChitin
   - mode: Entity
     prototype: WallReinforcedChitin
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWallsStation
+    name: mapper-rcd-delete-Walls
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Walls
 
 - type: mapperRcdCategory
   id: MapperRcdWallsShuttle
@@ -62,6 +69,12 @@
     prototype: WallShuttle
   - mode: Entity
     prototype: WallPlastitanium
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWallsShuttle
+    name: mapper-rcd-delete-Walls
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Walls
 
 - type: mapperRcdCategory
   id: MapperRcdWallsSpecial
@@ -89,6 +102,12 @@
     prototype: WallVaultAlien
   - mode: Entity
     prototype: WallXenoborg
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWallsSpecial
+    name: mapper-rcd-delete-Walls
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Walls
 
 - type: mapperRcdCategory
   id: MapperRcdWallsDiagonal
@@ -132,6 +151,12 @@
     prototype: WallXenoborgDiagonal
     suffix: mapper-rcd-suffix-diagonal
     rotatable: true
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWallsDiagonal
+    name: mapper-rcd-delete-Walls
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Walls
 
 - type: mapperRcdCategory
   id: MapperRcdWallsFrames
@@ -149,6 +174,12 @@
     prototype: GrilleDiagonal
     suffix: mapper-rcd-suffix-diagonal
     rotatable: true
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWallsFrames
+    name: mapper-rcd-delete-Walls
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Walls
 
 - type: mapperRcdCategory
   id: MapperRcdWallsWasteland
@@ -186,6 +217,12 @@
     prototype: N14WallScrapWhiteSlanted
   - mode: Entity
     prototype: N14WallSidingBlueSlanted
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWallsWasteland1
+    name: mapper-rcd-delete-Walls
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Walls
 
 - type: mapperRcdCategory
   id: MapperRcdWallsWasteland2
@@ -211,6 +248,12 @@
     prototype: N14WallWoodFrame
   - mode: Entity
     prototype: N14WallWoodLog
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWallsWasteland2
+    name: mapper-rcd-delete-Walls
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Walls
 
 - type: mapperRcdCategory
   id: MapperRcdWindows
@@ -218,6 +261,7 @@
   parent: MapperRcdRoot
   order: 2
   icon: /Textures/Interface/Radial/RCD/window.png
+  filter: Windows
 
 - type: mapperRcdCategory
   id: MapperRcdWindowsStandard
@@ -247,6 +291,12 @@
     prototype: XenoborgWindow
   - mode: Entity
     prototype: XenoResinWindow
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWindowsStandard
+    name: mapper-rcd-delete-Windows
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Windows
 
 - type: mapperRcdCategory
   id: MapperRcdWindowsDiagonal
@@ -289,6 +339,12 @@
     prototype: PlastitaniumWindowDiagonal
     suffix: mapper-rcd-suffix-diagonal
     rotatable: true
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWindowsDiagonal
+    name: mapper-rcd-delete-Windows
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Windows
 
 - type: mapperRcdCategory
   id: MapperRcdWindowsDirectional
@@ -324,6 +380,12 @@
     prototype: WindowFrostedDirectional
     slot: Edge
     rotatable: true
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWindowsDirectional
+    name: mapper-rcd-delete-Windows
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Windows
 
 - type: mapperRcdCategory
   id: MapperRcdWindowsWasteland
@@ -361,6 +423,12 @@
     prototype: N14WindowRuins
   - mode: Entity
     prototype: N14WindowRuinsBroken
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWindowsWasteland1
+    name: mapper-rcd-delete-Windows
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Windows
 
 - type: mapperRcdCategory
   id: MapperRcdWindowsWasteland2
@@ -386,6 +454,12 @@
     prototype: N14WindowStoreRight
   - mode: Entity
     prototype: N14WindowStoreTop
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdWindowsWasteland2
+    name: mapper-rcd-delete-Windows
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Windows
 
 - type: mapperRcdCategory
   id: MapperRcdPipes
@@ -393,6 +467,7 @@
   parent: MapperRcdRoot
   order: 3
   icon: /Textures/Interface/Radial/RPD/fourway.png
+  filter: Pipes
 
 - type: mapperRcdCategory
   id: MapperRcdPipesPipes
@@ -421,6 +496,17 @@
     icon: /Textures/Interface/Radial/RPD/fourway.png
     slot: Pipe
     rotatable: true
+  - mode: Entity
+    prototype: GasPipeManifold
+    icon: /Textures/Interface/Radial/RPD/fourway.png
+    slot: Pipe
+    rotatable: true
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdPipesPipes
+    name: mapper-rcd-delete-Pipes
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Pipes
 
 - type: mapperRcdCategory
   id: MapperRcdPipesPumps
@@ -454,6 +540,12 @@
     icon: /Textures/Interface/Radial/RPD/pneumatic_valve.png
     slot: Pipe
     rotatable: true
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdPipesPumps
+    name: mapper-rcd-delete-Pipes
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Pipes
 
 - type: mapperRcdCategory
   id: MapperRcdPipesVents
@@ -487,6 +579,16 @@
     icon: /Textures/Interface/Radial/RPD/vent_passive.png
     slot: Pipe
     rotatable: true
+  - mode: Entity
+    prototype: AirAlarm
+    slot: Overlay
+    rotatable: true
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdPipesVents
+    name: mapper-rcd-delete-Pipes
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Pipes
 
 - type: mapperRcdCategory
   id: MapperRcdPipesUtility
@@ -520,6 +622,12 @@
     icon: /Textures/Interface/Radial/RPD/port.png
     slot: Pipe
     rotatable: true
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdPipesUtility
+    name: mapper-rcd-delete-Pipes
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Pipes
 
 - type: mapperRcdCategory
   id: MapperRcdFloors
@@ -527,11 +635,18 @@
   parent: MapperRcdRoot
   order: 4
   icon: /Textures/Interface/Radial/RCD/metal_tile.png
+  filter: Floors
   entries:
   - mode: Entity
     prototype: Catwalk
     icon: /Textures/Interface/Radial/RCD/catwalk.png
     slot: Overlay
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloors
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsPlating
@@ -543,6 +658,12 @@
   - mode: Tile
     prototype: Plating
     icon: /Textures/Interface/Radial/RCD/plating.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsPlating
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsPlatingShapes
@@ -580,6 +701,12 @@
   - mode: Tile
     prototype: PlatingWedgeW
     icon: /Textures/Interface/Radial/RCD/plating/wedge_w.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsPlatingShapes
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsPlatingLower
@@ -611,6 +738,12 @@
   - mode: Tile
     prototype: PlatingHalfTiltNWSLower
     icon: /Textures/Interface/Radial/RCD/plating/halftilt_nw_s_l.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsPlatingLower
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsPlatingUpper
@@ -642,6 +775,12 @@
   - mode: Tile
     prototype: PlatingHalfTiltNWSUpper
     icon: /Textures/Interface/Radial/RCD/plating/halftilt_nw_s_u.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsPlatingUpper
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsLattice
@@ -653,6 +792,12 @@
   - mode: Tile
     prototype: Lattice
     icon: /Textures/Interface/Radial/RCD/lattice.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsLattice
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsLatticeShapes
@@ -690,6 +835,12 @@
   - mode: Tile
     prototype: LatticeWedgeW
     icon: /Textures/Interface/Radial/RCD/lattice/wedge_w.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsLatticeShapes
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsLatticeLower
@@ -721,6 +872,12 @@
   - mode: Tile
     prototype: LatticeHalfTiltNWSLower
     icon: /Textures/Interface/Radial/RCD/lattice/halftilt_nw_s_l.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsLatticeLower
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsLatticeUpper
@@ -752,6 +909,12 @@
   - mode: Tile
     prototype: LatticeHalfTiltNWSUpper
     icon: /Textures/Interface/Radial/RCD/lattice/halftilt_nw_s_u.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsLatticeUpper
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsMetal
@@ -799,6 +962,12 @@
   - mode: Tile
     prototype: FloorSteelCheckerDark
     icon: /Textures/Tiles/checker_dark.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsMetalSteel
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsMetalSteel2
@@ -830,6 +999,12 @@
   - mode: Tile
     prototype: FloorMetalDiamond
     icon: /Textures/Tiles/metaldiamond.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsMetalSteel2
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsMetalWhite
@@ -870,6 +1045,12 @@
   - mode: Tile
     prototype: FloorPlastic
     icon: /Textures/Tiles/plastic.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsMetalWhite
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsMetalDark
@@ -913,6 +1094,12 @@
   - mode: Tile
     prototype: FloorDarkMonoAlt
     icon: /Textures/_Mono/Tiles/dark_mono.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsMetalDark
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsMetalMaint
@@ -953,6 +1140,12 @@
   - mode: Tile
     prototype: FloorDarkSquiggly
     icon: /Textures/Tiles/dark_squiggly.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsMetalMaint
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsMetalHull
@@ -981,6 +1174,12 @@
   - mode: Tile
     prototype: FloorMetalFoam
     icon: /Textures/Tiles/foammetal.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsMetalHull
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsMetalSpecial
@@ -1012,6 +1211,12 @@
   - mode: Tile
     prototype: FloorTileCatwalkVertical
     icon: /Textures/_Mono/Tiles/catwalk-tile-vertical.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsMetalSpecial
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsInterior
@@ -1062,6 +1267,12 @@
   - mode: Tile
     prototype: FloorBoxing
     icon: /Textures/Tiles/boxing.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsInteriorDept
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsInteriorMisc
@@ -1099,6 +1310,12 @@
   - mode: Tile
     prototype: FloorRedCircuit
     icon: /Textures/Tiles/red_circuit.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsInteriorMisc
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsInteriorWood
@@ -1124,6 +1341,12 @@
   - mode: Tile
     prototype: FloorCarpetOffice
     icon: /Textures/Tiles/carpetoffice.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsInteriorWood
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsInteriorShuttle
@@ -1152,6 +1375,12 @@
   - mode: Tile
     prototype: FloorShuttleRed
     icon: /Textures/Tiles/shuttlered.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsInteriorShuttle
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsInteriorAlien
@@ -1180,6 +1409,12 @@
   - mode: Tile
     prototype: FloorWebTile
     icon: /Textures/Tiles/Misc/Web/web_tile.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsInteriorAlien
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsOutdoor
@@ -1224,6 +1459,12 @@
   - mode: Tile
     prototype: FloorOldConcreteMono
     icon: /Textures/Tiles/Planet/Concrete/oldconcrete_mono.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsOutdoorConcrete1
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsOutdoorConcrete2
@@ -1249,6 +1490,12 @@
   - mode: Tile
     prototype: FloorConcreteSmoothCrocus
     icon: /Textures/_Mono/Tiles/planet/WizDenRespritening/Concrete/concrete-smooth.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsOutdoorConcrete2
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsOutdoorGrass
@@ -1286,6 +1533,12 @@
   - mode: Tile
     prototype: FloorPlanetDirtCrocus
     icon: /Textures/_Mono/Tiles/planet/WizDenRespritening/Dirt/dirt.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsOutdoorGrass
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsOutdoorSand
@@ -1329,6 +1582,12 @@
   - mode: Tile
     prototype: FloorRiverbed
     icon: /Textures/_RMC14/Tiles/planet/desert/desert.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsOutdoorSand
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdFloorsOutdoorSnow
@@ -1360,6 +1619,12 @@
   - mode: Tile
     prototype: FloorChromite
     icon: /Textures/Tiles/chromite.png
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdFloorsOutdoorSnow
+    name: mapper-rcd-delete-Floors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Floors
 
 - type: mapperRcdCategory
   id: MapperRcdDoors
@@ -1367,6 +1632,7 @@
   parent: MapperRcdRoot
   order: 5
   icon: /Textures/Interface/Radial/RCD/airlock.png
+  filter: Doors
 
 - type: mapperRcdCategory
   id: MapperRcdDoorsStation
@@ -1404,6 +1670,12 @@
     prototype: AirlockCommand
   - mode: Entity
     prototype: AirlockCommandGlass
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdDoorsStation
+    name: mapper-rcd-delete-Doors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Doors
 
 - type: mapperRcdCategory
   id: MapperRcdDoorsSpecial
@@ -1429,3 +1701,9 @@
   - mode: Entity
     prototype: FirelockEdge
     slot: Overlay
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeleteMapperRcdDoorsSpecial
+    name: mapper-rcd-delete-Doors
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+    filter: Doors

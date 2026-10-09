@@ -58,5 +58,12 @@ mapper-rcd-cat-MapperRcdFloorsOutdoorSnow = Snow and rock
 mapper-rcd-cat-MapperRcdDoors = Doors
 mapper-rcd-cat-MapperRcdDoorsStation = Airlocks
 mapper-rcd-cat-MapperRcdDoorsSpecial = External, shuttle, firelocks
+mapper-rcd-delete-Walls = Delete walls
+mapper-rcd-delete-Windows = Delete windows
+mapper-rcd-delete-Pipes = Delete pipes and devices
+mapper-rcd-delete-Floors = Delete floor (catwalk, tile layer)
+mapper-rcd-delete-Doors = Delete doors
+mapper-rcd-blocked = Blocked by { $what }.
+mapper-rcd-out-of-range = Too far: the limit is { $range } tiles.
 mapper-rcd-examine-selected = The brush is set to [color=yellow]{ $name }[/color].
 mapper-rcd-no-grid = There is no grid to build on here.

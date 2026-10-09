@@ -58,5 +58,12 @@ mapper-rcd-cat-MapperRcdFloorsOutdoorSnow = Снег и камень
 mapper-rcd-cat-MapperRcdDoors = Двери
 mapper-rcd-cat-MapperRcdDoorsStation = Шлюзы
 mapper-rcd-cat-MapperRcdDoorsSpecial = Внешние, шаттл, фаерлоки
+mapper-rcd-delete-Walls = Удалить стены
+mapper-rcd-delete-Windows = Удалить окна
+mapper-rcd-delete-Pipes = Удалить трубы и устройства
+mapper-rcd-delete-Floors = Удалить пол (мостик, слой тайла)
+mapper-rcd-delete-Doors = Удалить двери
+mapper-rcd-blocked = Мешает: { $what }.
+mapper-rcd-out-of-range = Слишком далеко: предел { $range } тайлов.
 mapper-rcd-examine-selected = Кисть настроена на [color=yellow]{ $name }[/color].
 mapper-rcd-no-grid = Здесь нет грида, на котором можно строить.
