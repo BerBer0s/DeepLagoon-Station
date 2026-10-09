@@ -25,7 +25,7 @@ internal sealed partial class MappingClientSideSetupCommand : LocalizedCommands
             _entitySystemManager.GetEntitySystem<MarkerSystem>().MarkersVisible = true;
             _lightManager.Enabled = false;
             shell.ExecuteCommand("showsubfloorforever");
-            _entitySystemManager.GetEntitySystem<ActionsSystem>().LoadActionAssignments("/mapping_actions.yml", false);
+            // DeepLagoon: the 72 preset actions flooded the action bar and menu on every /mapping; "mappingdefaultacts" loads them on demand
         }
     }
 }
