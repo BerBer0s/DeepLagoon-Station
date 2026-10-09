@@ -190,7 +190,7 @@ public sealed class LagoonCoinSystem : EntitySystem
         var attached = session.AttachedEntity;
         data.Active = LagoonCoinRules.CountsTime(_ticker.RunLevel == GameRunLevel.InRound && !_roundEnded,
             session.Status == SessionStatus.InGame, attached != null,
-            HasComp<GhostComponent>(attached),
+            HasComp<GhostComponent>(attached) || HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentResidentComponent>(attached),
             TryComp<MobStateComponent>(attached, out var mob) && mob.CurrentState is MobState.Alive or MobState.Critical,
             _afk.IsAfk(session));
         data.Subscribed = LagoonCoinRules.HasSubscription(_supporters.GetBoostyTier(session));
@@ -268,13 +268,24 @@ public sealed class LagoonCoinSystem : EntitySystem
         finally { _draining = false; }
     }
 
-    public async Task<LagoonCoinResult> Grant(NetUserId user, long amount, string reason, NetUserId? actor)
+    public async Task<LagoonCoinResult> Grant(NetUserId user, long amount, string reason, NetUserId? actor, string? operationId = null)
     {
         if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
+        return await ChangeBalance(user, amount, reason, actor, operationId);
+    }
+
+    public async Task<LagoonCoinResult> Deduct(NetUserId user, long amount, string reason, NetUserId? actor, string operationId)
+    {
+        if (amount <= 0) throw new ArgumentOutOfRangeException(nameof(amount));
+        return await ChangeBalance(user, -amount, reason, actor, operationId);
+    }
+
+    private async Task<LagoonCoinResult> ChangeBalance(NetUserId user, long amount, string reason, NetUserId? actor, string? operationId)
+    {
         await _walletOperations.WaitAsync();
         try
         {
-            var result = await _db.AwardLagoonCoinsAsync(user, $"admin:{Guid.NewGuid():N}", amount, reason, actor);
+            var result = await _db.AwardLagoonCoinsAsync(user, operationId ?? $"admin:{Guid.NewGuid():N}", amount, reason, actor);
             SendBalance(user, result.Balance);
             return result;
         }

@@ -1,0 +1,38 @@
+# Isolated localhost environment; never use this config for a public server.
+[net]
+bindto = "127.0.0.1"
+port = 1214
+
+[status]
+enabled = true
+bind = "127.0.0.1:1214"
+
+[hub]
+advertise = false
+
+[auth]
+mode = 0
+
+[console]
+loginlocal = true
+
+[config]
+preset_development = false
+preset_debug = false
+
+[game]
+map = "DLApartmentDev"
+defaultpreset = "Sandbox"
+lobbyenabled = true
+lobbyduration = 1800
+role_timers = false
+
+[vote]
+autovote_enabled = false
+preset_autovote_enabled = false
+map_autovote_enabled = false
+
+[deeplagoon]
+apartments_enabled = true
+apartments_loaded_limit = 12
+apartments_empty_timeout = 120

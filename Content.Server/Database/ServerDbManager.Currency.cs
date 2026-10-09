@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Robust.Shared.Network;
@@ -31,6 +32,12 @@ public sealed partial class ServerDbManager
     {
         DbReadOpsMetric.Inc();
         return RunDbCommand(() => _db.GetLagoonCoinsAsync(user, cancel));
+    }
+
+    public Task<List<LagoonCoinOperation>> GetLagoonCoinHistoryAsync(NetUserId user, int page, CancellationToken cancel = default)
+    {
+        DbReadOpsMetric.Inc();
+        return RunDbCommand(() => _db.GetLagoonCoinHistoryAsync(user, page, cancel));
     }
 
     public Task<LagoonCoinResult> AwardLagoonCoinsAsync(NetUserId user, string operationId, long amount, string reason,

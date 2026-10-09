@@ -10,9 +10,23 @@ public readonly record struct MoneyPayment(long MoneyBalance, int BankCost);
 public readonly record struct MoneyTransfer(long SenderBalance, long RecipientBalance);
 public readonly record struct LagoonCoinResult(long Balance, long Awarded, bool Applied);
 
+public sealed class InsufficientLagoonCoinsException : InvalidOperationException
+{
+    public InsufficientLagoonCoinsException() : base("Insufficient Lagoon Coin balance.") { }
+}
+
 /// <summary>All writers lock the preference row before reading it. Works across server processes.</summary>
 public static class AccountCurrencyOperations
 {
+    public static async Task<System.Collections.Generic.List<LagoonCoinOperation>> GetLagoonCoinHistory(
+        ServerDbContext db, Guid user, int page, CancellationToken cancel = default)
+    {
+        if (page is < 1 or > 100000) throw new ArgumentOutOfRangeException(nameof(page));
+        return await db.LagoonCoinOperations.AsNoTracking().Where(p => p.UserId == user && p.Amount != 0)
+            .OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.OperationId)
+            .Skip((page - 1) * 20).Take(21).ToListAsync(cancel);
+    }
+
     public static async Task LockAccount(ServerDbContext db, Guid user, CancellationToken cancel = default)
     {
         // An UPDATE takes a row lock in PostgreSQL and a writer lock in SQLite. No cached balance is trusted.
@@ -107,7 +121,7 @@ public static class AccountCurrencyOperations
         long subscriberTicks = 0, CancellationToken cancel = default)
     {
         if (string.IsNullOrWhiteSpace(operationId) || operationId.Length > 200 ||
-            string.IsNullOrWhiteSpace(reason) || reason.Length > 500 || amount < 0 ||
+            string.IsNullOrWhiteSpace(reason) || reason.Length > 500 ||
             playedTicks < 0 || subscriberTicks < 0 || subscriberTicks > playedTicks || (playedTicks > 0 && amount != 0))
             throw new ArgumentException("Invalid Lagoon Coin operation.");
         await using var transaction = await db.Database.BeginTransactionAsync(cancel);
@@ -131,7 +145,10 @@ public static class AccountCurrencyOperations
             played %= TimeSpan.TicksPerHour;
             bonus %= TimeSpan.TicksPerHour / 2;
         }
-        row.LagoonCoins = checked(row.LagoonCoins + amount);
+        var balance = checked(row.LagoonCoins + amount);
+        if (balance < 0)
+            throw new InsufficientLagoonCoinsException();
+        row.LagoonCoins = balance;
         row.LagoonCoinPlayedTicks = played;
         row.LagoonCoinBonusTicks = bonus;
         db.LagoonCoinOperations.Add(new LagoonCoinOperation

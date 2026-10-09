@@ -1,0 +1,118 @@
+- type: apartmentFurniture
+  id: DLAptSofa
+  name: dl-apartment-sofa
+  entity: DLAptSofaEntity
+  maxCount: 4
+  blocksMovement: false
+
+- type: apartmentFurniture
+  id: DLAptChair
+  name: dl-apartment-chair
+  entity: DLAptChairEntity
+  maxCount: 4
+  blocksMovement: false
+
+- type: apartmentFurniture
+  id: DLAptTable
+  name: dl-apartment-table
+  entity: DLAptTableEntity
+  maxCount: 3
+
+- type: apartmentFurniture
+  id: DLAptBed
+  name: dl-apartment-bed
+  entity: DLAptBedEntity
+  maxCount: 2
+  blocksMovement: false
+
+- type: apartmentFurniture
+  id: DLAptPlant
+  name: dl-apartment-plant
+  entity: DLAptPlantEntity
+  maxCount: 4
+  blocksMovement: false
+
+- type: apartmentTemplate
+  id: DLApartmentStudio
+  name: dl-apartment-studio
+  version: 1
+  width: 10
+  height: 8
+  maxFurniture: 20
+  maxVisitors: 4
+  catalog: [DLAptSofa, DLAptChair, DLAptTable, DLAptBed, DLAptPlant]
+  furniture:
+  - id: base_sofa_01
+    furniture: DLAptSofa
+    x: 4
+    y: 5
+  - id: base_sofa_02
+    furniture: DLAptSofa
+    x: 5
+    y: 5
+  - id: base_table_01
+    furniture: DLAptTable
+    x: 4
+    y: 3
+  - id: base_chair_01
+    furniture: DLAptChair
+    x: 4
+    y: 2
+  - id: base_bed_01
+    furniture: DLAptBed
+    x: 7
+    y: 5
+  - id: base_plant_01
+    furniture: DLAptPlant
+    x: 7
+    y: 1
+
+# Curated home variants retain useful interactions without construction, salvage or healing.
+- type: entity
+  id: DLAptSofaEntity
+  parent: BenchSofaMiddle
+  categories: [HideSpawnMenu]
+  components:
+  - type: Transform
+    anchored: true
+
+- type: entity
+  id: DLAptChairEntity
+  parent: ChairWood
+  categories: [HideSpawnMenu]
+  components:
+  - type: Transform
+    anchored: true
+
+- type: entity
+  id: DLAptTableEntity
+  parent: TableWood
+  categories: [HideSpawnMenu]
+
+- type: entity
+  id: DLAptBedEntity
+  parent: Bed
+  categories: [HideSpawnMenu]
+  components:
+  - type: HealOnBuckle
+    damage: {}
+
+- type: entity
+  id: DLAptPlantEntity
+  parent: PottedPlant1
+  categories: [HideSpawnMenu]
+  components:
+  - type: Transform
+    anchored: true
+
+- type: entity
+  id: DLApartmentTerminal
+  parent: BaseStructureComputer
+  name: apartment terminal
+  components:
+  - type: Sprite
+    sprite: Structures/Machines/computers.rsi
+    layers:
+    - state: computer
+    - state: generic
+  - type: ApartmentTerminal

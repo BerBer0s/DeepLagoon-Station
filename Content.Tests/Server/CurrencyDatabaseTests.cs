@@ -46,6 +46,60 @@ public sealed class CurrencyDatabaseTests
     public void Cleanup() => File.Delete(_path);
 
     [Test]
+    public async Task LagoonCoinDeductionIsAtomicIdempotentAndJournaled()
+    {
+        await using (var db = new SqliteServerDbContext(_options))
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "seed", 10, "admin");
+        await using (var db = new SqliteServerDbContext(_options))
+            Assert.That((await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "discord:remove", -7, "deduct")).Balance, Is.EqualTo(3));
+        await using (var db = new SqliteServerDbContext(_options))
+            Assert.That((await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "discord:remove", -7, "deduct")).Applied, Is.False);
+        await using (var db = new SqliteServerDbContext(_options))
+            Assert.ThrowsAsync<InsufficientLagoonCoinsException>(async () =>
+                await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "too-much", -4, "deduct"));
+        await using var check = new SqliteServerDbContext(_options);
+        var row = await check.Preference.SingleAsync(p => p.UserId == _user);
+        Assert.That(row.LagoonCoins, Is.EqualTo(3));
+        Assert.That(row.Money, Is.EqualTo(10));
+        Assert.That(await check.LagoonCoinOperations.CountAsync(), Is.EqualTo(2));
+        var history = await AccountCurrencyOperations.GetLagoonCoinHistory(check, _user, 1);
+        Assert.That(history.First().Amount, Is.EqualTo(-7));
+        Assert.That(history.Count, Is.EqualTo(2));
+        Assert.That(await AccountCurrencyOperations.GetLagoonCoinHistory(check, _recipient, 1), Is.Empty);
+    }
+
+    [Test]
+    public async Task ConcurrentLagoonCoinDeductionsCannotOverdraw()
+    {
+        await using (var db = new SqliteServerDbContext(_options))
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "seed", 10, "admin");
+        async Task<bool> Deduct(string key)
+        {
+            await using var db = new SqliteServerDbContext(_options);
+            try { await AccountCurrencyOperations.AwardLagoonCoins(db, _user, key, -7, "deduct"); return true; }
+            catch (InsufficientLagoonCoinsException) { return false; }
+        }
+        Assert.That((await Task.WhenAll(Deduct("one"), Deduct("two"))).Count(v => v), Is.EqualTo(1));
+        await using var check = new SqliteServerDbContext(_options);
+        Assert.That((await check.Preference.SingleAsync(p => p.UserId == _user)).LagoonCoins, Is.EqualTo(3));
+    }
+
+    [Test]
+    public async Task LagoonCoinHistoryPaginatesAndExcludesTimeCheckpoints()
+    {
+        await using var db = new SqliteServerDbContext(_options);
+        for (var i = 0; i < 25; i++)
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, $"award:{i:D2}", 1, "admin");
+        await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "checkpoint", 0, "playtime", playedTicks: 1);
+        var page1 = await AccountCurrencyOperations.GetLagoonCoinHistory(db, _user, 1);
+        var page2 = await AccountCurrencyOperations.GetLagoonCoinHistory(db, _user, 2);
+        Assert.That(page1.Count, Is.EqualTo(21)); // One extra row indicates a next page.
+        Assert.That(page2.Count, Is.EqualTo(5));
+        Assert.That(page1.Take(20).Select(r => r.OperationId).Intersect(page2.Select(r => r.OperationId)), Is.Empty);
+        Assert.That(page1.All(r => r.Amount != 0), Is.True);
+    }
+
+    [Test]
     public async Task ConcurrentMoneyChangesAreNotLost()
     {
         await Task.WhenAll(Enumerable.Range(0, 12).Select(async _ =>

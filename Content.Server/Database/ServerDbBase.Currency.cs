@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -54,6 +55,13 @@ public abstract partial class ServerDbBase
         await using var db = await GetDb(cancel);
         return await db.DbContext.Preference.Where(p => p.UserId == user.UserId)
             .Select(p => (long?)p.LagoonCoins).SingleOrDefaultAsync(cancel) ?? 0;
+    }
+
+    public async Task<List<LagoonCoinOperation>> GetLagoonCoinHistoryAsync(NetUserId user, int page, CancellationToken cancel = default)
+    {
+        if (page is < 1 or > 100000) throw new ArgumentOutOfRangeException(nameof(page));
+        await using var db = await GetDb(cancel);
+        return await AccountCurrencyOperations.GetLagoonCoinHistory(db.DbContext, user.UserId, page, cancel);
     }
 
     public async Task<LagoonCoinResult> AwardLagoonCoinsAsync(NetUserId user, string operationId, long amount,

@@ -1,0 +1,16 @@
+# The checked-in Dev map's BecomesStation ID is NFDev, not Dev.
+# Keep this isolated test setup separate from the normal server's map pool.
+- type: gameMap
+  id: DLApartmentDev
+  mapName: Apartment Prototype
+  mapPath: /Maps/Test/dev_map.yml
+  minPlayers: 0
+  stations:
+    NFDev:
+      stationProto: StandardNanotrasenStation
+      components:
+      - type: StationNameSetup
+        mapNameTemplate: Apartment Prototype
+      - type: StationJobs
+        availableJobs:
+          Passenger: [-1, -1]

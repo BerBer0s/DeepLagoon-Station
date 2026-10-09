@@ -70,6 +70,25 @@ public sealed class LagoonCoinIntegrationTests
         await pair.RunTicksSync(10);
         await pair.Client.WaitAssertion(() =>
             Assert.That(pair.Client.ResolveDependency<IEntityManager>().System<ClientWallet>().Balance, Is.EqualTo(7)));
+        await pair.Server.WaitAssertion(() =>
+        {
+            var player = pair.Server.PlayerMan.Sessions.Single();
+            var wallet = pair.Server.EntMan.System<ServerWallet>();
+            var tasks = pair.Server.ResolveDependency<ITaskManager>();
+            var debit = wallet.Deduct(player.UserId, 3, "Discord test debit", null, "discord:integration-debit");
+            tasks.BlockWaitOnTask(debit);
+            Assert.That(debit.GetAwaiter().GetResult().Balance, Is.EqualTo(4));
+            var retry = wallet.Deduct(player.UserId, 3, "Discord test debit", null, "discord:integration-debit");
+            tasks.BlockWaitOnTask(retry);
+            Assert.That(retry.GetAwaiter().GetResult().Applied, Is.False);
+            var database = pair.Server.ResolveDependency<IServerDbManager>();
+            var history = database.GetLagoonCoinHistoryAsync(player.UserId, 1);
+            tasks.BlockWaitOnTask(history);
+            Assert.That(history.GetAwaiter().GetResult().Any(r => r.Amount == -3), Is.True);
+        });
+        await pair.RunTicksSync(10);
+        await pair.Client.WaitAssertion(() =>
+            Assert.That(pair.Client.ResolveDependency<IEntityManager>().System<ClientWallet>().Balance, Is.EqualTo(4)));
         await pair.Server.WaitPost(() => pair.Server.EntMan.DeleteEntity(mob));
         await pair.CleanReturnAsync();
     }

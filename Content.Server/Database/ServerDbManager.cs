@@ -60,6 +60,7 @@ namespace Content.Server.Database
         Task<long> DepositMoneyWithBankAsync(NetUserId user, int profileSlot, int expectedBankBalance,
             int bankAmount, long moneyAmount, CancellationToken cancel = default);
         Task<long> GetLagoonCoinsAsync(NetUserId user, CancellationToken cancel = default);
+        Task<List<LagoonCoinOperation>> GetLagoonCoinHistoryAsync(NetUserId user, int page, CancellationToken cancel = default);
         Task<LagoonCoinResult> AwardLagoonCoinsAsync(NetUserId user, string operationId, long amount, string reason,
             NetUserId? actor = null, long playedTicks = 0, long subscriberTicks = 0, CancellationToken cancel = default);
         #endregion
