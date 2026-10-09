@@ -44,6 +44,7 @@ public sealed class PersonalLoadoutEquipSystem : EntitySystem
             return failed;
         var role = saved.Clone();
         role.EnsureValid(profile, session, IoCManager.Instance!);
+        var unequipped = _loadouts.UnequippedSlots(profile, job);
         var remaining = _loadouts.GetPoints(session);
         foreach (var selected in role.SelectedLoadouts.OrderBy(x => x.Key.Id).SelectMany(x => x.Value))
         {
@@ -55,6 +56,11 @@ public sealed class PersonalLoadoutEquipSystem : EntitySystem
             remaining -= cost;
             foreach (var itemPrototype in prototype.PersonalItems)
             {
+                // A mandatory personal choice may be restored by validation.
+                // Do not spawn it into another slot or drop it as a failed item.
+                if (_prototypes.Index(itemPrototype).TryGetComponent<ClothingComponent>(out var clothing) &&
+                    slots.Any(slot => unequipped.Contains(slot.Name) && (clothing.Slots & slot.SlotFlags) != 0))
+                    continue;
                 var item = Spawn(itemPrototype, Transform(character).Coordinates);
                 var data = _loadouts.Sanitize(prototype, selected.Customization);
                 if (data?.Name != null)
@@ -78,6 +84,7 @@ public sealed class PersonalLoadoutEquipSystem : EntitySystem
                 {
                     foreach (var slot in slots)
                     {
+                        if (unequipped.Contains(slot.Name)) continue;
                         // Never substitute clothes into pockets or suit storage.
                         if ((slot.SlotFlags & (SlotFlags.POCKET | SlotFlags.SUITSTORAGE)) != 0)
                             continue;

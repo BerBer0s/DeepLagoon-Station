@@ -61,7 +61,7 @@ public abstract partial class SharedStationSpawningSystem : EntitySystem
                     continue;
                 }
 
-                EquipStartingGear(entity, loadoutProto, raiseEvent: false, customization: items.Customization);
+                EquipStartingGear(entity, loadoutProto, raiseEvent: false, customization: items.Customization, unequippedSlots: loadout.UnequippedSlots);
                 equippedItems.Add(loadoutProto.ID); // Frontier
             }
 
@@ -83,7 +83,7 @@ public abstract partial class SharedStationSpawningSystem : EntitySystem
                         continue;
                     }
 
-                    EquipStartingGear(entity, loadoutProto, raiseEvent: false);
+                    EquipStartingGear(entity, loadoutProto, raiseEvent: false, unequippedSlots: loadout.UnequippedSlots);
                     equippedItems.Add(fallback);
                     // Minimum number of items equipped, no need to load more prototypes.
                     if (equippedItems.Count >= groupPrototype.MinLimit)
@@ -127,10 +127,10 @@ public abstract partial class SharedStationSpawningSystem : EntitySystem
         }
     }
 
-    public void EquipStartingGear(EntityUid entity, LoadoutPrototype loadout, bool raiseEvent = true, PersonalLoadoutCustomization? customization = null)
+    public void EquipStartingGear(EntityUid entity, LoadoutPrototype loadout, bool raiseEvent = true, PersonalLoadoutCustomization? customization = null, IReadOnlySet<string>? unequippedSlots = null)
     {
-        EquipStartingGear(entity, loadout.StartingGear, raiseEvent, customization);
-        EquipStartingGear(entity, (IEquipmentLoadout) loadout, raiseEvent, customization);
+        EquipStartingGear(entity, loadout.StartingGear, raiseEvent, customization, unequippedSlots);
+        EquipStartingGear(entity, (IEquipmentLoadout) loadout, raiseEvent, customization, unequippedSlots);
 
         // Mono - loadout comps
         EntityManager.AddComponents(entity, loadout.Components);
@@ -139,18 +139,18 @@ public abstract partial class SharedStationSpawningSystem : EntitySystem
     /// <summary>
     /// <see cref="EquipStartingGear(Robust.Shared.GameObjects.EntityUid,System.Nullable{Robust.Shared.Prototypes.ProtoId{Content.Shared.Roles.StartingGearPrototype}},bool)"/>
     /// </summary>
-    public void EquipStartingGear(EntityUid entity, ProtoId<StartingGearPrototype>? startingGear, bool raiseEvent = true, PersonalLoadoutCustomization? customization = null)
+    public void EquipStartingGear(EntityUid entity, ProtoId<StartingGearPrototype>? startingGear, bool raiseEvent = true, PersonalLoadoutCustomization? customization = null, IReadOnlySet<string>? unequippedSlots = null)
     {
         PrototypeManager.TryIndex(startingGear, out var gearProto);
-        EquipStartingGear(entity, gearProto, raiseEvent, customization);
+        EquipStartingGear(entity, gearProto, raiseEvent, customization, unequippedSlots);
     }
 
     /// <summary>
     /// <see cref="EquipStartingGear(Robust.Shared.GameObjects.EntityUid,System.Nullable{Robust.Shared.Prototypes.ProtoId{Content.Shared.Roles.StartingGearPrototype}},bool)"/>
     /// </summary>
-    public void EquipStartingGear(EntityUid entity, StartingGearPrototype? startingGear, bool raiseEvent = true, PersonalLoadoutCustomization? customization = null)
+    public void EquipStartingGear(EntityUid entity, StartingGearPrototype? startingGear, bool raiseEvent = true, PersonalLoadoutCustomization? customization = null, IReadOnlySet<string>? unequippedSlots = null)
     {
-        EquipStartingGear(entity, (IEquipmentLoadout?) startingGear, raiseEvent, customization);
+        EquipStartingGear(entity, (IEquipmentLoadout?) startingGear, raiseEvent, customization, unequippedSlots);
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ public abstract partial class SharedStationSpawningSystem : EntitySystem
     /// <param name="entity">Entity to load out.</param>
     /// <param name="startingGear">Starting gear to use.</param>
     /// <param name="raiseEvent">Should we raise the event for equipped. Set to false if you will call this manually</param>
-    public void EquipStartingGear(EntityUid entity, IEquipmentLoadout? startingGear, bool raiseEvent = true, PersonalLoadoutCustomization? customization = null)
+    public void EquipStartingGear(EntityUid entity, IEquipmentLoadout? startingGear, bool raiseEvent = true, PersonalLoadoutCustomization? customization = null, IReadOnlySet<string>? unequippedSlots = null)
     {
         if (startingGear == null)
             return;
@@ -170,6 +170,8 @@ public abstract partial class SharedStationSpawningSystem : EntitySystem
         {
             foreach (var slot in slotDefinitions)
             {
+                if (unequippedSlots?.Contains(slot.Name) == true)
+                    continue;
                 var equipmentStr = startingGear.GetGear(slot.Name);
                 if (!string.IsNullOrEmpty(equipmentStr))
                 {

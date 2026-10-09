@@ -13,6 +13,56 @@ namespace Content.Shared._DeepLagoon.Loadouts;
 
 public sealed partial class PersonalLoadoutSystem
 {
+    public SlotDefinition[] EditableSlots(HumanoidCharacterProfile profile)
+    {
+        if (!_prototypes.TryIndex(profile.Species, out var species) ||
+            !_prototypes.Index(species.Prototype).TryGetComponent<InventoryComponent>(out var inventory) ||
+            !_prototypes.TryIndex<InventoryTemplatePrototype>(inventory.TemplateId, out var template))
+            return Array.Empty<SlotDefinition>();
+        return template.Slots.Where(slot =>
+            (slot.SlotFlags & (SlotFlags.POCKET | SlotFlags.SUITSTORAGE | SlotFlags.PREVENTEQUIP)) == 0).ToArray();
+    }
+
+    public string EquipmentRole(string job) => _prototypes.HasIndex<RoleLoadoutPrototype>(LoadoutSystem.GetJobPrototype(job))
+        ? LoadoutSystem.GetJobPrototype(job) : Role;
+
+    public IReadOnlySet<string> UnequippedSlots(HumanoidCharacterProfile profile, string job) =>
+        profile.Loadouts.TryGetValue(EquipmentRole(job), out var role) ? role.UnequippedSlots : new HashSet<string>();
+
+    public bool UsesSlot(LoadoutPrototype item, SlotDefinition slot) =>
+        item.Equipment.ContainsKey(slot.Name) ||
+        _prototypes.TryIndex(item.StartingGear, out var gear) && gear.Equipment.ContainsKey(slot.Name) ||
+        item.PersonalItems.Any(id => _prototypes.Index(id).TryGetComponent<ClothingComponent>(out var clothing) &&
+            (clothing.Slots & slot.SlotFlags) != 0);
+
+    public bool HasUnequippedSlots(HumanoidCharacterProfile profile, string job, LoadoutPrototype item)
+    {
+        var unequipped = UnequippedSlots(profile, job);
+        return unequipped.Count > 0 && EditableSlots(profile).Any(slot => unequipped.Contains(slot.Name) && UsesSlot(item, slot));
+    }
+
+    public bool FullyUnequipped(LoadoutPrototype item, IReadOnlySet<string> unequipped)
+    {
+        if (unequipped.Count == 0 || item.Inhand.Count > 0 || item.Components.Count > 0) return false;
+        var equipment = item.Equipment.Keys.AsEnumerable();
+        if (_prototypes.TryIndex(item.StartingGear, out var gear))
+        {
+            if (gear.Inhand.Count > 0) return false;
+            equipment = equipment.Concat(gear.Equipment.Keys);
+        }
+        var slots = equipment.ToArray();
+        return slots.Length > 0 && slots.All(unequipped.Contains);
+    }
+
+    public HumanoidCharacterProfile RestoreEquipmentSlots(HumanoidCharacterProfile profile, string job, LoadoutPrototype item)
+    {
+        if (!profile.Loadouts.TryGetValue(EquipmentRole(job), out var stored) || stored.UnequippedSlots.Count == 0)
+            return profile;
+        var role = stored.Clone();
+        role.UnequippedSlots.ExceptWith(EditableSlots(profile).Where(slot => UsesSlot(item, slot)).Select(slot => slot.Name));
+        return profile.WithLoadout(role);
+    }
+
     /// <summary>Compare actual equipment slots, not catalogue category labels.</summary>
     public bool Conflicts(HumanoidCharacterProfile profile, LoadoutPrototype personal, LoadoutPrototype jobItem)
     {

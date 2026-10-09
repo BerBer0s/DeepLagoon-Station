@@ -1049,6 +1049,10 @@ namespace Content.Server.Database.Migrations.Sqlite
 
             modelBuilder.Entity("Content.Server.Database.ProfileRoleLoadout", b =>
                 {
+                    b.Property<string>("UnequippedSlots")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("unequipped_slots");
+
                     b.Property<string>("Customizations")
                         .HasColumnType("TEXT")
                         .HasColumnName("customizations");

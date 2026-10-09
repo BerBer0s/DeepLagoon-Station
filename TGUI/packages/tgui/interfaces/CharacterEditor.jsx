@@ -9,6 +9,7 @@ import { CharacterTextEditor } from '../components/CharacterTextEditor';
 import { CharacterHeadshots } from './CharacterHeadshots';
 import { EquipmentBrowser } from './EquipmentBrowser';
 import { CharacterEditorSettings, editorAppearance } from './CharacterEditorSettings';
+import { configureNativeChatBackground, clearNativeChatBackground } from '../../tgui-panel/chat/nativeBackground';
 
 const Field = ({ label, children }) => <label className="CharacterEditor__field"><span>{label}</span>{children}</label>;
 const Select = ({ label, value, options = [], onChange, disabled }) => <Field label={label}>
@@ -37,6 +38,23 @@ const HairCarousel = ({options,selected,color,onSelect}) => {
 
 export const CharacterEditor = () => {
   const { data, act } = useBackend();
+  const backgroundRoot = useRef(null);
+  const activeBackground = useRef(null);
+  const appearance = data.appearance || {};
+  useEffect(() => {
+    if (data.available && backgroundRoot.current) {
+      activeBackground.current = backgroundRoot.current;
+      configureNativeChatBackground(backgroundRoot.current, backgroundRoot.current,
+        appearance.chatBgAnimation, appearance.chatBgAnimOpacity);
+    } else {
+      clearNativeChatBackground(activeBackground.current);
+      activeBackground.current = null;
+    }
+  }, [data.available, appearance.chatBgAnimation, appearance.chatBgAnimOpacity,
+    appearance.chatBgColor, appearance.theme]);
+  useEffect(() => {
+    return () => clearNativeChatBackground(activeBackground.current);
+  }, []);
   const equipmentCache=useRef(null);
   if(data.equipment)equipmentCache.current=data.equipment;
   const [search, setSearch] = useState('');
@@ -49,9 +67,8 @@ export const CharacterEditor = () => {
     </header>
     Выберите персонажа.</div>;
   const matches = name => name.toLowerCase().includes(search.toLowerCase());
-  const appearance = data.appearance || {};
   const theme = playerTheme(JSON.stringify({ settings: appearance }));
-  return <div className={'CharacterEditor Chat ' + theme.className + ' CharacterEditor--' + data.mode +
+  return <div ref={backgroundRoot} className={'CharacterEditor Chat ' + theme.className + ' CharacterEditor--' + data.mode +
     (appearance.smoothScroll ? ' CharacterEditor--smooth' : '') + (appearance.hoverEffect ? ' CharacterEditor--hover' : '')}
     style={{ ...theme.style, ...editorAppearance(appearance) }}>
     <header className="CharacterEditor__header">

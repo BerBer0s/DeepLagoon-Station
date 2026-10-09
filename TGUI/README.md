@@ -5,9 +5,17 @@ source changes are required. Local packaged UI and remote wiki documents have
 separate request policies and separate controls. A wiki page never receives the
 TGUI bridge.
 
-Embedded windows inherit the player's chat colors and light/dark theme, but not
-its animated background. `TguiPanel` polls appearance only while visible and
+Embedded windows inherit the player's chat colors and light/dark theme. The
+character editor also publishes its own background preset to the native layer;
+other interfaces draw no animation unless they explicitly configure it.
+`TguiPanel` polls appearance only while visible and
 deserializes the saved chat settings only when their source string changes.
+
+Right-clicking a character preview equipment slot records an explicitly empty
+slot in that job's saved role loadout. Mandatory/hidden loadout groups and job
+starting gear respect this choice on preview rebuild and server spawn. Selecting
+replacement clothing restores its slot. `UnequippedLoadoutSlots` adds a nullable
+database column for these choices; deploy the rebuilt client and server together.
 
 In the game, chat background animation is drawn by `NativeChatBackground` under
 the transparent CEF chat. All eleven presets and their intensity setting remain
@@ -17,11 +25,13 @@ but background movement itself generates no DOM updates or CEF texture uploads.
 Message animations, scrolling and input can still repaint the browser.
 The standalone browser preview retains the original CSS backgrounds until the
 native host advertises support. Hidden/suspended/reloaded views reset the native
-layer. This feature uses content code and a content shader, without an engine
+layer, and each ready notification replays the current appearance even when it
+has not changed. This feature uses content code and a content shader, without an engine
 source adapter.
 
 For a visual smoke test, run `node TGUI/tools/native-background-preview.cjs` from
-the repository root and open `http://127.0.0.1:8176`. It composites the actual
+the repository root and open `http://127.0.0.1:8176` (or `/?editor` for the character
+editor). It composites the actual
 packaged chat over the same shader in WebGL and displays background bridge calls.
 After settings settle, the count should stay constant while the effect moves.
 This is a browser composition check, not an in-game CEF performance measurement.

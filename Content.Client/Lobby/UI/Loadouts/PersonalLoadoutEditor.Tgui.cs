@@ -54,35 +54,19 @@ public sealed partial class PersonalLoadoutEditor
             || !inventory.TryGetSlotEntity(preview, name, out var entity)
             || _entities.GetComponent<MetaDataComponent>(entity.Value).EntityPrototype is not { } item) return false;
 
-        // Personal clothing overrides job gear; remove only the selection that
-        // produced the item currently visible in this slot.
+        // Remember the empty slot even when the item came from mandatory/hidden
+        // job defaults or base starting gear. Removing a selection alone would
+        // allow validation or preview rebuilding to restore that gear.
         var personal = GetRole();
-        foreach (var (group, choices) in personal.SelectedLoadouts)
-        {
-            var choice = choices.FirstOrDefault(c => _prototypes.TryIndex(c.Prototype, out var proto)
+        foreach (var choices in personal.SelectedLoadouts.Values)
+            choices.RemoveAll(c => _prototypes.TryIndex(c.Prototype, out var proto)
                 && proto.PersonalItems.Any(id => id.Id == item.ID));
-            if (choice == null || choices.Count <= _prototypes.Index(group).MinLimit) continue;
-            personal.RemoveLoadout(group, choice.Prototype, _prototypes);
-            _cachedTguiState = null;
-            ProfileChanged?.Invoke(_profile.WithLoadout(personal));
-            return true;
-        }
-
         PrepareJobCatalog();
-        if (_jobRole == null) return false;
-        var role = _jobRole.Clone();
-        foreach (var (group, choices) in role.SelectedLoadouts)
-        {
-            if (_prototypes.Index(group).Hidden || choices.Count <= _prototypes.Index(group).MinLimit) continue;
-            var choice = choices.FirstOrDefault(c => _prototypes.TryIndex(c.Prototype, out var proto)
-                && (_prototypes.TryIndex(proto.StartingGear, out var gear) ? (IEquipmentLoadout) gear : proto).GetGear(name) == item.ID);
-            if (choice == null) continue;
-            role.RemoveLoadout(group, choice.Prototype, _prototypes);
-            _cachedTguiState = null;
-            ProfileChanged?.Invoke(_profile.WithLoadout(role));
-            return true;
-        }
-        return false;
+        var role = _jobRole?.Clone() ?? personal;
+        role.UnequippedSlots.Add(name);
+        _cachedTguiState = null;
+        ProfileChanged?.Invoke(_profile.WithLoadout(personal).WithLoadout(role));
+        return true;
     }
 
     private HumanoidCharacterProfile? _cachedTguiProfile;
@@ -110,7 +94,7 @@ public sealed partial class PersonalLoadoutEditor
             .String("balance", BankSystemExtensions.ToSpesoString(_profile.BankBalance))
             .String("savings", BankSystemExtensions.ToSpesoString(_coins.GetLastKnownBalance()))
             .String("cost", BankSystemExtensions.ToSpesoString(_jobRole?.SelectedLoadouts.Values.SelectMany(items => items)
-                .Sum(item => _prototypes.TryIndex(item.Prototype, out var proto) ? proto.Price : 0) ?? 0))
+                .Sum(item => _prototypes.TryIndex(item.Prototype, out var proto) && !system.FullyUnequipped(proto, _jobRole!.UnequippedSlots) ? proto.Price : 0) ?? 0))
             .Number("points", Math.Max(0, system.GetPoints(_session) - spent)).Number("maxPoints", system.GetPoints(_session))
             .String("slot", _slotFilter == null ? "" : SlotLabel(_slotFilter))
             .Array("jobs", _equipmentJobs.Select(id => new TguiData().String("id", id).String("name", _prototypes.Index<JobPrototype>(id).LocalizedName)))
@@ -139,7 +123,8 @@ public sealed partial class PersonalLoadoutEditor
             {
                 var item = entry.Item;
                 var valid = _jobRole!.IsValid(system.RemovePersonalConflicts(_profile, item), _session, item.ID, IoCManager.Instance!, out var reason);
-                var chosen = _jobRole.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(choice => choice.Prototype.Id == item.ID);
+                var chosen = _jobRole.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(choice => choice.Prototype.Id == item.ID)
+                    && !system.HasUnequippedSlots(_profile, _job, item);
                 var entity = item.PreviewEntity ?? item.DummyEntity ?? _entities.System<LoadoutSystem>().GetFirstOrNull(item);
                 var custom = _jobRole.Customizations.GetValueOrDefault(item.ID) ?? _jobRole.SelectedLoadouts.Values.SelectMany(items => items).FirstOrDefault(choice => choice.Prototype.Id == item.ID)?.Customization;
                 return new TguiData().String("id", item.ID).String("group", entry.Group.ID).String("groupName", Loc.GetString(entry.Group.Name))
@@ -197,15 +182,19 @@ public sealed partial class PersonalLoadoutEditor
             if (entry == null || _jobRole == null) return false;
             var role = _jobRole.Clone();
             var profile = _profile;
-            var chosen = role.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(choice => choice.Prototype.Id == id);
+            var stored = role.SelectedLoadouts.TryGetValue(entry.Group.ID, out var choices) && choices.Any(choice => choice.Prototype.Id == id);
+            var slotSystem = _entities.System<PersonalLoadoutSystem>();
+            var chosen = stored && !slotSystem.HasUnequippedSlots(profile, _job, entry.Item);
             if (chosen) role.RemoveLoadout(entry.Group.ID, id, _prototypes);
             else
             {
                 profile = _entities.System<PersonalLoadoutSystem>().RemovePersonalConflicts(profile, entry.Item);
                 if (!role.IsValid(profile, _session, id, IoCManager.Instance!, out _)) return false;
-                role.AddLoadout(entry.Group.ID, id, _prototypes);
+                if (!stored) role.AddLoadout(entry.Group.ID, id, _prototypes);
             }
-            ProfileChanged?.Invoke(profile.WithLoadout(role)); return true;
+            profile = profile.WithLoadout(role);
+            if (!chosen) profile = slotSystem.RestoreEquipmentSlots(profile, _job, entry.Item);
+            ProfileChanged?.Invoke(profile); return true;
         }
         if (!_prototypes.TryIndex<LoadoutPrototype>(id, out var prototype) || prototype.PersonalItems.Count == 0) return false;
         var updated = GetRole();

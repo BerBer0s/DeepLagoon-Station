@@ -1,4 +1,5 @@
 // Native animation changes no DOM pixels. Publish only settings/viewport changes.
+import '../styles/components/NativeBackground.scss';
 const modes = ['none', 'cosmos', 'nebula', 'matrix', 'aurora', 'pulse',
   'waves', 'fireflies', 'sakura', 'gradient', 'rain', 'embers'];
 let root, viewport, animation = 'none', opacity = 0.5;
@@ -28,7 +29,7 @@ const publish = () => {
   const enabled = animation !== 'none';
   root.classList.toggle('Chat--native-background', enabled);
   const layout = root.closest('.Layout');
-  let background = getComputedStyle(viewport.closest('.Section') || viewport).backgroundColor;
+  let background = getComputedStyle(viewport === root ? root : viewport.closest('.Section') || viewport).backgroundColor;
   const custom = root.style.getPropertyValue('--chat-bg');
   if (custom) {
     const probe = document.createElement('span');
@@ -79,7 +80,12 @@ export const configureNativeChatBackground = (node, scrollNode, mode, intensity)
       let lastTheme = themeKey();
       mutationObserver = new MutationObserver(records => {
         const theme = themeKey();
-        if (theme !== lastTheme || records.some(record => record.attributeName === 'style')) schedule();
+        // React can replace className when tabs/themes change, removing the
+        // native transparency classes even when the preset stays the same.
+        const lostTransparency = cleared.some(node => !node.classList.contains('dl-native-background-clear'));
+        if (theme !== lastTheme || lostTransparency ||
+            (animation !== 'none' && window.__deeplagoonNativeBackground && !root.classList.contains('Chat--native-background')) ||
+            records.some(record => record.attributeName === 'style')) schedule();
         lastTheme = theme;
       });
       for (let node = root; node; node = node.parentElement)
@@ -93,6 +99,22 @@ export const configureNativeChatBackground = (node, scrollNode, mode, intensity)
   return window.__deeplagoonNativeBackground === true;
 };
 
-window.addEventListener('deeplagoon/native-background', schedule);
+export const clearNativeChatBackground = node => {
+  if (!node || node !== root) return;
+  animation = 'none';
+  publish();
+  root?.classList.remove('Chat--native-background');
+  resizeObserver?.disconnect();
+  mutationObserver?.disconnect();
+  root = viewport = null;
+  lastPayload = '';
+};
+
+window.addEventListener('deeplagoon/native-background', () => {
+  // The host resets its layer when the browser leaves the tree or reloads.
+  // Replay even if the document and its appearance have not changed.
+  lastPayload = '';
+  schedule();
+});
 window.addEventListener('resize', schedule);
 reducedMotion.addEventListener('change', schedule);

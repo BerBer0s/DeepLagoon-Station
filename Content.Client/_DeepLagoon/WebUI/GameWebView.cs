@@ -27,7 +27,7 @@ public sealed class GameWebView : Control
     private bool _explicitTextInput;
     private readonly bool _suspendWhenHidden;
     private readonly bool _chat;
-    private readonly NativeChatBackground? _background;
+    private readonly NativeChatBackground _background;
     public bool BrowserActive => _view.IsInsideTree;
     public bool IsReady => _ready;
     public event Action<string, string>? Message;
@@ -75,11 +75,10 @@ public sealed class GameWebView : Control
         _chat = chat;
         _suspendWhenHidden = suspendWhenHidden;
         HorizontalExpand = VerticalExpand = true;
-        if (chat)
-        {
-            _background = new NativeChatBackground();
-            AddChild(_background);
-        }
+        // Interfaces such as the character editor use the same native layer.
+        // It draws nothing until the document publishes an enabled preset.
+        _background = new NativeChatBackground();
+        AddChild(_background);
 #if DEBUG
         _devOrigin = TguiDevelopmentPolicy.GetOrigin(IoCManager.Resolve<IConfigurationManager>().GetCVar(WebUiCVars.DevServer));
 #endif

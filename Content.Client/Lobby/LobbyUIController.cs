@@ -454,7 +454,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
                 if (!_prototypeManager.TryIndex(loadout.Prototype, out var loadoutProto))
                     continue;
 
-                _spawn.EquipStartingGear(uid, loadoutProto, customization: loadout.Customization);
+                _spawn.EquipStartingGear(uid, loadoutProto, customization: loadout.Customization, unequippedSlots: roleLoadout.UnequippedSlots);
             }
         }
     }
@@ -466,6 +466,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
     {
         if (!_inventory.TryGetSlots(dummy, out var slots))
             return;
+        var unequipped = EntityManager.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().UnequippedSlots(profile, job.ID);
 
         // Apply loadout
         if (profile.Loadouts.TryGetValue(job.ID, out var jobLoadout))
@@ -480,6 +481,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
                     // TODO: Need some way to apply starting gear to an entity and replace existing stuff coz holy fucking shit dude.
                     foreach (var slot in slots)
                     {
+                        if (unequipped.Contains(slot.Name)) continue;
                         // Try startinggear first
                         if (_prototypeManager.TryIndex(loadoutProto.StartingGear, out var loadoutGear))
                         {
@@ -521,6 +523,7 @@ public sealed partial class LobbyUIController : UIController, IOnStateEntered<Lo
 
         foreach (var slot in slots)
         {
+            if (unequipped.Contains(slot.Name)) continue;
             var itemType = ((IEquipmentLoadout)gear).GetGear(slot.Name);
 
             if (_inventory.TryUnequip(dummy, slot.Name, out var unequippedItem, silent: true, force: true, reparent: false))

@@ -546,6 +546,7 @@ namespace Content.Server.Database
     public class ProfileRoleLoadout
     {
         public string? Customizations { get; set; }
+        public string? UnequippedSlots { get; set; }
         public int Id { get; set; }
 
         public int ProfileId { get; set; }
