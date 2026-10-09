@@ -1,0 +1,929 @@
+# Generated catalog of the mapper RCD radial menu. Entry ids default to the prototype id.
+
+- type: mapperRcdCategory
+  id: MapperRcdRoot
+  name: mapper-rcd-cat-MapperRcdRoot
+  entries:
+  - mode: Deconstruct
+    prototype: EffectRCDDeconstructPreview
+    id: MapperDeconstruct
+    name: mapper-rcd-deconstruct
+    icon: /Textures/Interface/Radial/RCD/deconstruct.png
+
+- type: mapperRcdCategory
+  id: MapperRcdWalls
+  name: mapper-rcd-cat-MapperRcdWalls
+  parent: MapperRcdRoot
+  order: 1
+  icon: /Textures/Interface/Radial/RCD/solid_wall.png
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsStation
+  name: mapper-rcd-cat-MapperRcdWallsStation
+  parent: MapperRcdWalls
+  order: 1
+  entries:
+  - mode: Entity
+    prototype: WallSolid
+  - mode: Entity
+    prototype: WallReinforced
+  - mode: Entity
+    prototype: WallSolidRust
+  - mode: Entity
+    prototype: WallReinforcedRust
+  - mode: Entity
+    prototype: WallRiveted
+  - mode: Entity
+    prototype: WallConcrete
+  - mode: Entity
+    prototype: WallConcreteIndestructible
+  - mode: Entity
+    prototype: WallBrick
+  - mode: Entity
+    prototype: WallWood
+  - mode: Entity
+    prototype: WallPlastic
+  - mode: Entity
+    prototype: WallMining
+  - mode: Entity
+    prototype: WallClock
+  - mode: Entity
+    prototype: WallNanolaminate
+  - mode: Entity
+    prototype: WallSolidChitin
+  - mode: Entity
+    prototype: WallReinforcedChitin
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsShuttle
+  name: mapper-rcd-cat-MapperRcdWallsShuttle
+  parent: MapperRcdWalls
+  order: 2
+  entries:
+  - mode: Entity
+    prototype: WallShuttle
+  - mode: Entity
+    prototype: WallPlastitanium
+  - mode: Entity
+    prototype: WallPlastitaniumIndestructible
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsSpecial
+  name: mapper-rcd-cat-MapperRcdWallsSpecial
+  parent: MapperRcdWalls
+  order: 3
+  entries:
+  - mode: Entity
+    prototype: WallCult
+  - mode: Entity
+    prototype: WallCultIndestructible
+  - mode: Entity
+    prototype: WallClown
+  - mode: Entity
+    prototype: WallMeat
+  - mode: Entity
+    prototype: WallWeb
+  - mode: Entity
+    prototype: WallGold
+  - mode: Entity
+    prototype: WallSilver
+  - mode: Entity
+    prototype: WallUranium
+  - mode: Entity
+    prototype: WallPlasma
+  - mode: Entity
+    prototype: WallVaultAlien
+  - mode: Entity
+    prototype: WallXenoborg
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsDiagonal
+  name: mapper-rcd-cat-MapperRcdWallsDiagonal
+  parent: MapperRcdWalls
+  order: 4
+  entries:
+  - mode: Entity
+    prototype: WallSolidDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: WallReinforcedDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: WallReinforcedDiagonalOutpost
+    rotatable: true
+  - mode: Entity
+    prototype: WallShuttleDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: WallPlastitaniumDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: WallPlastitaniumDiagonalIndestructible
+    rotatable: true
+  - mode: Entity
+    prototype: WallMiningDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: WallUraniumDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: WallWoodDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: WallNanolaminateDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: WallXenoborgDiagonal
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsFrames
+  name: mapper-rcd-cat-MapperRcdWallsFrames
+  parent: MapperRcdWalls
+  order: 5
+  entries:
+  - mode: Entity
+    prototype: Girder
+  - mode: Entity
+    prototype: ReinforcedGirder
+  - mode: Entity
+    prototype: ClockworkGirder
+  - mode: Entity
+    prototype: Grille
+  - mode: Entity
+    prototype: GrilleBroken
+  - mode: Entity
+    prototype: GrilleDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: Railing
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: RailingCorner
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: RailingCornerSmall
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: RailingRound
+    slot: Edge
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsWasteland
+  name: mapper-rcd-cat-MapperRcdWallsWasteland
+  parent: MapperRcdWalls
+  order: 6
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsWasteland1
+  name: mapper-rcd-cat-MapperRcdWallsWasteland1
+  parent: MapperRcdWallsWasteland
+  order: 1
+  entries:
+  - mode: Entity
+    prototype: N14WallBrick
+  - mode: Entity
+    prototype: N14WallBrickAltSlanted
+  - mode: Entity
+    prototype: N14WallBrickAltSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallBrickGraySlanted
+  - mode: Entity
+    prototype: N14WallBrickGraySlantedIndestructible
+  - mode: Entity
+    prototype: N14WallBrickSlanted
+  - mode: Entity
+    prototype: N14WallBrickSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallConcreteAltSlanted
+  - mode: Entity
+    prototype: N14WallConcreteAltSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallConcreteDark
+  - mode: Entity
+    prototype: N14WallConcreteLight
+  - mode: Entity
+    prototype: N14WallConcreteSlantedIndestructible
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsWasteland2
+  name: mapper-rcd-cat-MapperRcdWallsWasteland2
+  parent: MapperRcdWallsWasteland
+  order: 2
+  entries:
+  - mode: Entity
+    prototype: N14WallIndustrialRustSlanted
+  - mode: Entity
+    prototype: N14WallIndustrialRustSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallMetalRustSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallMetalRustSlantedSlanted
+  - mode: Entity
+    prototype: N14WallMetalSlanted
+  - mode: Entity
+    prototype: N14WallMetalSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallRebar
+  - mode: Entity
+    prototype: N14WallReinfMetalSlanted
+  - mode: Entity
+    prototype: N14WallReinfMetalSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallRockIndestructible
+  - mode: Entity
+    prototype: N14WallRoughScrapSlanted
+  - mode: Entity
+    prototype: N14WallRoughScrapSlantedIndestructible
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsWasteland3
+  name: mapper-rcd-cat-MapperRcdWallsWasteland3
+  parent: MapperRcdWallsWasteland
+  order: 3
+  entries:
+  - mode: Entity
+    prototype: N14WallScrapBlueSlanted
+  - mode: Entity
+    prototype: N14WallScrapBlueSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallScrapRedSlanted
+  - mode: Entity
+    prototype: N14WallScrapRedSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallScrapWhiteSlanted
+  - mode: Entity
+    prototype: N14WallScrapWhiteSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallSidingBlueSlanted
+  - mode: Entity
+    prototype: N14WallSidingBlueSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallSidingGreenSlanted
+  - mode: Entity
+    prototype: N14WallSidingGreenSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallSidingRedSlanted
+  - mode: Entity
+    prototype: N14WallSidingRedSlantedIndestructible
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsWasteland4
+  name: mapper-rcd-cat-MapperRcdWallsWasteland4
+  parent: MapperRcdWallsWasteland
+  order: 4
+  entries:
+  - mode: Entity
+    prototype: N14WallSidingSlanted
+  - mode: Entity
+    prototype: N14WallSidingSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallStore
+  - mode: Entity
+    prototype: N14WallSuperstore
+  - mode: Entity
+    prototype: N14WallWoodAltSlanted
+  - mode: Entity
+    prototype: N14WallWoodAltSlantedIndestructible
+  - mode: Entity
+    prototype: N14WallWoodDark
+  - mode: Entity
+    prototype: N14WallWoodDarkFrame
+  - mode: Entity
+    prototype: N14WallWoodFrame
+  - mode: Entity
+    prototype: N14WallWoodLog
+  - mode: Entity
+    prototype: N14WallWoodSlanted
+  - mode: Entity
+    prototype: N14WallWoodSlantedIndestructible
+
+- type: mapperRcdCategory
+  id: MapperRcdWallsWasteland5
+  name: mapper-rcd-cat-MapperRcdWallsWasteland5
+  parent: MapperRcdWallsWasteland
+  order: 5
+  entries:
+  - mode: Entity
+    prototype: N14WallWoodWhite
+  - mode: Entity
+    prototype: N14WallWoodWhiteFrame
+
+- type: mapperRcdCategory
+  id: MapperRcdWindows
+  name: mapper-rcd-cat-MapperRcdWindows
+  parent: MapperRcdRoot
+  order: 2
+  icon: /Textures/Interface/Radial/RCD/window.png
+
+- type: mapperRcdCategory
+  id: MapperRcdWindowsStandard
+  name: mapper-rcd-cat-MapperRcdWindowsStandard
+  parent: MapperRcdWindows
+  order: 1
+  entries:
+  - mode: Entity
+    prototype: Window
+  - mode: Entity
+    prototype: ReinforcedWindow
+  - mode: Entity
+    prototype: PlasmaWindow
+  - mode: Entity
+    prototype: ReinforcedPlasmaWindow
+  - mode: Entity
+    prototype: UraniumWindow
+  - mode: Entity
+    prototype: ReinforcedUraniumWindow
+  - mode: Entity
+    prototype: TintedWindow
+  - mode: Entity
+    prototype: TintedWindowTransparent
+  - mode: Entity
+    prototype: ShuttleWindow
+  - mode: Entity
+    prototype: PlastitaniumWindow
+  - mode: Entity
+    prototype: PlastitaniumWindowIndestructible
+  - mode: Entity
+    prototype: XenoborgWindow
+  - mode: Entity
+    prototype: XenoResinWindow
+
+- type: mapperRcdCategory
+  id: MapperRcdWindowsDiagonal
+  name: mapper-rcd-cat-MapperRcdWindowsDiagonal
+  parent: MapperRcdWindows
+  order: 2
+  entries:
+  - mode: Entity
+    prototype: WindowDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: ReinforcedWindowDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: PlasmaWindowDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: ReinforcedPlasmaWindowDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: UraniumWindowDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: ReinforcedUraniumWindowDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: ShuttleWindowDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: PlastitaniumWindowDiagonal
+    rotatable: true
+  - mode: Entity
+    prototype: PlastitaniumWindowDiagonalIndestructible
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdWindowsDirectional
+  name: mapper-rcd-cat-MapperRcdWindowsDirectional
+  parent: MapperRcdWindows
+  order: 3
+  entries:
+  - mode: Entity
+    prototype: WindowDirectional
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: WindowReinforcedDirectional
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: PlasmaWindowDirectional
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: PlasmaReinforcedWindowDirectional
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: UraniumWindowDirectional
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: UraniumReinforcedWindowDirectional
+    slot: Edge
+    rotatable: true
+  - mode: Entity
+    prototype: WindowFrostedDirectional
+    slot: Edge
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdWindowsWasteland
+  name: mapper-rcd-cat-MapperRcdWindowsWasteland
+  parent: MapperRcdWindows
+  order: 4
+
+- type: mapperRcdCategory
+  id: MapperRcdWindowsWasteland1
+  name: mapper-rcd-cat-MapperRcdWindowsWasteland1
+  parent: MapperRcdWindowsWasteland
+  order: 1
+  entries:
+  - mode: Entity
+    prototype: N14Window
+  - mode: Entity
+    prototype: N14WindowBars
+  - mode: Entity
+    prototype: N14WindowBars2
+  - mode: Entity
+    prototype: N14WindowBroken
+  - mode: Entity
+    prototype: N14WindowHouse
+  - mode: Entity
+    prototype: N14WindowHouseBroken
+  - mode: Entity
+    prototype: N14WindowHouseBrokenVertical
+  - mode: Entity
+    prototype: N14WindowHouseVertical
+  - mode: Entity
+    prototype: N14WindowHouseWood
+  - mode: Entity
+    prototype: N14WindowHouseWoodBroken
+  - mode: Entity
+    prototype: N14WindowRuins
+  - mode: Entity
+    prototype: N14WindowRuinsBroken
+
+- type: mapperRcdCategory
+  id: MapperRcdWindowsWasteland2
+  name: mapper-rcd-cat-MapperRcdWindowsWasteland2
+  parent: MapperRcdWindowsWasteland
+  order: 2
+  entries:
+  - mode: Entity
+    prototype: N14WindowRuinsDestroyed
+  - mode: Entity
+    prototype: N14WindowRuinsVertical
+  - mode: Entity
+    prototype: N14WindowRuinsVerticalBroken
+  - mode: Entity
+    prototype: N14WindowStoreBottom
+  - mode: Entity
+    prototype: N14WindowStoreLeft
+  - mode: Entity
+    prototype: N14WindowStoreMiddleHorizontal
+  - mode: Entity
+    prototype: N14WindowStoreMiddleVertical
+  - mode: Entity
+    prototype: N14WindowStoreRight
+  - mode: Entity
+    prototype: N14WindowStoreTop
+
+- type: mapperRcdCategory
+  id: MapperRcdPipes
+  name: mapper-rcd-cat-MapperRcdPipes
+  parent: MapperRcdRoot
+  order: 3
+  icon: /Textures/Interface/Radial/RPD/fourway.png
+
+- type: mapperRcdCategory
+  id: MapperRcdPipesLayer1
+  name: mapper-rcd-cat-MapperRcdPipesLayer1
+  parent: MapperRcdPipes
+  order: 1
+  entries:
+  - mode: Entity
+    prototype: GasPipeHalf
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeStraight
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeBend
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeTJunction
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeFourway
+    slot: Pipe
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdPipesLayer2
+  name: mapper-rcd-cat-MapperRcdPipesLayer2
+  parent: MapperRcdPipes
+  order: 2
+  entries:
+  - mode: Entity
+    prototype: GasPipeHalfAlt1
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeStraightAlt1
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeBendAlt1
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeTJunctionAlt1
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeFourwayAlt1
+    slot: Pipe
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdPipesLayer3
+  name: mapper-rcd-cat-MapperRcdPipesLayer3
+  parent: MapperRcdPipes
+  order: 3
+  entries:
+  - mode: Entity
+    prototype: GasPipeHalfAlt2
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeStraightAlt2
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeBendAlt2
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeTJunctionAlt2
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPipeFourwayAlt2
+    slot: Pipe
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdPipesPumps
+  name: mapper-rcd-cat-MapperRcdPipesPumps
+  parent: MapperRcdPipes
+  order: 4
+  entries:
+  - mode: Entity
+    prototype: GasPressurePump
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasVolumePump
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasValve
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: SignalControlledValve
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: PressureControlledValve
+    slot: Pipe
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdPipesVents
+  name: mapper-rcd-cat-MapperRcdPipesVents
+  parent: MapperRcdPipes
+  order: 5
+  entries:
+  - mode: Entity
+    prototype: GasOutletInjector
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasVentScrubber
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasVentPump
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasDualPortVentPump
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPassiveVent
+    slot: Pipe
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdPipesUtility
+  name: mapper-rcd-cat-MapperRcdPipesUtility
+  parent: MapperRcdPipes
+  order: 6
+  entries:
+  - mode: Entity
+    prototype: HeatExchanger
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: HeatExchangerBend
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasMixer
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasFilter
+    slot: Pipe
+    rotatable: true
+  - mode: Entity
+    prototype: GasPort
+    slot: Pipe
+    rotatable: true
+
+- type: mapperRcdCategory
+  id: MapperRcdFloors
+  name: mapper-rcd-cat-MapperRcdFloors
+  parent: MapperRcdRoot
+  order: 4
+  icon: /Textures/Interface/Radial/RCD/metal_tile.png
+  entries:
+  - mode: Tile
+    prototype: FloorSteel
+    icon: /Textures/Interface/Radial/RCD/metal_tile.png
+
+- type: mapperRcdCategory
+  id: MapperRcdFloorsPlating
+  name: mapper-rcd-cat-MapperRcdFloorsPlating
+  parent: MapperRcdFloors
+  order: 2
+  icon: /Textures/Interface/Radial/RCD/plating.png
+
+- type: mapperRcdCategory
+  id: MapperRcdFloorsPlatingShapes
+  name: mapper-rcd-cat-MapperRcdFloorsPlatingShapes
+  parent: MapperRcdFloorsPlating
+  order: 1
+  entries:
+  - mode: Tile
+    prototype: Plating
+    icon: /Textures/Interface/Radial/RCD/plating.png
+  - mode: Tile
+    prototype: PlatingCornerNE
+    icon: /Textures/Interface/Radial/RCD/plating/ne.png
+  - mode: Tile
+    prototype: PlatingCornerNW
+    icon: /Textures/Interface/Radial/RCD/plating/nw.png
+  - mode: Tile
+    prototype: PlatingCornerSE
+    icon: /Textures/Interface/Radial/RCD/plating/se.png
+  - mode: Tile
+    prototype: PlatingCornerSW
+    icon: /Textures/Interface/Radial/RCD/plating/sw.png
+  - mode: Tile
+    prototype: PlatingHalfV
+    icon: /Textures/Interface/Radial/RCD/plating/half_v.png
+  - mode: Tile
+    prototype: PlatingHalfH
+    icon: /Textures/Interface/Radial/RCD/plating/half_h.png
+  - mode: Tile
+    prototype: PlatingWedgeN
+    icon: /Textures/Interface/Radial/RCD/plating/wedge_n.png
+  - mode: Tile
+    prototype: PlatingWedgeE
+    icon: /Textures/Interface/Radial/RCD/plating/wedge_e.png
+  - mode: Tile
+    prototype: PlatingWedgeS
+    icon: /Textures/Interface/Radial/RCD/plating/wedge_s.png
+  - mode: Tile
+    prototype: PlatingWedgeW
+    icon: /Textures/Interface/Radial/RCD/plating/wedge_w.png
+
+- type: mapperRcdCategory
+  id: MapperRcdFloorsPlatingLower
+  name: mapper-rcd-cat-MapperRcdFloorsPlatingLower
+  parent: MapperRcdFloorsPlating
+  order: 2
+  entries:
+  - mode: Tile
+    prototype: PlatingHalfTiltNESLower
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_ne_s_l.png
+  - mode: Tile
+    prototype: PlatingHalfTiltSEWLower
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_se_w_l.png
+  - mode: Tile
+    prototype: PlatingHalfTiltSWNLower
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_sw_n_l.png
+  - mode: Tile
+    prototype: PlatingHalfTiltNWELower
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_nw_e_l.png
+  - mode: Tile
+    prototype: PlatingHalfTiltNEWLower
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_ne_w_l.png
+  - mode: Tile
+    prototype: PlatingHalfTiltSENLower
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_se_n_l.png
+  - mode: Tile
+    prototype: PlatingHalfTiltSWELower
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_sw_e_l.png
+  - mode: Tile
+    prototype: PlatingHalfTiltNWSLower
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_nw_s_l.png
+
+- type: mapperRcdCategory
+  id: MapperRcdFloorsPlatingUpper
+  name: mapper-rcd-cat-MapperRcdFloorsPlatingUpper
+  parent: MapperRcdFloorsPlating
+  order: 3
+  entries:
+  - mode: Tile
+    prototype: PlatingHalfTiltNESUpper
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_ne_s_u.png
+  - mode: Tile
+    prototype: PlatingHalfTiltSEWUpper
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_se_w_u.png
+  - mode: Tile
+    prototype: PlatingHalfTiltSWNUpper
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_sw_n_u.png
+  - mode: Tile
+    prototype: PlatingHalfTiltNWEUpper
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_nw_e_u.png
+  - mode: Tile
+    prototype: PlatingHalfTiltNEWUpper
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_ne_w_u.png
+  - mode: Tile
+    prototype: PlatingHalfTiltSENUpper
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_se_n_u.png
+  - mode: Tile
+    prototype: PlatingHalfTiltSWEUpper
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_sw_e_u.png
+  - mode: Tile
+    prototype: PlatingHalfTiltNWSUpper
+    icon: /Textures/Interface/Radial/RCD/plating/halftilt_nw_s_u.png
+
+- type: mapperRcdCategory
+  id: MapperRcdFloorsLattice
+  name: mapper-rcd-cat-MapperRcdFloorsLattice
+  parent: MapperRcdFloors
+  order: 3
+  icon: /Textures/Interface/Radial/RCD/lattice.png
+
+- type: mapperRcdCategory
+  id: MapperRcdFloorsLatticeShapes
+  name: mapper-rcd-cat-MapperRcdFloorsLatticeShapes
+  parent: MapperRcdFloorsLattice
+  order: 1
+  entries:
+  - mode: Tile
+    prototype: Lattice
+    icon: /Textures/Interface/Radial/RCD/lattice.png
+  - mode: Tile
+    prototype: LatticeCornerNE
+    icon: /Textures/Interface/Radial/RCD/lattice/ne.png
+  - mode: Tile
+    prototype: LatticeCornerNW
+    icon: /Textures/Interface/Radial/RCD/lattice/nw.png
+  - mode: Tile
+    prototype: LatticeCornerSE
+    icon: /Textures/Interface/Radial/RCD/lattice/se.png
+  - mode: Tile
+    prototype: LatticeCornerSW
+    icon: /Textures/Interface/Radial/RCD/lattice/sw.png
+  - mode: Tile
+    prototype: LatticeHalfV
+    icon: /Textures/Interface/Radial/RCD/lattice/half_v.png
+  - mode: Tile
+    prototype: LatticeHalfH
+    icon: /Textures/Interface/Radial/RCD/lattice/half_h.png
+  - mode: Tile
+    prototype: LatticeWedgeN
+    icon: /Textures/Interface/Radial/RCD/lattice/wedge_n.png
+  - mode: Tile
+    prototype: LatticeWedgeE
+    icon: /Textures/Interface/Radial/RCD/lattice/wedge_e.png
+  - mode: Tile
+    prototype: LatticeWedgeS
+    icon: /Textures/Interface/Radial/RCD/lattice/wedge_s.png
+  - mode: Tile
+    prototype: LatticeWedgeW
+    icon: /Textures/Interface/Radial/RCD/lattice/wedge_w.png
+
+- type: mapperRcdCategory
+  id: MapperRcdFloorsLatticeLower
+  name: mapper-rcd-cat-MapperRcdFloorsLatticeLower
+  parent: MapperRcdFloorsLattice
+  order: 2
+  entries:
+  - mode: Tile
+    prototype: LatticeHalfTiltNESLower
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_ne_s_l.png
+  - mode: Tile
+    prototype: LatticeHalfTiltSEWLower
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_se_w_l.png
+  - mode: Tile
+    prototype: LatticeHalfTiltSWNLower
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_sw_n_l.png
+  - mode: Tile
+    prototype: LatticeHalfTiltNWELower
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_nw_e_l.png
+  - mode: Tile
+    prototype: LatticeHalfTiltNEWLower
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_ne_w_l.png
+  - mode: Tile
+    prototype: LatticeHalfTiltSENLower
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_se_n_l.png
+  - mode: Tile
+    prototype: LatticeHalfTiltSWELower
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_sw_e_l.png
+  - mode: Tile
+    prototype: LatticeHalfTiltNWSLower
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_nw_s_l.png
+
+- type: mapperRcdCategory
+  id: MapperRcdFloorsLatticeUpper
+  name: mapper-rcd-cat-MapperRcdFloorsLatticeUpper
+  parent: MapperRcdFloorsLattice
+  order: 3
+  entries:
+  - mode: Tile
+    prototype: LatticeHalfTiltNESUpper
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_ne_s_u.png
+  - mode: Tile
+    prototype: LatticeHalfTiltSEWUpper
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_se_w_u.png
+  - mode: Tile
+    prototype: LatticeHalfTiltSWNUpper
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_sw_n_u.png
+  - mode: Tile
+    prototype: LatticeHalfTiltNWEUpper
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_nw_e_u.png
+  - mode: Tile
+    prototype: LatticeHalfTiltNEWUpper
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_ne_w_u.png
+  - mode: Tile
+    prototype: LatticeHalfTiltSENUpper
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_se_n_u.png
+  - mode: Tile
+    prototype: LatticeHalfTiltSWEUpper
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_sw_e_u.png
+  - mode: Tile
+    prototype: LatticeHalfTiltNWSUpper
+    icon: /Textures/Interface/Radial/RCD/lattice/halftilt_nw_s_u.png
+
+- type: mapperRcdCategory
+  id: MapperRcdDoors
+  name: mapper-rcd-cat-MapperRcdDoors
+  parent: MapperRcdRoot
+  order: 5
+  icon: /Textures/Interface/Radial/RCD/airlock.png
+  entries:
+  - mode: Entity
+    prototype: Airlock
+  - mode: Entity
+    prototype: AirlockGlass
+  - mode: Entity
+    prototype: AirlockMaintLocked
+  - mode: Entity
+    prototype: AirlockEngineering
+  - mode: Entity
+    prototype: AirlockEngineeringGlass
+  - mode: Entity
+    prototype: AirlockCargo
+  - mode: Entity
+    prototype: AirlockCargoGlass
+  - mode: Entity
+    prototype: AirlockMedical
+  - mode: Entity
+    prototype: AirlockMedicalGlass
+  - mode: Entity
+    prototype: AirlockScience
+  - mode: Entity
+    prototype: AirlockScienceGlass
+  - mode: Entity
+    prototype: AirlockSecurity
+  - mode: Entity
+    prototype: AirlockSecurityGlass
+  - mode: Entity
+    prototype: AirlockCommand
+  - mode: Entity
+    prototype: AirlockCommandGlass
+  - mode: Entity
+    prototype: AirlockExternal
+  - mode: Entity
+    prototype: AirlockExternalGlass
+  - mode: Entity
+    prototype: AirlockShuttle
+  - mode: Entity
+    prototype: AirlockGlassShuttle

@@ -1,0 +1,21 @@
+# Admin/mapper spawn only. Not in any catalog, lathe, vendor or loot table.
+- type: entity
+  id: MapperRCD
+  parent: BaseItem
+  name: mapper RCD
+  suffix: Mapper
+  description: An unlimited, instant construction brush. Hold the button and drag to paint walls, windows, pipes and floors. Use it in hand to pick what to paint.
+  components:
+  - type: MapperRcd
+  - type: Sprite
+    sprite: _NF/Objects/Tools/rcd.rsi
+    state: icon-shipyard
+  - type: Item
+    size: Normal
+  - type: UserInterface
+    interfaces:
+      enum.MapperRcdUiKey.Key:
+        type: MapperRcdBoundUserInterface
+  - type: ActivatableUI
+    inHandsOnly: true
+    key: enum.MapperRcdUiKey.Key
