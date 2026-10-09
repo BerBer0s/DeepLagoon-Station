@@ -15,8 +15,9 @@ generator_enabled = false
 mob_pushing = true
 
 [physics]
-# Makes mapping annoying
-grid_splitting = false
+# DeepLagoon: on, so a grid cut apart with the RCD becomes two grids (the grid magnet needs this to be testable).
+# Set to false if splitting gets in the way while mapping, or use `cvar physics.grid_splitting false` at runtime.
+grid_splitting = true
 
 [procgen]
 preload = false
