@@ -13,7 +13,9 @@ public sealed class CharacterCardWindow : FancyWindow
     private readonly EntityUid _entity;
     private readonly int _slot;
     private readonly TguiPanel _panel = new();
-    private readonly SpriteView _sprite = new() { Scale = new Vector2(3,3), OverrideDirection = Direction.South, MouseFilter = MouseFilterMode.Ignore };
+    private readonly SpriteView _sprite = new() { Stretch = SpriteView.StretchMode.Fill, OverrideDirection = Direction.South, MouseFilter = MouseFilterMode.Ignore };
+    private static readonly Direction[] Directions = { Direction.South, Direction.West, Direction.North, Direction.East };
+    private int _direction;
     private readonly CardHost _host;
     private readonly TguiData _data;
     private readonly Dictionary<string, string> _headshots = new();
@@ -21,11 +23,20 @@ public sealed class CharacterCardWindow : FancyWindow
     {
         _entity = entity;
         _slot = slot;
-        Title="Профиль персонажа"; SetSize=new Vector2(1000,820); MinSize=new Vector2(700,650);
+        Title="Профиль персонажа"; SetSize=new Vector2(950,740); MinSize=new Vector2(640,600);
         _sprite.SetEntity(entity);
         _data=new TguiData().String("name",name).String("flavor",flavor).String("ooc",ooc).Number("erp",erp).Number("noncon",nonCon).Number("vore",vore);
         _host=new CardHost(_panel,_sprite); ContentsContainer.AddChild(_host);
-        _panel.OnAction += (action,_)=>{if(action=="close")Close();};
+        _panel.OnAction += (action,_)=>
+        {
+            if(action=="close")Close();
+            else if (action is "char_left" or "char_right")
+            {
+                _direction = (_direction + (action == "char_left" ? 3 : 1)) % Directions.Length;
+                _sprite.OverrideDirection = Directions[_direction];
+                _sprite.InvalidateMeasure();
+            }
+        };
         _panel.SetState("CharacterCard",_data.ToString());
         OnClose+=Dispose;
     }
@@ -72,7 +83,16 @@ public sealed class CharacterCardWindow : FancyWindow
     {
         private readonly TguiPanel _panel;private readonly Control _sprite;public bool HasHeadshot;
         public CardHost(TguiPanel panel,Control sprite){_panel=panel;_sprite=sprite;HorizontalExpand=VerticalExpand=true;AddChild(panel);AddChild(sprite);}
-        protected override Vector2 MeasureOverride(Vector2 available){_panel.Measure(available);_sprite.Measure(new Vector2(240,260));return Vector2.Zero;}
-        protected override Vector2 ArrangeOverride(Vector2 final){_panel.Arrange(UIBox2.FromDimensions(Vector2.Zero,final));_sprite.Arrange(UIBox2.FromDimensions(new Vector2(24,HasHeadshot?260:46),new Vector2(240,260)));return final;}
+        protected override Vector2 MeasureOverride(Vector2 available){_panel.Measure(available);_sprite.Measure(new Vector2(256,256));return Vector2.Zero;}
+        protected override Vector2 ArrangeOverride(Vector2 final)
+        {
+            _panel.Arrange(UIBox2.FromDimensions(Vector2.Zero,final));
+            // Match CharacterCard.scss. Fill the viewport with 12px of breathing
+            // room, including tall/wide species, rather than a fixed 3x scale.
+            var height = Math.Clamp(final.Y - (HasHeadshot ? 426 : 98), 128, 256);
+            var position = new Vector2(22, HasHeadshot ? 372 : 44);
+            _sprite.Arrange(UIBox2.FromDimensions(position + new Vector2(12),new Vector2(232,height - 24)));
+            return final;
+        }
     }
 }

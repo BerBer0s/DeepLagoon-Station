@@ -94,14 +94,6 @@
 .CharacterText {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;padding:12px;background:var(--player-surface);border-radius:4px;}
 .CharacterText__spoiler {background:currentColor;border-radius:3px;color:transparent;cursor:pointer;box-shadow:inset 0 0 0 20px #69707b;&:hover,&:focus {color:inherit;box-shadow:none;}}
 .CharacterTextHint {padding-top:8px;line-height:1.5;}
-.CharacterCard {height:100vh;box-sizing:border-box;padding:16px;display:flex;gap:18px;overflow:hidden;font:14px Arial;color:#ddd;--player-surface:#252b35;
- aside {flex:0 0 260px;overflow-y:auto;overflow-x:hidden;}main {flex:1;min-width:0;overflow:auto;}h2 {margin:0;}h3 {margin-top:20px;}
- &__headshot {display:block;width:240px;height:170px;object-fit:contain;image-rendering:auto;}
- &__model {height:300px;}
- &__header {display:flex;justify-content:space-between;align-items:center;gap:8px;}
- &__consent {padding:8px;margin:8px 0;border:1px solid;strong,span {display:block;} &.consent-0 {color:#f07e7e;} &.consent-1 {color:#ffbd70;} &.consent-2 {color:#85d891;}}
-}
-
 .CharacterText__spoiler > * {visibility:hidden;}
 .CharacterText__spoiler:hover > *, .CharacterText__spoiler:focus > * {visibility:visible;}
 
@@ -124,7 +116,6 @@
 .CharacterEditor.theme-light {input,.Dropdown__control,.Dropdown__menu {color:var(--editor-control-text);background:var(--editor-control-bg);}}
 .CharacterEditor.Chat::before {inset:0;}
 
-.CharacterCard__imageNavigation {display:flex;align-items:center;justify-content:center;gap:12px;margin:8px 0;}
 .CharacterEditor.Chat .CharacterEditor__windowTitle {color:#eaf2ff;z-index:2;}
 
 .CharacterEditor .CharacterEditor__tabs > button, .CharacterEditor .CharacterEditor__tabs > .Button { @include station.tab; }

@@ -1,0 +1,54 @@
+@use '../styles/base.scss';
+
+// Sidebar geometry is shared with CharacterCardWindow.CardHost: keep the model
+// viewport stationary while descriptions scroll and gallery images arrive.
+.CharacterCard {
+  box-sizing: border-box;
+  height: 100vh;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  overflow: hidden;
+  color: base.$color-fg;
+  font: 13px Verdana, Geneva, sans-serif;
+  background: linear-gradient(to bottom, base.$color-bg-start, base.$color-bg-end);
+
+  &__sidebar { flex: 0 0 276px; min-width: 0; }
+  &__art, &__modelPanel { background: base.$color-bg-section; }
+  &__art { height: 318px; margin-bottom: 10px; }
+  &__panelTitle {
+    box-sizing: border-box;
+    height: 32px;
+    margin: 0;
+    padding: 7px 10px;
+    font-size: 14px;
+    font-weight: bold;
+    border-bottom: 2px solid #49799a;
+  }
+  &__headshot { display: block; width: 256px; height: 256px; margin: 0 10px; object-fit: contain; }
+  &__imageNavigation { height: 30px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+  &__model {
+    width: 256px;
+    height: clamp(128px, calc(100vh - 98px), 256px);
+    margin: 0 10px;
+    background: #171b22;
+    &--background1 { background: #6b7380; }
+    &--background2 {
+      background-color: #303844;
+      background-image: conic-gradient(#424d5b 25%, transparent 0 50%, #424d5b 0 75%, transparent 0);
+      background-size: 32px 32px;
+    }
+  }
+  &--headshot &__model { height: clamp(128px, calc(100vh - 426px), 256px); }
+  &__modelControls { height: 42px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+  &__details { flex: 1; min-width: 0; overflow: auto; }
+  &__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  &__header h2 { margin: 0; font-size: 22px; overflow-wrap: anywhere; }
+  .LabeledList__label { white-space: normal; width: 65%; }
+  .CharacterText { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+  .CharacterText__spoiler {
+    background: currentColor; border-radius: 3px; color: transparent; cursor: pointer; box-shadow: inset 0 0 0 20px #69707b;
+    > * { visibility: hidden; }
+    &:hover, &:focus { color: inherit; box-shadow: none; > * { visibility: visible; } }
+  }
+}

@@ -1,21 +1,71 @@
-import {useBackend} from '../backend';
-import {useState} from 'react';
-import {Button} from '../components';
-import {playerTheme} from '../components/PlayerTheme';
-import {CharacterText} from '../components/CharacterText';
-import './CharacterEditor.scss';
-const statuses=['Запрещено','Спросить','Разрешено'];
-export const CharacterCard=()=>{
- const {data,act}=useBackend();const theme=playerTheme(data.chatState);
- const [imageIndex,setImageIndex]=useState(0),images=data.headshots||[];
- return <div className={'CharacterCard Chat '+theme.className} style={theme.style}>
-  <aside>{(images.length>0||data.headshot)&&<img className="CharacterCard__headshot" src={images[imageIndex%images.length]?.image||data.headshot} alt={'Headshot '+data.name}/>}
-   {images.length>1&&<div className="CharacterCard__imageNavigation"><Button onClick={()=>setImageIndex((imageIndex+images.length-1)%images.length)}>◀</Button><span>{imageIndex%images.length+1} / {images.length}</span><Button onClick={()=>setImageIndex((imageIndex+1)%images.length)}>▶</Button></div>}
-   <div className="CharacterCard__model"/>
-   {['erp','noncon','vore'].map((key,i)=><div key={key} className={'CharacterCard__consent consent-'+data[key]}><strong>{['Эротические взаимодействия','Взаимодействия без согласия','Vore'][i]}</strong><span>{statuses[data[key]]}</span></div>)}
-  </aside>
-  <main><div className="CharacterCard__header"><h2>{data.name}</h2><Button onClick={()=>act('close')}>Закрыть</Button></div>
-    <h3>Описание персонажа</h3><div className="CharacterText"><CharacterText text={data.flavor}/></div>
-    <h3>OOC заметки</h3><div className="CharacterText"><CharacterText text={data.ooc}/></div>
-  </main></div>;
+import { useState } from 'react';
+import { useBackend } from '../backend';
+import { Button, Collapsible, LabeledList, Section } from '../components';
+import { CharacterText } from '../components/CharacterText';
+import './CharacterCard.scss';
+
+const statuses = ['Запрещено', 'Спросить', 'Разрешено'];
+const colors = ['bad', 'average', 'good'];
+
+export const CharacterCard = () => {
+  const { data, act } = useBackend();
+  const [imageIndex, setImageIndex] = useState(0);
+  const [background, setBackground] = useState(0);
+  const images = (data.headshots || []).filter(image => image.image);
+  const selected = images.length ? imageIndex % images.length : 0;
+  const headshot = images[selected]?.image || data.headshot;
+
+  return (
+    <div className={'CharacterCard' + (headshot ? ' CharacterCard--headshot' : '')}>
+      <aside className="CharacterCard__sidebar">
+        {headshot && (
+          <section className="CharacterCard__art">
+            <h3 className="CharacterCard__panelTitle">Арт персонажа</h3>
+            <img className="CharacterCard__headshot" src={headshot} alt={'Арт ' + data.name} />
+            <div className="CharacterCard__imageNavigation">
+              {images.length > 1 && <>
+                <Button icon="arrow-left" aria-label="Предыдущий арт"
+                  onClick={() => setImageIndex((selected + images.length - 1) % images.length)} />
+                <span>{selected + 1} / {images.length}</span>
+                <Button icon="arrow-right" aria-label="Следующий арт"
+                  onClick={() => setImageIndex((selected + 1) % images.length)} />
+              </>}
+            </div>
+          </section>
+        )}
+        <section className="CharacterCard__modelPanel">
+          <h3 className="CharacterCard__panelTitle">Модель персонажа</h3>
+          <div className={'CharacterCard__model CharacterCard__model--background' + background} />
+          <div className="CharacterCard__modelControls">
+            <Button icon="undo" aria-label="Повернуть влево" onClick={() => act('char_left')} />
+            <Button onClick={() => setBackground((background + 1) % 3)}>Сменить фон</Button>
+            <Button icon="redo" aria-label="Повернуть вправо" onClick={() => act('char_right')} />
+          </div>
+        </section>
+      </aside>
+      <main className="CharacterCard__details">
+        <header className="CharacterCard__header">
+          <h2>{data.name}</h2>
+          <Button color="bad" icon="times" onClick={() => act('close')}>Закрыть</Button>
+        </header>
+        <Collapsible title="Описание персонажа" open>
+          <Section><div className="CharacterText"><CharacterText text={data.flavor || '———'} /></div></Section>
+        </Collapsible>
+        <Collapsible title="Внеигровые заметки" open>
+          <Section><div className="CharacterText"><CharacterText text={data.ooc || '———'} /></div></Section>
+        </Collapsible>
+        <Section title="Предпочтения персонажа">
+          <LabeledList>
+            {['erp', 'noncon', 'vore'].map((key, index) => (
+              <LabeledList.Item key={key}
+                label={['Эротические взаимодействия', 'Взаимодействия без согласия', 'Vore'][index]}
+                color={colors[data[key]]}>
+                {statuses[data[key]] || '———'}
+              </LabeledList.Item>
+            ))}
+          </LabeledList>
+        </Section>
+      </main>
+    </div>
+  );
 };
