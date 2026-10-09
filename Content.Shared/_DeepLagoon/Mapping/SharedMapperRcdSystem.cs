@@ -25,6 +25,8 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
     /// </summary>
     protected readonly HashSet<string> EdgeProtos = new();
 
+    private readonly Dictionary<string, MapperRcdFilter> _protoFilters = new();
+
     private bool _catalogDirty = true;
 
     public override void Initialize()
@@ -51,9 +53,12 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
         _entries.Clear();
         StructureProtos.Clear();
         EdgeProtos.Clear();
+        _protoFilters.Clear();
 
         foreach (var category in ProtoManager.EnumeratePrototypes<MapperRcdCategoryPrototype>())
         {
+            var filter = GetCategoryFilter(category);
+
             foreach (var entry in category.Entries)
             {
                 var id = entry.EffectiveId;
@@ -67,6 +72,9 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
                 if (entry.Mode != MapperRcdMode.Entity || entry.Prototype == null)
                     continue;
 
+                if (filter != MapperRcdFilter.Any)
+                    _protoFilters.TryAdd(entry.Prototype, filter);
+
                 switch (entry.Slot)
                 {
                     case MapperRcdSlot.Structure:
@@ -78,6 +86,32 @@ public abstract partial class SharedMapperRcdSystem : EntitySystem
                 }
             }
         }
+    }
+
+    private MapperRcdFilter GetCategoryFilter(MapperRcdCategoryPrototype category)
+    {
+        // The filter of the nearest ancestor that sets one; the depth bound guards against a parent cycle.
+        for (var i = 0; i < 16; i++)
+        {
+            if (category.Filter != MapperRcdFilter.Any)
+                return category.Filter;
+
+            if (category.Parent is not { } parent || !ProtoManager.TryIndex(parent, out var next))
+                return MapperRcdFilter.Any;
+
+            category = next;
+        }
+
+        return MapperRcdFilter.Any;
+    }
+
+    /// <summary>
+    /// The kind the catalog gives to an entity prototype, or Any if no catalog entry lists it.
+    /// </summary>
+    protected MapperRcdFilter GetProtoFilter(string protoId)
+    {
+        EnsureCatalog();
+        return _protoFilters.TryGetValue(protoId, out var filter) ? filter : MapperRcdFilter.Any;
     }
 
     public bool TryGetEntry(string id, out MapperRcdEntry entry)

@@ -34,6 +34,13 @@ public sealed partial class MapperRcdCategoryPrototype : IPrototype
     [DataField]
     public int Order;
 
+    /// <summary>
+    /// Kind of things this category (and everything below it) places. Entities of its entries are recognised
+    /// as that kind when a filtered delete entry looks for something to remove.
+    /// </summary>
+    [DataField]
+    public MapperRcdFilter Filter;
+
     [DataField]
     public List<MapperRcdEntry> Entries = new();
 }
@@ -92,7 +99,28 @@ public sealed partial class MapperRcdEntry
     [DataField]
     public bool Rotatable;
 
+    /// <summary>
+    /// For <see cref="MapperRcdMode.Deconstruct"/>: what kind of thing the entry removes. Any removes the
+    /// topmost structure.
+    /// </summary>
+    [DataField]
+    public MapperRcdFilter Filter;
+
     public string EffectiveId => Id ?? Prototype ?? string.Empty;
+}
+
+public enum MapperRcdFilter : byte
+{
+    Any,
+    Walls,
+    Windows,
+    Doors,
+    Pipes,
+
+    /// <summary>
+    /// Catwalks first, then the tile itself: a covering floor is peeled down to plating, plating is removed last.
+    /// </summary>
+    Floors,
 }
 
 public enum MapperRcdMode : byte

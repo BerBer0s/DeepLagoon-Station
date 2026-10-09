@@ -18,11 +18,6 @@ public sealed partial class MapperRcdComponent : Component
     public string? SelectedEntry;
 
     /// <summary>
-    /// Id of the catalog entry that removes structures. The secondary button always paints with it.
-    /// </summary>
-    public const string DeconstructEntryId = "MapperDeconstruct";
-
-    /// <summary>
     /// Maximum distance in tiles between the user and a painted tile. Obstructions are not checked.
     /// </summary>
     [DataField]

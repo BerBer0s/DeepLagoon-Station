@@ -8,8 +8,12 @@ using Content.Shared.Database;
 using Content.Shared.Doors.Components;
 using Content.Shared.Hands.Components;
 using Content.Shared.Item;
+using Content.Shared.Maps;
+using Content.Shared.Mobs.Components;
 using Content.Shared.NodeContainer;
 using Content.Shared.Physics;
+using Content.Shared.Popups;
+using Content.Shared.Tag;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Network;
@@ -27,10 +31,11 @@ namespace Content.Server._DeepLagoon.Mapping;
 ///
 /// Replacement rule, per tile. Occupants are the uncontained entities touching the tile:
 ///  - Pipe: has a pipe node or <see cref="AtmosPipeLayersComponent"/>; its layer is the component layer (primary without one).
-///  - Edge: its prototype is an edge-slot catalog entry (directional windows, railings).
+///  - Edge: its prototype is an edge-slot catalog entry (directional windows).
 ///  - Structure: anchored and (is an airlock, or its prototype is a structure-slot catalog entry, or it has a hard
 ///    fixture whose layer contains both HighImpassable and MidImpassable: walls, windows, grilles, diagonals).
-///  - Blocker: anything else with a hard fixture, and every item (machines, mobs, tables, firelocks...).
+///  - Blocker: every item and mob, and anything else with a hard fixture on a layer that stops walking
+///    (Impassable, High, Mid or Low: machines, tables, crates...).
 ///  - Everything else (cables, wall lights without hard fixtures) is ignored.
 /// A structure entry replaces structures and edges and is skipped if the tile has a blocker.
 /// An edge entry replaces edges facing the same way and is skipped if the tile has a structure or a blocker.
@@ -44,7 +49,15 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
     /// <summary>
     /// Tiles a single session may paint per second, so a modified client cannot flood the server.
     /// </summary>
-    private const int MaxCellsPerSecond = 3000;
+    private const int MaxCellsPerSecond = 8192;
+
+    /// <summary>
+    /// Minimum time between two warning popups to the same user.
+    /// </summary>
+    private static readonly TimeSpan WarnInterval = TimeSpan.FromSeconds(1.5);
+
+    private static readonly ProtoId<TagPrototype> CatwalkTag = "Catwalk";
+    private const string PlatingTile = "Plating";
 
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private ISharedAdminLogManager _adminLogger = default!;
@@ -55,8 +68,13 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
     [Dependency] private SharedTransformSystem _transform = default!;
     [Dependency] private ActionBlockerSystem _actionBlocker = default!;
     [Dependency] private SharedAtmosPipeLayersSystem _pipeLayers = default!;
+    [Dependency] private SharedPopupSystem _popup = default!;
+    [Dependency] private TagSystem _tags = default!;
+    [Dependency] private TurfSystem _turf = default!;
 
     private readonly Dictionary<NetUserId, (TimeSpan WindowStart, int Used)> _budgets = new();
+    private readonly Dictionary<NetUserId, TimeSpan> _lastWarning = new();
+    private EntityUid? _lastBlocker;
     private readonly HashSet<EntityUid> _intersecting = new();
     private readonly List<(EntityUid Uid, Kind Kind, AtmosPipeLayer Layer)> _occupants = new();
 
@@ -75,6 +93,7 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         Placed,
         Replaced,
         Removed,
+        Blocked,
     }
 
     public override void Initialize()
@@ -126,18 +145,26 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         var placed = 0;
         var replaced = 0;
         var removed = 0;
+        var blocked = 0;
+        var outOfRange = 0;
+        EntityUid? blocker = null;
 
         foreach (var cell in ev.Cells)
         {
             var cellPos = _map.GridTileToWorldPos(gridUid, grid, cell);
             if ((cellPos - userPos).LengthSquared() > rangeSquared)
+            {
+                outOfRange++;
                 continue;
+            }
+
+            _lastBlocker = null;
 
             var result = entry.Mode switch
             {
                 MapperRcdMode.Tile => PaintTile(gridUid, grid, cell, entry),
                 MapperRcdMode.Entity => PaintEntity(gridUid, grid, cell, entry, direction, ev.PipeLayer),
-                MapperRcdMode.Deconstruct => Deconstruct(gridUid, cell),
+                MapperRcdMode.Deconstruct => Deconstruct(gridUid, grid, cell, entry.Filter),
                 _ => CellResult.Skipped,
             };
 
@@ -152,14 +179,42 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
                 case CellResult.Removed:
                     removed++;
                     break;
+                case CellResult.Blocked:
+                    blocked++;
+                    blocker ??= _lastBlocker;
+                    break;
             }
         }
 
         if (placed + replaced + removed == 0)
+        {
+            Warn(args.SenderSession, user, blocked, blocker, outOfRange, rcd.Range);
             return;
+        }
 
         _adminLogger.Add(LogType.RCD, LogImpact.Low,
             $"{ToPrettyString(user):user} used mapper RCD ({entry.EffectiveId}) on grid {ToPrettyString(gridUid)}: {ev.Cells.Count} cells, placed {placed}, replaced {replaced}, removed {removed}");
+    }
+
+    /// <summary>
+    /// Tells the user why a whole batch did nothing, so a silent skip is never a mystery.
+    /// </summary>
+    private void Warn(ICommonSession session, EntityUid user, int blocked, EntityUid? blocker, int outOfRange, float range)
+    {
+        if (blocked == 0 && outOfRange == 0)
+            return;
+
+        var now = _timing.CurTime;
+        if (_lastWarning.TryGetValue(session.UserId, out var last) && now - last < WarnInterval)
+            return;
+
+        _lastWarning[session.UserId] = now;
+
+        var message = blocked > 0 && blocker != null
+            ? Loc.GetString("mapper-rcd-blocked", ("what", Name(blocker.Value)))
+            : Loc.GetString("mapper-rcd-out-of-range", ("range", (int) range));
+
+        _popup.PopupEntity(message, user, user);
     }
 
     private bool TrySpendBudget(ICommonSession session, int cells)
@@ -230,18 +285,18 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
 
         GatherOccupants(gridUid, cell);
 
-        var hasBlocker = false;
-        var hasStructure = false;
+        EntityUid? blocker = null;
+        EntityUid? structure = null;
 
         foreach (var (uid, kind, layer) in _occupants)
         {
             switch (kind)
             {
                 case Kind.Blocker:
-                    hasBlocker = true;
+                    blocker ??= uid;
                     break;
                 case Kind.Structure:
-                    hasStructure = true;
+                    structure ??= uid;
                     break;
             }
 
@@ -252,11 +307,17 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
             }
         }
 
-        switch (entry.Slot)
+        var stopper = entry.Slot switch
         {
-            case MapperRcdSlot.Structure when hasBlocker:
-            case MapperRcdSlot.Edge when hasBlocker || hasStructure:
-                return CellResult.Skipped;
+            MapperRcdSlot.Structure => blocker,
+            MapperRcdSlot.Edge => blocker ?? structure,
+            _ => null,
+        };
+
+        if (stopper != null)
+        {
+            _lastBlocker = stopper;
+            return CellResult.Blocked;
         }
 
         var replaced = false;
@@ -285,10 +346,13 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
     }
 
     /// <summary>
-    /// Removes at most one structure from the tile: structures and edges first, then any other anchored
-    /// entity. Mobs, items and tiles are never touched. Among equals the most recently created one goes first.
+    /// Removes at most one thing from the tile. Mobs, items and (except for the floor filter) tiles are never touched.
+    /// Without a filter structures and edges go first, then any other anchored entity. With a filter only
+    /// things of that kind qualify; the floor filter takes catwalks first and then peels the tile itself:
+    /// a covering floor becomes plating, plating (or any subfloor tile) becomes empty space.
+    /// Among equals the most recently created entity goes first.
     /// </summary>
-    private CellResult Deconstruct(EntityUid gridUid, Vector2i cell)
+    private CellResult Deconstruct(EntityUid gridUid, MapGridComponent grid, Vector2i cell, MapperRcdFilter filter)
     {
         _intersecting.Clear();
         _lookup.GetLocalEntitiesIntersecting(gridUid, cell, _intersecting, -0.05f, LookupFlags.Uncontained);
@@ -298,8 +362,16 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
 
         foreach (var uid in _intersecting)
         {
-            if (IsGone(uid) || !Transform(uid).Anchored || HasComp<ItemComponent>(uid))
+            if (IsGone(uid) || !Transform(uid).Anchored || HasComp<ItemComponent>(uid) || HasComp<MobStateComponent>(uid))
                 continue;
+
+            if (filter != MapperRcdFilter.Any)
+            {
+                if (GetKind(uid) == filter && (primary == null || uid.Id > primary.Value.Id))
+                    primary = uid;
+
+                continue;
+            }
 
             var kind = Classify(uid, out _);
 
@@ -315,11 +387,77 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         }
 
         var target = primary ?? secondary;
-        if (target == null)
+        if (target != null)
+        {
+            QueueDel(target.Value);
+            return CellResult.Removed;
+        }
+
+        return filter == MapperRcdFilter.Floors ? PeelTile(gridUid, grid, cell) : CellResult.Skipped;
+    }
+
+    private CellResult PeelTile(EntityUid gridUid, MapGridComponent grid, Vector2i cell)
+    {
+        var tileRef = _map.GetTileRef(gridUid, grid, cell);
+        if (tileRef.Tile.IsEmpty)
             return CellResult.Skipped;
 
-        QueueDel(target.Value);
+        var def = _turf.GetContentTileDefinition(tileRef);
+        if (def.Indestructible)
+            return CellResult.Skipped;
+
+        var next = !def.IsSubFloor && _tileDefs.TryGetDefinition(PlatingTile, out var plating)
+            ? new Tile(plating.TileId)
+            : Tile.Empty;
+
+        _map.SetTile(gridUid, grid, cell, next);
         return CellResult.Removed;
+    }
+
+    /// <summary>
+    /// The kind of thing an entity is for filtered deletion: the catalog decides if it lists the prototype,
+    /// otherwise doors, pipes and structures are told apart by their components and collision layers.
+    /// </summary>
+    private MapperRcdFilter GetKind(EntityUid uid)
+    {
+        var protoId = MetaData(uid).EntityPrototype?.ID;
+        var listed = protoId == null ? MapperRcdFilter.Any : GetProtoFilter(protoId);
+
+        if (listed != MapperRcdFilter.Any)
+            return listed;
+
+        if (HasComp<DoorComponent>(uid))
+            return MapperRcdFilter.Doors;
+
+        if (_tags.HasTag(uid, CatwalkTag))
+            return MapperRcdFilter.Floors;
+
+        switch (Classify(uid, out _))
+        {
+            case Kind.Pipe:
+                return MapperRcdFilter.Pipes;
+            case Kind.Edge:
+                return MapperRcdFilter.Windows;
+            case Kind.Structure:
+                // Walls stop light, glass does not.
+                return HasOpaqueFixture(uid) ? MapperRcdFilter.Walls : MapperRcdFilter.Windows;
+            default:
+                return MapperRcdFilter.Any;
+        }
+    }
+
+    private bool HasOpaqueFixture(EntityUid uid)
+    {
+        if (!TryComp(uid, out FixturesComponent? fixtures))
+            return false;
+
+        foreach (var fixture in fixtures.Fixtures.Values)
+        {
+            if (fixture.Hard && (fixture.CollisionLayer & (int) CollisionGroup.Opaque) != 0)
+                return true;
+        }
+
+        return false;
     }
 
     private void GatherOccupants(EntityUid gridUid, Vector2i cell)
@@ -386,19 +524,23 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
         if (protoId != null && GetEdgeProtos().Contains(protoId))
             return Kind.Edge;
 
-        var hardFixture = false;
+        var stopsWalking = false;
         var structureLayer = false;
 
         if (TryComp(uid, out FixturesComponent? fixtures))
         {
             const int wallBits = (int) (CollisionGroup.HighImpassable | CollisionGroup.MidImpassable);
+            const int walkBits = (int) (CollisionGroup.Impassable | CollisionGroup.HighImpassable |
+                                        CollisionGroup.MidImpassable | CollisionGroup.LowImpassable);
 
             foreach (var fixture in fixtures.Fixtures.Values)
             {
                 if (!fixture.Hard || fixture.CollisionLayer == 0)
                     continue;
 
-                hardFixture = true;
+                if ((fixture.CollisionLayer & walkBits) != 0)
+                    stopsWalking = true;
+
                 if ((fixture.CollisionLayer & wallBits) == wallBits)
                     structureLayer = true;
             }
@@ -410,6 +552,6 @@ public sealed partial class MapperRcdSystem : SharedMapperRcdSystem
             return Kind.Structure;
         }
 
-        return hardFixture || HasComp<ItemComponent>(uid) ? Kind.Blocker : Kind.Ignore;
+        return stopsWalking || HasComp<ItemComponent>(uid) || HasComp<MobStateComponent>(uid) ? Kind.Blocker : Kind.Ignore;
     }
 }

@@ -158,10 +158,20 @@ public sealed partial class MapperRcdMenu : RadialMenu
         });
     }
 
+    private Texture GetIcon(SpriteSpecifier icon)
+    {
+        var texture = _sprites.Frame0(icon);
+
+        // A tile texture is a strip of square variants side by side; show the first one only.
+        return icon is SpriteSpecifier.Texture && texture.Width > texture.Height
+            ? new AtlasTexture(texture, UIBox2.FromDimensions(Vector2.Zero, new Vector2(texture.Height, texture.Height)))
+            : texture;
+    }
+
     private Texture? GetEntryIcon(MapperRcdEntry entry)
     {
         if (entry.Icon != null)
-            return _sprites.Frame0(entry.Icon);
+            return GetIcon(entry.Icon);
 
         if (entry.Mode != MapperRcdMode.Tile && entry.Prototype != null &&
             _protoManager.TryIndex<EntityPrototype>(entry.Prototype, out var proto))
@@ -175,7 +185,7 @@ public sealed partial class MapperRcdMenu : RadialMenu
     private Texture? GetCategoryIcon(MapperRcdCategoryPrototype category, Dictionary<string, List<MapperRcdCategoryPrototype>> children)
     {
         if (category.Icon != null)
-            return _sprites.Frame0(category.Icon);
+            return GetIcon(category.Icon);
 
         foreach (var entry in category.Entries)
         {

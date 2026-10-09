@@ -1,7 +1,5 @@
 using Content.Client.Construction;
-using Content.Client.ContextMenu.UI;
 using Content.Client.Interaction;
-using Content.Client.Tabletop;
 using Content.Shared._DeepLagoon.Mapping;
 using Content.Shared.Atmos.Components;
 using Content.Shared.Hands.Components;
@@ -21,18 +19,27 @@ using Robust.Shared.Timing;
 namespace Content.Client._DeepLagoon.Mapping;
 
 /// <summary>
-/// Turns holding the use button with a mapper RCD into a brush stroke. Tiles the cursor passes over are
-/// collected (gaps between frames are filled with a Bresenham line), each tile once per stroke, and sent to
-/// the server in batches at most once per tick. The primary button paints with the selected entry, the
-/// secondary button always removes structures. A click is swallowed only while the tool is in the active
-/// hand with an entry selected, so the item never gets in the way of normal interaction otherwise.
+/// Turns holding the use button with a mapper RCD into a stroke. Three kinds, picked by the modifier held
+/// when the button goes down:
+///  - brush (none): tiles the cursor passes over are collected, gaps between frames are filled with a Bresenham
+///    line, each tile once per stroke, and sent in batches at most once per tick;
+///  - line (shift): a straight line from the pressed tile to the tile under the cursor, sent on release;
+///  - area (control): the rectangle between the pressed tile and the cursor tile, sent on release.
+/// A click is swallowed only while the tool is in the active hand with an entry selected, so the item never
+/// gets in the way of normal interaction otherwise. Losing window focus, switching the item or the entry,
+/// or opening the menu drops the stroke without sending anything more.
 /// </summary>
 public sealed partial class MapperRcdBrushSystem : EntitySystem
 {
     /// <summary>
-    /// Upper bound of distinct tiles in one stroke.
+    /// Upper bound of distinct tiles in one brush stroke.
     /// </summary>
     private const int MaxStrokeCells = 16384;
+
+    /// <summary>
+    /// Upper bound of tiles in a line or an area.
+    /// </summary>
+    private const int MaxShapeCells = 4096;
 
     [Dependency] private IPlayerManager _player = default!;
     [Dependency] private IInputManager _input = default!;
@@ -41,6 +48,7 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private IPlacementManager _placement = default!;
     [Dependency] private IPrototypeManager _protos = default!;
+    [Dependency] private IOverlayManager _overlays = default!;
     [Dependency] private InputSystem _inputSystem = default!;
     [Dependency] private MapperRcdSystem _catalog = default!;
     [Dependency] private RCDSystem _rcd = default!;
@@ -48,16 +56,24 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
     [Dependency] private SharedPopupSystem _popup = default!;
     [Dependency] private SharedTransformSystem _transform = default!;
 
+    private enum StrokeKind : byte
+    {
+        Brush,
+        Line,
+        Area,
+    }
+
     private readonly HashSet<Vector2i> _visited = new();
     private readonly List<Vector2i> _pending = new();
+    private readonly List<Vector2i> _shape = new();
 
     private bool _active;
+    private StrokeKind _kind;
     private EntityUid _tool;
     private EntityUid _grid;
-    private BoundKeyFunction _key = EngineKeyFunctions.Use;
-    private string _selected = string.Empty;
     private string _entryId = string.Empty;
     private AtmosPipeLayer _pipeLayer;
+    private Vector2i _start;
     private Vector2i _last;
     private GameTick _lastFlushTick;
 
@@ -69,20 +85,18 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
 
         CommandBinds.Builder
             .BindBefore(EngineKeyFunctions.Use,
-                new PointerInputCmdHandler((in PointerInputCmdHandler.PointerInputCmdArgs args) => OnKey(args, EngineKeyFunctions.Use),
-                    ignoreUp: false, outsidePrediction: true),
+                new PointerInputCmdHandler(OnUse, ignoreUp: false, outsidePrediction: true),
                 typeof(ConstructionSystem), typeof(DragDropSystem))
-            .BindBefore(EngineKeyFunctions.UseSecondary,
-                new PointerInputCmdHandler((in PointerInputCmdHandler.PointerInputCmdArgs args) => OnKey(args, EngineKeyFunctions.UseSecondary),
-                    ignoreUp: false, outsidePrediction: true),
-                typeof(EntityMenuUIController), typeof(TabletopSystem))
             .Register<MapperRcdBrushSystem>();
+
+        _overlays.AddOverlay(new MapperRcdShapeOverlay(this));
     }
 
     public override void Shutdown()
     {
         base.Shutdown();
         CommandBinds.Unregister<MapperRcdBrushSystem>();
+        _overlays.RemoveOverlay<MapperRcdShapeOverlay>();
     }
 
     /// <summary>
@@ -93,29 +107,55 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
         _active = false;
         _visited.Clear();
         _pending.Clear();
+        _shape.Clear();
     }
 
-    private bool OnKey(in PointerInputCmdHandler.PointerInputCmdArgs args, BoundKeyFunction key)
+    /// <summary>
+    /// The tiles of the line or area being dragged, for the preview overlay.
+    /// </summary>
+    public bool TryGetShape(out EntityUid grid, out List<Vector2i> cells)
+    {
+        grid = _grid;
+        cells = _shape;
+        return _active && _kind != StrokeKind.Brush && _shape.Count > 0;
+    }
+
+    private bool OnUse(in PointerInputCmdHandler.PointerInputCmdArgs args)
     {
         switch (args.State)
         {
             case BoundKeyState.Up:
-                if (!_active || _key != key)
-                    return false;
-
-                Flush();
-                CancelStroke();
-                return true;
+                return EndStroke();
 
             case BoundKeyState.Down:
-                return BeginStroke(args, key);
+                return BeginStroke(args);
 
             default:
                 return false;
         }
     }
 
-    private bool BeginStroke(in PointerInputCmdHandler.PointerInputCmdArgs args, BoundKeyFunction key)
+    private bool EndStroke()
+    {
+        if (!_active)
+            return false;
+
+        if (_kind != StrokeKind.Brush && TryComp(_grid, out MapGridComponent? grid))
+        {
+            var mouse = _eye.PixelToMap(_input.MouseScreenPosition);
+            if (mouse.MapId == Transform(_grid).MapID)
+                BuildShape(_map.WorldToTile(_grid, grid, mouse.Position));
+
+            _pipeLayer = ReadPipeLayer(_entryId);
+            _pending.AddRange(_shape);
+        }
+
+        Flush();
+        CancelStroke();
+        return true;
+    }
+
+    private bool BeginStroke(in PointerInputCmdHandler.PointerInputCmdArgs args)
     {
         CancelStroke();
 
@@ -131,17 +171,25 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
 
         _active = true;
         _tool = tool;
-        _key = key;
-        _selected = selected;
-
-        // The secondary button erases whatever entry is selected; pipes remember the layer picked by the cursor.
-        _entryId = key == EngineKeyFunctions.UseSecondary ? MapperRcdComponent.DeconstructEntryId : selected;
-        _pipeLayer = ReadPipeLayer(selected);
+        _entryId = selected;
         _grid = gridData.Value.GridUid;
+        _pipeLayer = ReadPipeLayer(selected);
 
         var world = _transform.ToMapCoordinates(args.Coordinates).Position;
-        _last = _map.WorldToTile(_grid, gridData.Value.Component, world);
-        AddCell(_last);
+        _start = _last = _map.WorldToTile(_grid, gridData.Value.Component, world);
+
+        if (_input.IsKeyDown(Keyboard.Key.Control))
+            _kind = StrokeKind.Area;
+        else if (_input.IsKeyDown(Keyboard.Key.Shift))
+            _kind = StrokeKind.Line;
+        else
+            _kind = StrokeKind.Brush;
+
+        if (_kind == StrokeKind.Brush)
+            AddCell(_last);
+        else
+            BuildShape(_start);
+
         return true;
     }
 
@@ -153,10 +201,10 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
             return;
 
         if (!_clyde.IsFocused ||
-            _inputSystem.CmdStates.GetState(_key) != BoundKeyState.Down ||
+            _inputSystem.CmdStates.GetState(EngineKeyFunctions.Use) != BoundKeyState.Down ||
             !TryGetBrush(out _, out var tool, out var selected) ||
             tool != _tool ||
-            selected != _selected ||
+            selected != _entryId ||
             !TryComp(_grid, out MapGridComponent? grid))
         {
             CancelStroke();
@@ -165,9 +213,16 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
 
         var mouse = _eye.PixelToMap(_input.MouseScreenPosition);
         if (mouse.MapId == Transform(_grid).MapID)
-            AdvanceTo(_map.WorldToTile(_grid, grid, mouse.Position));
+        {
+            var cell = _map.WorldToTile(_grid, grid, mouse.Position);
 
-        if (_timing.CurTick > _lastFlushTick)
+            if (_kind == StrokeKind.Brush)
+                AdvanceTo(cell);
+            else if (cell != _last)
+                BuildShape(cell);
+        }
+
+        if (_kind == StrokeKind.Brush && _timing.CurTick > _lastFlushTick)
             Flush();
     }
 
@@ -208,17 +263,66 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
         return layers.CurrentPipeLayer;
     }
 
+    /// <summary>
+    /// Recomputes the line or area from the pressed tile to <paramref name="end"/>. Cells are ordered so that
+    /// each one touches an earlier one, which matters for floors that grow the grid.
+    /// </summary>
+    private void BuildShape(Vector2i end)
+    {
+        _shape.Clear();
+        _last = end;
+
+        if (_kind == StrokeKind.Line)
+        {
+            _shape.Add(_start);
+            AppendLine(_start, end, _shape, MaxShapeCells);
+            return;
+        }
+
+        var sx = _start.X <= end.X ? 1 : -1;
+        var sy = _start.Y <= end.Y ? 1 : -1;
+        var width = Math.Abs(end.X - _start.X) + 1;
+        var height = Math.Abs(end.Y - _start.Y) + 1;
+
+        for (var j = 0; j < height; j++)
+        {
+            for (var i = 0; i < width; i++)
+            {
+                if (_shape.Count >= MaxShapeCells)
+                    return;
+
+                _shape.Add(new Vector2i(_start.X + i * sx, _start.Y + j * sy));
+            }
+        }
+    }
+
     private void AdvanceTo(Vector2i target)
     {
-        var x = _last.X;
-        var y = _last.Y;
-        var dx = Math.Abs(target.X - x);
-        var dy = -Math.Abs(target.Y - y);
-        var sx = x < target.X ? 1 : -1;
-        var sy = y < target.Y ? 1 : -1;
+        var line = new List<Vector2i>();
+        AppendLine(_last, target, line, MaxStrokeCells);
+
+        foreach (var cell in line)
+        {
+            AddCell(cell);
+        }
+
+        _last = target;
+    }
+
+    /// <summary>
+    /// Appends the tiles after <paramref name="from"/> up to and including <paramref name="to"/>.
+    /// </summary>
+    private static void AppendLine(Vector2i from, Vector2i to, List<Vector2i> cells, int limit)
+    {
+        var x = from.X;
+        var y = from.Y;
+        var dx = Math.Abs(to.X - x);
+        var dy = -Math.Abs(to.Y - y);
+        var sx = x < to.X ? 1 : -1;
+        var sy = y < to.Y ? 1 : -1;
         var err = dx + dy;
 
-        while (x != target.X || y != target.Y)
+        while ((x != to.X || y != to.Y) && cells.Count < limit)
         {
             var e2 = 2 * err;
 
@@ -234,10 +338,8 @@ public sealed partial class MapperRcdBrushSystem : EntitySystem
                 y += sy;
             }
 
-            AddCell(new Vector2i(x, y));
+            cells.Add(new Vector2i(x, y));
         }
-
-        _last = target;
     }
 
     private void AddCell(Vector2i cell)
