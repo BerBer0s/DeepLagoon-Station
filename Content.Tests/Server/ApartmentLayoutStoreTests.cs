@@ -12,7 +12,11 @@ public sealed class ApartmentLayoutStoreTests
     [Test]
     public void ReopeningPreservesDeltaAndStaleRevisionCannotOverwriteIt()
     {
+#if USE_SYSTEM_SQLITE
+        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+#else
         SQLitePCL.Batteries_V2.Init();
+#endif
         var path = Path.Combine(Path.GetTempPath(), $"dl-apartment-test-{Guid.NewGuid():N}.db");
         var owner = Guid.NewGuid();
         try

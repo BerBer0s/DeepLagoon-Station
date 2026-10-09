@@ -29,7 +29,11 @@ public sealed class CurrencyDatabaseTests
     [SetUp]
     public async Task Setup()
     {
+#if USE_SYSTEM_SQLITE
+        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+#else
         SQLitePCL.Batteries_V2.Init();
+#endif
         _path = Path.Combine(Path.GetTempPath(), $"lagoon-currency-{Guid.NewGuid():N}.db");
         _options = new DbContextOptionsBuilder<SqliteServerDbContext>()
             .UseSqlite($"Data Source={_path};Default Timeout=30;Pooling=False").Options;
