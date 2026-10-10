@@ -80,6 +80,21 @@ public static class FuzzySearch
     public const int TierExtra = 4;
     public const int TierFuzzy = 5;
 
+    /// <summary>
+    /// Lists longer than this are matched in chunks over several frames (<see cref="FuzzyBatchSearch{T}"/>);
+    /// shorter ones are matched at once. The C# side only: the TypeScript twin has no batches.
+    /// </summary>
+    public const int BatchListThreshold = 2000;
+
+    /// <summary>A batched search waits this long after the last change of the text before it starts.</summary>
+    public const int BatchSettleDelayMs = 100;
+
+    /// <summary>The time one frame may spend on batched searches.</summary>
+    public const int BatchBudgetMs = 2;
+
+    /// <summary>Items matched between two looks at the clock.</summary>
+    public const int BatchChunkSize = 128;
+
     private const int TierMultiplier = 16;
     private const int MaxCost = TierMultiplier - 1;
     private const int TextCacheLimit = 65536;
@@ -211,18 +226,23 @@ public static class FuzzySearch
     /// incoming order. An empty query returns the items unchanged, in the same order.
     /// </summary>
     /// <param name="name">The main text of an item; it may also match with typos.</param>
-    /// <param name="extra">An additional text (a description); it matches only as a substring, without typos.</param>
+    /// <param name="extra">An additional text (a description, an id); it matches only as a substring, without typos.</param>
+    /// <param name="extra2">One more additional text, same rules as <paramref name="extra"/>.</param>
     public static List<T> Rank<T>(
         IEnumerable<T> items,
         string? query,
         Func<T, string?> name,
-        Func<T, string?>? extra = null)
+        Func<T, string?>? extra = null,
+        Func<T, string?>? extra2 = null)
     {
-        var matched = Search(items, query, name, extra);
-        if (matched == null)
-            return items.ToList();
+        var list = items as IReadOnlyList<T> ?? items.ToList();
+        var prepared = Prepare(query);
+        if (prepared.IsEmpty)
+            return list.ToList();
 
-        return matched.OrderBy(pair => pair.Rank).Select(pair => pair.Item).ToList();
+        var scan = new FuzzyScan<T>(list, prepared, name, extra, extra2);
+        scan.Step(int.MaxValue);
+        return scan.Ranked();
     }
 
     /// <summary>
@@ -233,54 +253,17 @@ public static class FuzzySearch
         IEnumerable<T> items,
         string? query,
         Func<T, string?> name,
-        Func<T, string?>? extra = null)
+        Func<T, string?>? extra = null,
+        Func<T, string?>? extra2 = null)
     {
-        var matched = Search(items, query, name, extra);
-        if (matched == null)
-            return items.ToList();
-
-        return matched.OrderBy(pair => pair.Index).Select(pair => pair.Item).ToList();
-    }
-
-    // Null for an empty query: everything matches.
-    private static List<(T Item, int Rank, int Index)>? Search<T>(
-        IEnumerable<T> items,
-        string? query,
-        Func<T, string?> name,
-        Func<T, string?>? extra)
-    {
+        var list = items as IReadOnlyList<T> ?? items.ToList();
         var prepared = Prepare(query);
         if (prepared.IsEmpty)
-            return null;
+            return list.ToList();
 
-        var matched = new List<(T Item, int Rank, int Index)>();
-        var rest = new List<(T Item, int Index)>();
-        var index = 0;
-        foreach (var item in items)
-        {
-            var rank = Match(prepared, name(item), false);
-            if (rank == null && extra != null && Match(prepared, extra(item), false) != null)
-                rank = MakeRank(TierExtra, 0);
-
-            if (rank != null)
-                matched.Add((item, rank.Value, index));
-            else
-                rest.Add((item, index));
-
-            index++;
-        }
-
-        if (matched.Count < FuzzyBelowCount && prepared.CanFuzzy)
-        {
-            foreach (var (item, itemIndex) in rest)
-            {
-                var rank = Match(prepared, name(item));
-                if (rank != null)
-                    matched.Add((item, rank.Value, itemIndex));
-            }
-        }
-
-        return matched;
+        var scan = new FuzzyScan<T>(list, prepared, name, extra, extra2);
+        scan.Step(int.MaxValue);
+        return scan.InOrder();
     }
 
     /// <summary>
@@ -315,7 +298,7 @@ public static class FuzzySearch
         return wordLength >= LongWordLength ? 2 : 1;
     }
 
-    private static int MakeRank(int tier, int cost)
+    internal static int MakeRank(int tier, int cost)
     {
         return tier * TierMultiplier + Math.Min(cost, MaxCost);
     }

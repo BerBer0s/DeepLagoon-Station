@@ -9,7 +9,7 @@ namespace Robust.Client.DeepLagoon;
 public interface IDeepLagoonSearch
 {
     /// <summary>Keeps the matching items and orders them best first; an empty query keeps the order.</summary>
-    List<T> Rank<T>(IEnumerable<T> items, string query, Func<T, string?> name, Func<T, string?>? extra);
+    List<T> Rank<T>(IEnumerable<T> items, string query, Func<T, string?> name, Func<T, string?>? extra, Func<T, string?>? extra2);
 }
 
 public static class DeepLagoonSearch

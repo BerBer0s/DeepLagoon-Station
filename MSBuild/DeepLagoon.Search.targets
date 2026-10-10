@@ -38,7 +38,7 @@
                 @"        // DeepLagoon: fuzzy search; the list is already sorted by name, equal ranks keep that order
         if (!string.IsNullOrEmpty(searchStr) && Robust.Client.DeepLagoon.DeepLagoonSearch.Impl is { } fuzzy)
         {
-            var ranked = fuzzy.Rank(_shownEntities, searchStr, prototype => prototype.Name, prototype => prototype.ID + "" "" + prototype.EditorSuffix);
+            var ranked = fuzzy.Rank(_shownEntities, searchStr, prototype => prototype.Name, prototype => prototype.ID, prototype => prototype.EditorSuffix);
             _shownEntities.Clear();
             _shownEntities.AddRange(ranked);
         }
@@ -62,7 +62,7 @@
 
         // DeepLagoon: fuzzy search
         if (!string.IsNullOrEmpty(searchStr) && Robust.Client.DeepLagoon.DeepLagoonSearch.Impl is { } fuzzy)
-            tileDefs = fuzzy.Rank(tileDefs, searchStr, def => Loc.GetString(def.Name), def => def.ID);"
+            tileDefs = fuzzy.Rank(tileDefs, searchStr, def => Loc.GetString(def.Name), def => def.ID, null);"
             }
         };
         var sources = new Dictionary<string, string>();

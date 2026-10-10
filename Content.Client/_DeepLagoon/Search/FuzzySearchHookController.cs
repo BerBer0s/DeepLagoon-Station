@@ -14,8 +14,8 @@ public sealed class FuzzySearchHookController : UIController, IDeepLagoonSearch
         DeepLagoonSearch.Impl = this;
     }
 
-    public List<T> Rank<T>(IEnumerable<T> items, string query, Func<T, string?> name, Func<T, string?>? extra)
+    public List<T> Rank<T>(IEnumerable<T> items, string query, Func<T, string?> name, Func<T, string?>? extra, Func<T, string?>? extra2)
     {
-        return FuzzySearch.Rank(items, query, name, extra);
+        return FuzzySearch.Rank(items, query, name, extra, extra2);
     }
 }
