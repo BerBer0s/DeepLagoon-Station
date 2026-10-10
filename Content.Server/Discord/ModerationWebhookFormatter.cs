@@ -7,8 +7,13 @@ namespace Content.Server.Discord;
 
 public static class ModerationWebhookFormatter
 {
+    public static bool ShouldNotify(ModerationEvent change)
+        => change.Type != NoteType.Note || (!change.Secret && change.Action != "Удалено");
+
     public static List<WebhookPayload> Format(ModerationEvent change, string server, string player, string actor)
     {
+        if (!ShouldNotify(change))
+            return new List<WebhookPayload>();
         var type = change.Type switch
         {
             NoteType.ServerBan => "Бан сервера",

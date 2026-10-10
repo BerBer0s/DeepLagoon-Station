@@ -801,26 +801,26 @@ namespace Content.Server.Database
                 .SingleOrDefaultAsync(r => r.Id == id, cancel);
         }
 
-        public async Task RemoveAdminAsync(NetUserId userId, CancellationToken cancel)
+        public async Task RemoveAdminAsync(NetUserId userId, CancellationToken cancel, string? actorName = null)
         {
             await using var db = await GetDb(cancel);
 
             var admin = await db.DbContext.Admin.SingleAsync(a => a.UserId == userId.UserId, cancel);
             db.DbContext.Admin.Remove(admin);
 
-            await db.DbContext.SaveChangesAsync(cancel);
+            await SaveAdministrationChanges(db.DbContext, actorName, cancel);
         }
 
-        public async Task AddAdminAsync(Admin admin, CancellationToken cancel)
+        public async Task AddAdminAsync(Admin admin, CancellationToken cancel, string? actorName = null)
         {
             await using var db = await GetDb(cancel);
 
             db.DbContext.Admin.Add(admin);
 
-            await db.DbContext.SaveChangesAsync(cancel);
+            await SaveAdministrationChanges(db.DbContext, actorName, cancel);
         }
 
-        public async Task UpdateAdminAsync(Admin admin, CancellationToken cancel)
+        public async Task UpdateAdminAsync(Admin admin, CancellationToken cancel, string? actorName = null)
         {
             await using var db = await GetDb(cancel);
 
@@ -831,7 +831,23 @@ namespace Content.Server.Database
             existing.Deadminned = admin.Deadminned;
             existing.Suspended = admin.Suspended;
 
-            await db.DbContext.SaveChangesAsync(cancel);
+            await SaveAdministrationChanges(db.DbContext, actorName, cancel);
+        }
+
+        private static async Task SaveAdministrationChanges(ServerDbContext db, string? actorName, CancellationToken cancel)
+        {
+            if (actorName == null || db.Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                await db.SaveChangesAsync(cancel);
+                return;
+            }
+            // Transaction-local context is captured by the administration outbox trigger.
+            // It cannot leak to a later request through a pooled connection.
+            await using var transaction = await db.Database.BeginTransactionAsync(cancel);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT set_config('deeplagoon.actor_name', {actorName}, true)", cancel);
+            await db.SaveChangesAsync(cancel);
+            await transaction.CommitAsync(cancel);
         }
 
         public async Task UpdateAdminDeadminnedAsync(NetUserId userId, bool deadminned, CancellationToken cancel)

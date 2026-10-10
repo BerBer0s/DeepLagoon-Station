@@ -54,6 +54,17 @@ public sealed class ModerationWebhookTests
             NoteSeverity.High, false, null, null, null, DateTimeOffset.UtcNow);
         var pending = new ModerationWebhookSystem.Pending(change, "Main", ModerationWebhookFormatter.Format(change, "Main", "Player", "Admin"));
         var saved = Path.Combine(directory, "0000000000000000000-restored.json");
+        var hidden = Path.Combine(directory, "0000000000000000000-hidden.json");
+        var deleted = Path.Combine(directory, "0000000000000000000-deleted.json");
+        // Old versions may have already cached payloads for notes that are now excluded.
+        await File.WriteAllTextAsync(hidden, JsonSerializer.Serialize(pending with
+        {
+            Change = change with { Type = NoteType.Note, Secret = true }
+        }));
+        await File.WriteAllTextAsync(deleted, JsonSerializer.Serialize(pending with
+        {
+            Change = change with { Type = NoteType.Note, Action = "Удалено" }
+        }));
         await File.WriteAllTextAsync(saved, JsonSerializer.Serialize(pending));
         try
         {
@@ -67,7 +78,7 @@ public sealed class ModerationWebhookTests
             await PoolManager.WaitUntil(server, async () =>
             {
                 await Task.Delay(100);
-                return handler.Successes == 1 && !File.Exists(saved);
+                return handler.Successes == 1 && !File.Exists(saved) && !File.Exists(hidden) && !File.Exists(deleted);
             }, maxTicks: 600);
             Assert.That(handler.Requests, Has.Count.EqualTo(2), "429 must retry the saved event.");
             var requests = handler.Requests.ToArray();
@@ -78,8 +89,12 @@ public sealed class ModerationWebhookTests
             await PoolManager.WaitUntil(server, async () =>
             {
                 await database.UpdatePlayerRecordAsync(uid, "WebhookPlayer", IPAddress.Loopback, null);
-                await database.AddAdminNote(null, uid.UserId, TimeSpan.Zero, "live note @everyone", NoteSeverity.High,
+                await database.AddAdminNote(null, uid.UserId, TimeSpan.Zero, "hidden note", NoteSeverity.High,
                     true, uid.UserId, DateTimeOffset.UtcNow, null);
+                Assert.That(Directory.EnumerateFiles(directory, "*.json"), Is.Empty,
+                    "Hidden notes must not be queued for Discord.");
+                await database.AddAdminNote(null, uid.UserId, TimeSpan.Zero, "live note @everyone", NoteSeverity.High,
+                    false, uid.UserId, DateTimeOffset.UtcNow, null);
                 return true;
             });
             await PoolManager.WaitUntil(server, async () =>
@@ -159,7 +174,7 @@ public sealed class ModerationWebhookTests
     {
         var text = "@everyone " + string.Concat(Enumerable.Repeat("длинная заметка 😀 ", 550));
         var change = new ModerationEvent(NoteType.Note, 42, "Изменено", new NetUserId(Guid.NewGuid()),
-            Guid.NewGuid(), text, NoteSeverity.High, true, null, 123, null, DateTimeOffset.UtcNow, "old text");
+            Guid.NewGuid(), text, NoteSeverity.High, false, null, 123, null, DateTimeOffset.UtcNow, "old text");
         var payloads = ModerationWebhookFormatter.Format(change, "Main", "Player", "Admin");
         Assert.That(payloads, Has.Count.GreaterThan(1));
         Assert.That(string.Concat(payloads.Select(p => p.Embeds![0].Description)), Is.EqualTo("**Причина / текст**\n" + text + "\n\n**Предыдущий текст**\nold text"));
@@ -176,5 +191,22 @@ public sealed class ModerationWebhookTests
         Assert.That(restored.Change, Is.EqualTo(change));
         Assert.That(restored.Next, Is.EqualTo(1));
         Assert.That(restored.Payloads, Has.Count.EqualTo(payloads.Count));
+    }
+
+    [TestCase(NoteType.Note, true, "Создано", false)]
+    [TestCase(NoteType.Note, true, "Изменено", false)]
+    [TestCase(NoteType.Note, false, "Удалено", false)]
+    [TestCase(NoteType.Note, true, "Удалено", false)]
+    [TestCase(NoteType.Note, false, "Создано", true)]
+    [TestCase(NoteType.Note, false, "Изменено", true)]
+    [TestCase(NoteType.ServerBan, false, "Снят", true)]
+    [TestCase(NoteType.RoleBan, false, "Снят", true)]
+    public void NotificationPolicy(NoteType type, bool secret, string action, bool expected)
+    {
+        var change = new ModerationEvent(type, 42, action, null, null, "text",
+            NoteSeverity.High, secret, null, null, null, DateTimeOffset.UtcNow);
+        Assert.That(ModerationWebhookFormatter.ShouldNotify(change), Is.EqualTo(expected));
+        Assert.That(ModerationWebhookFormatter.Format(change, "Main", "Player", "Admin").Count > 0,
+            Is.EqualTo(expected));
     }
 }

@@ -57,7 +57,7 @@ public sealed class ModerationWebhookSystem : EntitySystem
 
     private void OnModeration(ModerationEvent change)
     {
-        if (_url.Length == 0 || _outbox == null)
+        if (_url.Length == 0 || _outbox == null || !ModerationWebhookFormatter.ShouldNotify(change))
             return;
         try
         {
@@ -122,6 +122,12 @@ public sealed class ModerationWebhookSystem : EntitySystem
                             // Retain the damaged record for inspection, without blocking following events.
                             File.Move(path, path + ".invalid", true);
                             Log.Error("Invalid moderation outbox record; retained as .invalid.");
+                            continue;
+                        }
+                        // Apply the policy to old outbox entries too, including already formatted payloads.
+                        if (!ModerationWebhookFormatter.ShouldNotify(pending.Change))
+                        {
+                            File.Delete(path);
                             continue;
                         }
                         if (pending.Payloads == null)

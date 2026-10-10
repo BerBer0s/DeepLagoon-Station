@@ -235,9 +235,9 @@ namespace Content.Server.Database
         Task<((Admin, string? lastUserName)[] admins, AdminRank[])> GetAllAdminAndRanksAsync(
             CancellationToken cancel = default);
 
-        Task RemoveAdminAsync(NetUserId userId, CancellationToken cancel = default);
-        Task AddAdminAsync(Admin admin, CancellationToken cancel = default);
-        Task UpdateAdminAsync(Admin admin, CancellationToken cancel = default);
+        Task RemoveAdminAsync(NetUserId userId, CancellationToken cancel = default, string? actorName = null);
+        Task AddAdminAsync(Admin admin, CancellationToken cancel = default, string? actorName = null);
+        Task UpdateAdminAsync(Admin admin, CancellationToken cancel = default, string? actorName = null);
 
         /// <summary>
         /// Update whether an admin has voluntarily deadminned.
@@ -750,22 +750,22 @@ namespace Content.Server.Database
             return RunDbCommand(() => _db.GetAllAdminAndRanksAsync(cancel));
         }
 
-        public Task RemoveAdminAsync(NetUserId userId, CancellationToken cancel = default)
+        public Task RemoveAdminAsync(NetUserId userId, CancellationToken cancel = default, string? actorName = null)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.RemoveAdminAsync(userId, cancel));
+            return RunDbCommand(() => _db.RemoveAdminAsync(userId, cancel, actorName));
         }
 
-        public Task AddAdminAsync(Admin admin, CancellationToken cancel = default)
+        public Task AddAdminAsync(Admin admin, CancellationToken cancel = default, string? actorName = null)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.AddAdminAsync(admin, cancel));
+            return RunDbCommand(() => _db.AddAdminAsync(admin, cancel, actorName));
         }
 
-        public Task UpdateAdminAsync(Admin admin, CancellationToken cancel = default)
+        public Task UpdateAdminAsync(Admin admin, CancellationToken cancel = default, string? actorName = null)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.UpdateAdminAsync(admin, cancel));
+            return RunDbCommand(() => _db.UpdateAdminAsync(admin, cancel, actorName));
         }
 
         public Task UpdateAdminDeadminnedAsync(NetUserId userId, bool deadminned, CancellationToken cancel = default)

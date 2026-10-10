@@ -98,7 +98,7 @@ public sealed partial class DiscordLinkSystem
                     id = n.Id, message = n.Message, severity = n.Severity.ToString(), secret = n.Secret,
                     expires = n.ExpirationTime, author = n.CreatedBy?.LastSeenUserName, created = n.CreatedAt }).ToArray() });
         if (request.Operation is "staff_add" or "staff_remove")
-            return await ChangeDiscordStaff(request, uid, admin);
+            return await ChangeDiscordStaff(request, uid, admin, request.ActorName ?? author.LastSeenUserName);
 
         var severityName = request.Severity == "Default" ? request.Operation switch
         {
@@ -163,7 +163,7 @@ public sealed partial class DiscordLinkSystem
         return grant != null && grant.Value.RankId == admin.AdminRankId ? grant.Value.Kind : null;
     }
 
-    private async Task<ApiResult> ChangeDiscordStaff(ModerationRequest request, NetUserId uid, DbAdmin? admin)
+    private async Task<ApiResult> ChangeDiscordStaff(ModerationRequest request, NetUserId uid, DbAdmin? admin, string actorName)
     {
         if (request.Kind is not ("trial" or "admin" or "mapper")) return ModerationError("invalid_request");
         var current = ManagedKind(admin);
@@ -173,7 +173,7 @@ public sealed partial class DiscordLinkSystem
         if (request.Operation == "staff_remove")
         {
             if (admin != null && current != request.Kind) return ModerationError("staff_conflict");
-            if (admin != null) await _database.RemoveAdminAsync(uid);
+            if (admin != null) await _database.RemoveAdminAsync(uid, actorName: actorName);
             _store!.RemoveStaffGrant(uid.UserId);
         }
         else
@@ -214,8 +214,8 @@ public sealed partial class DiscordLinkSystem
             var updated = admin ?? new DbAdmin { UserId = uid.UserId, Flags = new List<AdminFlag>() };
             updated.AdminRankId = rank.Id;
             updated.Title = request.Kind switch { "trial" => "Младший администратор", "mapper" => "Маппер", _ => "Game Admin" };
-            if (admin == null) await _database.AddAdminAsync(updated);
-            else await _database.UpdateAdminAsync(updated);
+            if (admin == null) await _database.AddAdminAsync(updated, actorName: actorName);
+            else await _database.UpdateAdminAsync(updated, actorName: actorName);
             _store!.SetStaffGrant(uid.UserId, request.Kind, rank.Id);
         }
         if (_players.TryGetSessionById(uid, out var session)) _admins.ReloadAdmin(session);
@@ -225,5 +225,5 @@ public sealed partial class DiscordLinkSystem
 
     private sealed record ModerationRequest(string Operation, string Uid, string ActorUid,
         string? Message = null, uint Minutes = 0, string Severity = "Medium", string? Job = null,
-        int Id = 0, bool Secret = false, string? Kind = null);
+        int Id = 0, bool Secret = false, string? Kind = null, string? ActorName = null);
 }
