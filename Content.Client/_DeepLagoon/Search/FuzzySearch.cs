@@ -82,7 +82,7 @@ public static class FuzzySearch
 
     private const int TierMultiplier = 16;
     private const int MaxCost = TierMultiplier - 1;
-    private const int TextCacheLimit = 32768;
+    private const int TextCacheLimit = 65536;
 
     private static readonly Dictionary<string, PreparedText> TextCache = new();
 

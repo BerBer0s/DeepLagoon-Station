@@ -37,7 +37,7 @@ export const TIER_FUZZY = 5;
 
 const TIER_MULTIPLIER = 16;
 const MAX_COST = TIER_MULTIPLIER - 1;
-const TEXT_CACHE_LIMIT = 32768;
+const TEXT_CACHE_LIMIT = 65536;
 
 export type PreparedQuery = {
   normalized: string;
