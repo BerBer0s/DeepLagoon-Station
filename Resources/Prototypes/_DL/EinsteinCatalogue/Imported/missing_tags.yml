@@ -1,0 +1,47 @@
+# DeepLagoon: tags that the imported Einstein catalogue entities list in their Tag component but that no prototype defines.
+# An undefined tag is an assert in debug builds, so the entity spawn window crashed while it built the preview of any of them.
+# MagazineMagnumLeverRifle is defined next to its magazines (Fuzzy-Search branch), not here.
+- type: Tag
+  id: CartridgeLightRifle
+
+- type: Tag
+  id: CartridgeMagnum
+
+- type: Tag
+  id: CartridgePistol
+
+- type: Tag
+  id: CartridgeRifle
+
+- type: Tag
+  id: HydroponicsToolClippers
+
+- type: Tag
+  id: Magazine
+
+- type: Tag
+  id: MagazineMagnum
+
+- type: Tag
+  id: MagazinePistol
+
+- type: Tag
+  id: MagazinePistolHighCapacity
+
+- type: Tag
+  id: MagazineUniversalMagnum
+
+- type: Tag
+  id: PlantSampleTakerHighQuality
+
+- type: Tag
+  id: ShellShotgun
+
+- type: Tag
+  id: ShellShotgunLight
+
+- type: Tag
+  id: SpeedLoaderMagnum
+
+- type: Tag
+  id: SpeedLoaderRifleHeavy
