@@ -434,7 +434,16 @@ namespace Content.Server.Lathe
 
             var producing = component.CurrentRecipe ?? component.Queue.FirstOrDefault()?.Recipe; // Frontier: add ?.Recipe
 
-            var state = new LatheUpdateState(GetAvailableRecipes(uid, component), component.Queue, producing, component.Loop, component.SkipBad); // Mono
+            // DeepLagoon: print progress for the UI; only while a recipe is actually being fabricated
+            TimeSpan? productionStart = null;
+            TimeSpan? productionLength = null;
+            if (component.CurrentRecipe != null && TryComp<LatheProducingComponent>(uid, out var producingComp))
+            {
+                productionStart = producingComp.StartTime;
+                productionLength = producingComp.ProductionLength;
+            }
+
+            var state = new LatheUpdateState(GetAvailableRecipes(uid, component), component.Queue, producing, component.Loop, component.SkipBad, productionStart, productionLength); // Mono // DeepLagoon: progress
             _uiSys.SetUiState(uid, LatheUiKey.Key, state);
         }
 
