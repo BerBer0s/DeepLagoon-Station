@@ -6,6 +6,15 @@
   name: revenant
   description: A spooky ghostie.
   components:
+  - type: Psionic
+    removable: false
+    roller: false
+    psychognomicDescriptors:
+    - p-descriptor-vampiric
+  - type: InnatePsionicPowers
+    powersToAdd:
+    - XenoglossyPower
+    - TelepathyPower
   - type: Input
     context: "ghost"
   - type: Spectral

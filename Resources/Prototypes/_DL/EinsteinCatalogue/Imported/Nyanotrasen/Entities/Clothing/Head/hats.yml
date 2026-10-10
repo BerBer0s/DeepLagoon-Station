@@ -6,6 +6,8 @@
   description: Psionically insulates whoevers head is inside it. It has some protection
     from physical damage.
   components:
+  - type: TinfoilHat
+    destroyOnFry: false
   - type: Sprite
     sprite: Nyanotrasen/Clothing/Head/Helmets/insulative_skullcap.rsi
   - type: Clothing

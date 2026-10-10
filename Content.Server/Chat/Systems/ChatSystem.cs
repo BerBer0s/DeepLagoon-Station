@@ -70,6 +70,7 @@ public sealed partial class ChatSystem : SharedChatSystem
     [Dependency] private DiscordChatLink _discordLink = default!;
     [Dependency] private LanguageSystem _language = default!; // Einstein Engines - Language
     [Dependency] private CollectiveMindUpdateSystem _collectiveMind = default!; // Goobstation - Starlight collective mind port
+    [Dependency] private TelepathicChatSystem _telepath = default!;
 
     public const int VoiceRange = 10; // how far voice goes in world units
     public const int WhisperClearRange = 2; // how far whisper goes while still being understandable, in world units
@@ -288,6 +289,9 @@ public sealed partial class ChatSystem : SharedChatSystem
         // Otherwise, send whatever type.
         switch (desiredType)
         {
+            case InGameICChatType.Telepathic:
+                _telepath.SendTelepathicChat(source, message, range == ChatTransmitRange.HideChat);
+                break;
             case InGameICChatType.Speak:
                 SendEntitySpeak(source, message, range, nameOverride, language, hideLog, ignoreActionBlocker); // Einstein Engines - Language
                 break;

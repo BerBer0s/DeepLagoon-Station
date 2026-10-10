@@ -4,6 +4,14 @@
   name: anomaly
   description: An impossible object. Should you be standing this close to it?
   components:
+  - type: Psionic
+    removable: false
+    roller: false
+  - type: InnatePsionicPowers
+    powersToAdd:
+    - TelepathyPower
+  - type: GlimmerSource
+    active: false
   - type: Anomaly
     offset: 0, 0.15
     pulseSound:
@@ -64,6 +72,9 @@
   parent: BaseAnomaly
   suffix: Pyroclastic
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-pyroclastic-feedback
   - type: AmbientSound
     volume: 5
     range: 5
@@ -121,6 +132,9 @@
   parent: BaseAnomaly
   suffix: Gravity
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-gravity-feedback
   - type: Anomaly
     corePrototype: AnomalyCoreGravity
     coreInertPrototype: AnomalyCoreGravityInert
@@ -153,6 +167,9 @@
   parent: BaseAnomaly
   suffix: Electricity
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-electricity-feedback
   - type: Anomaly
     corePrototype: AnomalyCoreElectricity
     coreInertPrototype: AnomalyCoreElectricityInert
@@ -176,6 +193,9 @@
   parent: BaseAnomaly
   suffix: Flesh
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-flesh-feedback
   - type: Anomaly
     corePrototype: AnomalyCoreFlesh
     coreInertPrototype: AnomalyCoreFleshInert
@@ -269,6 +289,9 @@
   parent: BaseAnomaly
   suffix: Bluespace
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-bluespace-feedback
   - type: Sprite
     layers:
     - state: anom4
@@ -316,6 +339,9 @@
   parent: BaseAnomaly
   suffix: Ice
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-ice-feedback
   - type: Sprite
     sprite: Structures/Specific/Anomalies/ice_anom.rsi
     layers:
@@ -371,6 +397,9 @@
   abstract: true
   suffix: Rock
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-rock-feedback
   - type: Anomaly
     corePrototype: AnomalyCoreRock
     coreInertPrototype: AnomalyCoreRockInert
@@ -611,6 +640,9 @@
   parent: BaseAnomaly
   suffix: Flora
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-flora-feedback
   - type: Sprite
     drawdepth: Mobs
     sprite: Structures/Specific/Anomalies/flora_anom.rsi
@@ -710,6 +742,9 @@
   parent: BaseAnomaly
   suffix: Liquid
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-liquid-feedback
   - type: Sprite
     sprite: Structures/Specific/Anomalies/liquid_anom.rsi
     layers:
@@ -823,6 +858,9 @@
   parent: BaseAnomaly
   suffix: Shadow
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-shadow-feedback
   - type: Sprite
     sprite: Structures/Specific/Anomalies/shadow_anom.rsi
     layers:
@@ -885,6 +923,9 @@
   parent: BaseAnomaly
   suffix: Tech
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-tech-feedback
   - type: Sprite
     sprite: Structures/Specific/Anomalies/tech_anom.rsi
     layers:
@@ -945,6 +986,9 @@
   parent: BaseAnomaly
   suffix: Santa
   components:
+  - type: Psionic
+    assayFeedback:
+    - anomaly-santa-feedback
   - type: Sprite
     drawdepth: Mobs
     sprite: Structures/Specific/Anomalies/santa_anom.rsi

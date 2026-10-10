@@ -148,6 +148,7 @@ public sealed partial class ThirstSystem : EntitySystem
 
     private void UpdateEffects(EntityUid uid, ThirstComponent component)
     {
+        RaiseLocalEvent(uid, new Content.Shared.Mood.MoodEffectEvent("Thirst" + component.CurrentThirstThreshold));
         if (IsMovementThreshold(component.LastThirstThreshold) != IsMovementThreshold(component.CurrentThirstThreshold) &&
                 TryComp(uid, out MovementSpeedModifierComponent? movementSlowdownComponent))
         {

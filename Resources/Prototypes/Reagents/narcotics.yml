@@ -44,6 +44,8 @@
             Asphyxiation: 2
     Narcotic:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: StrongStimulant
       - !type:MovespeedModifier
         walkSpeedModifier: 1.25
         sprintSpeedModifier: 1.25
@@ -95,6 +97,8 @@
   metabolisms:
     Narcotic:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: StrongStimulant
       - !type:HealthChange
         conditions:
         - !type:OrganType # Goobstation - Yowie
@@ -172,6 +176,8 @@
     Narcotic:
       metabolismRate: 1.0
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: StrongStimulant
       - !type:HealthChange
         conditions:
         - !type:OrganType # Goobstation - Yowie
@@ -304,6 +310,8 @@
   metabolisms:
     Narcotic:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: NicotineBenefit
       - !type:HealthChange
         conditions:
         - !type:OrganType # Goobstation - Yowie
@@ -374,6 +382,13 @@
   metabolisms:
     Narcotic:
       effects:
+      - !type:ChemRerollPsionic
+        conditions:
+        - !type:ReagentThreshold
+          reagent: SpaceDrugs
+          min: 15
+      - !type:ChemAddMoodlet
+        moodPrototype: SpaceDrugsBenefit
       - !type:HealthChange
         conditions:
         - !type:OrganType # Goobstation - Yowie
@@ -529,6 +544,8 @@
   metabolisms:
     Narcotic:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: TearGasEffect
       - !type:PopupMessage
         type: Local
         probability: 0.08
@@ -573,6 +590,8 @@
   metabolisms:
     Narcotic:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: PsicodineEffect
       - !type:HealthChange
         conditions:
         - !type:OrganType # Goobstation - Yowie

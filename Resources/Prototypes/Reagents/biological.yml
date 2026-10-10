@@ -16,6 +16,11 @@
   metabolisms:
     Drink:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: DrankBlood
+        conditions:
+        - !type:OrganType
+          type: Human
       - !type:SatiateThirst
         factor: 1.0
         conditions:
@@ -141,6 +146,8 @@
         factor: -0.5
     Poison:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: DrankZombieBlood
       - !type:HealthChange
         conditions:
         - !type:OrganType # Goobstation - Yowie
@@ -222,6 +229,8 @@
   metabolisms:
     Drink:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: DrankVomit
       - !type:SatiateThirst
         factor: 0.5
       - !type:AdjustReagent

@@ -1,3 +1,4 @@
+using Content.Shared.Mood;
 using Content.Server.Administration.Logs;
 using Content.Server.Antag;
 using Content.Server.GameTicking.Rules.Components;
@@ -139,6 +140,7 @@ public sealed partial class TraitorRuleSystem : GameRuleSystem<TraitorRuleCompon
 
         Log.Debug($"MakeTraitor {ToPrettyString(traitor)} - Adding TraitorMind");
         component.TraitorMinds.Add(mindId);
+        RaiseLocalEvent(traitor, new MoodEffectEvent("TraitorFocused"));
 
         // Assign briefing
         //Since this provides neither an antag/job prototype, nor antag status/roletype,

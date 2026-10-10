@@ -1,0 +1,12 @@
+- type: shader
+  id: Ethereal
+  kind: source
+  path: "/Textures/Shaders/ethereal.swsl"
+
+- type: shader
+  id: SaturationScale
+  kind: source
+  path: "/Textures/Shaders/saturationscale.swsl"
+
+  # Flight shaders
+

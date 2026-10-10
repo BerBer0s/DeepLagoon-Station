@@ -129,6 +129,8 @@
   metabolisms:
     Food:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: SaltyEffect
       - !type:SatiateHunger
         factor: 0.5
       - !type:SatiateThirst
@@ -161,6 +163,8 @@
   metabolisms:
     Food:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: SaltyEffect
       # eating salt on its own kinda sucks, kids
       - !type:SatiateThirst
         factor: -0.5
@@ -181,6 +185,8 @@
     Food:
       # 12 diona blood for 1 unit of syrup, this stuff better be worthwhile.
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: SweetenerEffect
       - !type:SatiateHunger
         factor: 6.0 #Stronger than cookedramen
   footstepSound:

@@ -9,6 +9,9 @@ namespace Content.Server.NPC.Components;
 [RegisterComponent, Access(typeof(NPCRetaliationSystem))]
 public sealed partial class NPCRetaliationComponent : Component
 {
+    [DataField]
+    public bool RetaliateFriendlies;
+
     /// <summary>
     /// How long after being attacked will an NPC continue to be aggressive to the attacker for.
     /// </summary>

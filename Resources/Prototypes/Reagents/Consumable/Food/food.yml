@@ -78,6 +78,8 @@
   metabolisms:
     Food:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: SweetenerEffect
       - !type:SatiateHunger
         conditions:
         - !type:ReagentThreshold #Only satiates when eaten with nutriment

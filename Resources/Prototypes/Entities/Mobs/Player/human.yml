@@ -80,6 +80,8 @@
   parent: MobHuman
   id: MobHumanNukeOp
   components:
+  - type: Psionic
+    powerRollMultiplier: 7
   - type: NukeOperative
   - type: RandomHumanoidAppearance
 
@@ -89,6 +91,8 @@
   id: MobHumanLoneNuclearOperative
   name: Lone Operative
   components:
+  - type: Psionic
+    powerRollMultiplier: 7
   - type: RandomHumanoidAppearance
     randomizeName: false
   - type: NukeOperative

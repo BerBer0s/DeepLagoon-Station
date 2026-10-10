@@ -3,7 +3,7 @@
 using Content.Shared.Damage;
 using Content.Shared.Damage.Components;
 using Content.Shared.Mobs.Systems;
-//using Content.Shared.Mood; // Frontier
+using Content.Shared.Mood;
 using Robust.Shared.Configuration;
 using Robust.Shared.Physics.Components;
 using CCVars = Content.Shared._EE.CCVar.EECCVars; // Frontier
@@ -333,19 +333,21 @@ public sealed partial class ContestsSystem : EntitySystem
     /// <remarks>
     ///     bypassClamp is a deprecated input intended for supporting legacy Nyanotrasen systems. Do not use it if you don't know what you're doing.
     /// </remarks>
-    //public float MoodContest(EntityUid performer, bool bypassClamp = false, float rangeFactor = 1f)
-    //{
-    //    if (!_cfg.GetCVar(CCVars.DoContestsSystem)
-    //        || !_cfg.GetCVar(CCVars.DoMoodContests)
-    //        || !TryComp<NetMoodComponent>(performer, out var mood))
-    //        return 1f;
-    //
-    //    return ContestClamp(ContestClampOverride(bypassClamp)
-    //        ? mood.CurrentMoodLevel / mood.NeutralMoodThreshold
-    //        : Math.Clamp(mood.CurrentMoodLevel / mood.NeutralMoodThreshold,
-    //            1 - _cfg.GetCVar(CCVars.MassContestsMaxPercentage) * rangeFactor,
-    //            1 + _cfg.GetCVar(CCVars.MassContestsMaxPercentage) * rangeFactor));
-    //}
+    public float MoodContest(EntityUid performer, bool bypassClamp = false, float rangeFactor = 1f)
+    {
+        if (!_cfg.GetCVar(CCVars.DoContestsSystem)
+            || !_cfg.GetCVar(CCVars.DoMoodContests)
+            || !_cfg.GetCVar(Content.Shared.CCVar.CCVars.MoodEnabled)
+            || !TryComp<NetMoodComponent>(performer, out var mood)
+            || mood.NeutralMoodThreshold <= 0)
+            return 1f;
+
+        return ContestClamp(ContestClampOverride(bypassClamp)
+            ? Math.Max(mood.CurrentMoodLevel, 1f) / mood.NeutralMoodThreshold
+            : Math.Clamp(Math.Max(mood.CurrentMoodLevel, 1f) / mood.NeutralMoodThreshold,
+                1 - _cfg.GetCVar(CCVars.MassContestsMaxPercentage) * rangeFactor,
+                1 + _cfg.GetCVar(CCVars.MassContestsMaxPercentage) * rangeFactor));
+    }
 
     /// <summary>
     ///     Outputs the ratio of mood level between two Entities.
@@ -353,20 +355,22 @@ public sealed partial class ContestsSystem : EntitySystem
     /// <remarks>
     ///     bypassClamp is a deprecated input intended for supporting legacy Nyanotrasen systems. Do not use it if you don't know what you're doing.
     /// </remarks>
-    //public float MoodContest(EntityUid performer, EntityUid target, bool bypassClamp = false, float rangeFactor = 1f)
-    //{
-    //    if (!_cfg.GetCVar(CCVars.DoContestsSystem)
-    //        || !_cfg.GetCVar(CCVars.DoMoodContests)
-    //        || !TryComp<NetMoodComponent>(performer, out var performerMood)
-    //        || !TryComp<NetMoodComponent>(target, out var targetMood))
-    //        return 1f;
-    //
-    //    return ContestClamp(ContestClampOverride(bypassClamp)
-    //        ? performerMood.CurrentMoodLevel / targetMood.CurrentMoodLevel
-    //        : Math.Clamp(performerMood.CurrentMoodLevel / targetMood.CurrentMoodLevel,
-    //            1 - _cfg.GetCVar(CCVars.MassContestsMaxPercentage) * rangeFactor,
-    //            1 + _cfg.GetCVar(CCVars.MassContestsMaxPercentage) * rangeFactor));
-    //}
+    public float MoodContest(EntityUid performer, EntityUid target, bool bypassClamp = false, float rangeFactor = 1f)
+    {
+        if (!_cfg.GetCVar(CCVars.DoContestsSystem)
+            || !_cfg.GetCVar(CCVars.DoMoodContests)
+            || !_cfg.GetCVar(Content.Shared.CCVar.CCVars.MoodEnabled)
+            || !TryComp<NetMoodComponent>(performer, out var performerMood)
+            || !TryComp<NetMoodComponent>(target, out var targetMood)
+            || targetMood.CurrentMoodLevel <= 0)
+            return 1f;
+
+        return ContestClamp(ContestClampOverride(bypassClamp)
+            ? performerMood.CurrentMoodLevel / targetMood.CurrentMoodLevel
+            : Math.Clamp(performerMood.CurrentMoodLevel / targetMood.CurrentMoodLevel,
+                1 - _cfg.GetCVar(CCVars.MassContestsMaxPercentage) * rangeFactor,
+                1 + _cfg.GetCVar(CCVars.MassContestsMaxPercentage) * rangeFactor));
+    }
 
     #endregion
 

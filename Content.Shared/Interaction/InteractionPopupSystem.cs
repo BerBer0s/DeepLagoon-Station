@@ -103,6 +103,11 @@ public sealed partial class InteractionPopupSystem : EntitySystem
                 Spawn(component.InteractSuccessSpawn, _transform.GetMapCoordinates(uid));
 
             var ev = new InteractionSuccessEvent(user);
+            if (component.InteractSuccessString == "hugging-success-generic")
+                RaiseLocalEvent(target, new Content.Shared.Mood.MoodEffectEvent("BeingHugged"));
+            else if (component.InteractSuccessString?.Contains("petting-success-") == true)
+                RaiseLocalEvent(user, new Content.Shared.Mood.MoodEffectEvent("PetAnimal"));
+
             RaiseLocalEvent(target, ref ev);
         }
         else

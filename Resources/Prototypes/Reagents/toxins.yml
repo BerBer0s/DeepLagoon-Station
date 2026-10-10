@@ -380,6 +380,11 @@
   metabolisms:
     Poison:
       effects:
+      - !type:ChemRemovePsionic
+        conditions:
+        - !type:ReagentThreshold
+          reagent: MindbreakerToxin
+          min: 20
       - !type:GenericStatusEffect
         key: SeeingRainbows
         component: SeeingRainbows
@@ -507,6 +512,11 @@
   metabolisms:
     Medicine:
       effects:
+        - !type:ChemAddMoodlet
+          moodPrototype: RomerolEffect
+          conditions:
+          - !type:ReagentThreshold
+            min: 5
         - !type:CauseZombieInfection
           conditions:
             - !type:ReagentThreshold
@@ -626,6 +636,8 @@
   metabolisms:
     Poison:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: PaxEffect
       - !type:GenericStatusEffect
         key: Pacified
         component: Pacified

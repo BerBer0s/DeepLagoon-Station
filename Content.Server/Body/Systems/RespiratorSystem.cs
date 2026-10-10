@@ -1,3 +1,4 @@
+using Content.Shared.Mood;
 using Content.Server.Administration.Logs;
 using Content.Server.Atmos.EntitySystems;
 using Content.Server.Body.Components;
@@ -296,6 +297,7 @@ public sealed partial class RespiratorSystem : EntitySystem
             foreach (var entity in organs)
             {
                 _alertsSystem.ShowAlert(ent, entity.Comp1.Alert);
+                RaiseLocalEvent(ent, new MoodEffectEvent("Suffocating"));
             }
         }
 
@@ -312,6 +314,7 @@ public sealed partial class RespiratorSystem : EntitySystem
         foreach (var entity in organs)
         {
             _alertsSystem.ClearAlert(ent, entity.Comp1.Alert);
+            RaiseLocalEvent(ent, new MoodRemoveEffectEvent("Suffocating"));
         }
 
         _damageableSys.TryChangeDamage(ent, ent.Comp.DamageRecovery);

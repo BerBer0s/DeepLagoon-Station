@@ -135,6 +135,7 @@ public sealed partial class HungerSystem : EntitySystem
             return;
 
         component.CurrentThreshold = calculatedHungerThreshold;
+        RaiseLocalEvent(uid, new Content.Shared.Mood.MoodEffectEvent("Hunger" + component.CurrentThreshold));
         DoHungerThresholdEffects(uid, component);
     }
 

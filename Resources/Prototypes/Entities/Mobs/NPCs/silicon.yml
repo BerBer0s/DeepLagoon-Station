@@ -3,6 +3,7 @@
   abstract: true
   id: MobSiliconBase
   components:
+  - type: PsionicInsulation
   - type: LagCompensation
   - type: Reactive
     groups:

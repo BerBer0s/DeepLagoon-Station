@@ -497,10 +497,12 @@ namespace Content.Server.Atmos.EntitySystems
                 if (!flammable.OnFire)
                 {
                     _alertsSystem.ClearAlert(uid, flammable.FireAlert);
+                    RaiseLocalEvent(uid, new Content.Shared.Mood.MoodRemoveEffectEvent("OnFire"));
                     continue;
                 }
 
                 _alertsSystem.ShowAlert(uid, flammable.FireAlert);
+                RaiseLocalEvent(uid, new Content.Shared.Mood.MoodEffectEvent("OnFire"));
 
                 if (flammable.FireStacks > 0)
                 {

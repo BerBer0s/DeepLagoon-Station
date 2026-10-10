@@ -4,6 +4,7 @@
   text: "/ServerInfo/Guidebook/Science/Science.xml"
   children:
   - Technologies
+  - Psionics
   - AnomalousResearch
   - Xenoarchaeology
   - Robotics

@@ -4,6 +4,10 @@
   id: MobBatRemilia
   description: The chaplain's familiar. Likes fruit.
   components:
+  - type: InnatePsionicPowers
+    powersToAdd:
+    - TelepathyPower
+    - XenoglossyPower
   - type: GhostRole
     makeSentient: true
     allowMovement: true
@@ -39,6 +43,12 @@
   id: MobCorgiCerberus
   description: This pupper is not wholesome.
   components:
+  - type: Psionic
+    removable: false
+    roller: false
+  - type: InnatePsionicPowers
+    powersToAdd:
+    - TelepathyPower
   - type: GhostRole
     makeSentient: true
     allowMovement: true

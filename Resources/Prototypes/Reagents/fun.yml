@@ -68,6 +68,8 @@
   metabolisms:
     Poison:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: BuzzochloricBeesEffect
       - !type:PopupMessage
         type: Local
         visualType: MediumCaution
@@ -211,6 +213,8 @@
     Poison:
       metabolismRate : 3.00
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: LacerinolEffect
       - !type:HealthChange
         damage:
           types:

@@ -1,3 +1,4 @@
+using Content.Shared.Mood;
 using Content.Server.Bible.Components;
 using Content.Server.Chemistry.EntitySystems; // Frontier
 using Content.Server.Ghost.Roles.Events;
@@ -179,6 +180,7 @@ namespace Content.Server.Bible
 
                 var selfMessage = Loc.GetString(component.LocPrefix + "-heal-success-self", ("target", Identity.Entity(args.Target.Value, EntityManager)), ("bible", uid));
                 _popupSystem.PopupEntity(selfMessage, args.User, args.User, PopupType.Large);
+                RaiseLocalEvent(args.Target.Value, new MoodEffectEvent("GotBlessed"));
                 _audio.PlayPvs(component.HealSoundPath, args.User);
                 _delay.TryResetDelay((uid, useDelay));
             }

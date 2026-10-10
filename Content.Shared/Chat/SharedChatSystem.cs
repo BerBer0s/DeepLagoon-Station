@@ -25,6 +25,7 @@ public abstract partial class SharedChatSystem : EntitySystem
     public const char AdminPrefix = ']';
     public const char WhisperPrefix = ',';
     public const char CollectiveMindPrefix = '+';
+    public const char TelepathicPrefix = '=';
     public const char DefaultChannelKey = 'h';
 
     [ValidatePrototypeId<RadioChannelPrototype>]
@@ -373,7 +374,8 @@ public enum InGameICChatType : byte
     Speak,
     Emote,
     Whisper,
-    CollectiveMind
+    CollectiveMind,
+    Telepathic
 }
 
 /// <summary>

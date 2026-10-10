@@ -250,6 +250,12 @@ public sealed partial class EventManagerSystem : EntitySystem
 
     private bool CanRun(EntityPrototype prototype, StationEventComponent stationEvent, int playerCount, TimeSpan currentTime)
     {
+        if (prototype.TryGetComponent<Content.Server.Psionics.Glimmer.GlimmerEventComponent>(out var glimmerEvent, EntityManager.ComponentFactory)
+            && (!_configurationManager.GetCVar(CCVars.GlimmerEnabled)
+                || EntityManager.System<Content.Shared.Psionics.Glimmer.GlimmerSystem>().GlimmerOutput < glimmerEvent.MinimumGlimmer
+                || EntityManager.System<Content.Shared.Psionics.Glimmer.GlimmerSystem>().GlimmerOutput > glimmerEvent.MaximumGlimmer))
+            return false;
+
         if (GameTicker.IsGameRuleActive(prototype.ID))
             return false;
 

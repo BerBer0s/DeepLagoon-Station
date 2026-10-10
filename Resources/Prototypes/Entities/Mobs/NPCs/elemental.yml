@@ -80,6 +80,14 @@
   name: ore crab
   parent: [ MobElementalBase, MobCombat ]
   components:
+  - type: Psionic
+    removable: false
+    roller: false
+    assayFeedback:
+    - orecrab-feedback
+  - type: InnatePsionicPowers
+    powersToAdd:
+    - TelepathyPower
   - type: Sprite
     sprite: Mobs/Elemental/orecrab.rsi
     state: uranium_crab
@@ -228,6 +236,14 @@
   parent: [ MobAdultSlimes, MobCombat ]
   description: It consists of a liquid, and it wants to dissolve you in itself.
   components:
+  - type: Psionic
+    roller: false
+    removable: false
+    assayFeedback:
+    - reagent-slime-feedback
+  - type: InnatePsionicPowers
+    powersToAdd:
+    - TelepathyPower
   - type: GhostRole
     prob: 0
     description: ghost-role-information-angry-slimes-description

@@ -62,6 +62,7 @@ public sealed partial class ChatUIController : UIController
     [UISystemDependency] private readonly ExamineSystem? _examine = default;
     [UISystemDependency] private readonly GhostSystem? _ghost = default;
     [UISystemDependency] private readonly CollectiveMindSystem? _collectiveMind = default!;
+    [UISystemDependency] private readonly PsionicChatUpdateSystem? _psionicChat = default!;
     [UISystemDependency] private readonly TypingIndicatorSystem? _typingIndicator = default;
     [UISystemDependency] private readonly ChatSystem? _chatSys = default;
     [UISystemDependency] private readonly TransformSystem? _transform = default;
@@ -86,7 +87,8 @@ public sealed partial class ChatUIController : UIController
         {SharedChatSystem.AdminPrefix, ChatSelectChannel.Admin},
         {SharedChatSystem.RadioCommonPrefix, ChatSelectChannel.Radio},
         {SharedChatSystem.DeadPrefix, ChatSelectChannel.Dead},
-        {SharedChatSystem.CollectiveMindPrefix, ChatSelectChannel.CollectiveMind}
+        {SharedChatSystem.CollectiveMindPrefix, ChatSelectChannel.CollectiveMind},
+        {SharedChatSystem.TelepathicPrefix, ChatSelectChannel.Telepathic}
     };
 
     public static readonly Dictionary<ChatSelectChannel, char> ChannelPrefixes = new()
@@ -100,7 +102,8 @@ public sealed partial class ChatUIController : UIController
         {ChatSelectChannel.Admin, SharedChatSystem.AdminPrefix},
         {ChatSelectChannel.Radio, SharedChatSystem.RadioCommonPrefix},
         {ChatSelectChannel.Dead, SharedChatSystem.DeadPrefix},
-        {ChatSelectChannel.CollectiveMind, SharedChatSystem.CollectiveMindPrefix} // Goobstation - Starlight collective mind port
+        {ChatSelectChannel.CollectiveMind, SharedChatSystem.CollectiveMindPrefix}, // Goobstation - Starlight collective mind port
+        {ChatSelectChannel.Telepathic, SharedChatSystem.TelepathicPrefix}
     };
 
     /// <summary>
@@ -583,6 +586,18 @@ public sealed partial class ChatUIController : UIController
         {
             FilterableChannels |= ChatChannel.CollectiveMind;
             CanSendChannels |= ChatSelectChannel.CollectiveMind;
+        }
+
+        if (_admin.HasFlag(AdminFlags.Admin))
+            FilterableChannels |= ChatChannel.Telepathic;
+
+        if (_psionicChat is { IsPsionic: true })
+            FilterableChannels |= ChatChannel.Telepathic;
+
+        if (_psionicChat is { HasTelepathy: true })
+        {
+            FilterableChannels |= ChatChannel.Telepathic;
+            CanSendChannels |= ChatSelectChannel.Telepathic;
         }
 
         SelectableChannels = CanSendChannels;

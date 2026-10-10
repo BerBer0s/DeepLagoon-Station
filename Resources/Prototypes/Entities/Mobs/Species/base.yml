@@ -10,6 +10,8 @@
   id: BaseMobSpecies
   abstract: true
   components:
+  - type: Mood
+  - type: Psionic
   - type: Sprite
     layers:
     - map: [ "enum.HumanoidVisualLayers.Chest" ]

@@ -5,6 +5,11 @@
   description: A shambling mass of flesh, animated through anomalous energy.
   abstract: true
   components:
+  - type: Psionic
+    removable: false
+    roller: false
+    assayFeedback:
+    - flesh-golem-feedback
   - type: HTN
     rootTask:
       task: SimpleHostileCompound

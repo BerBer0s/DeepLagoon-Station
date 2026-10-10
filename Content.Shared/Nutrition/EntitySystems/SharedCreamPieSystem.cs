@@ -39,6 +39,10 @@ namespace Content.Shared.Nutrition.EntitySystems
                 return;
 
             creamPied.CreamPied = value;
+            if (value)
+                RaiseLocalEvent(uid, new Content.Shared.Mood.MoodEffectEvent("Creampied"));
+            else
+                RaiseLocalEvent(uid, new Content.Shared.Mood.MoodRemoveEffectEvent("Creampied"));
 
             if (EntityManager.TryGetComponent(uid, out AppearanceComponent? appearance))
             {

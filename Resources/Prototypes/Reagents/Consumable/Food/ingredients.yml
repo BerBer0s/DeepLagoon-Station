@@ -171,6 +171,8 @@
   metabolisms:
     Food:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: OilyEffect
       # Frontier: no extra nutriment, but satiation instead
 #      - !type:AdjustReagent
 #        reagent: Nutriment
@@ -213,6 +215,8 @@
   metabolisms:
     Food:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: SpicyEffect
       # Frontier: no extra nutriment, but satiation instead
 #      - !type:AdjustReagent
 #        reagent: Nutriment
@@ -252,6 +256,8 @@
   metabolisms:
     Food:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: ChocolateEffect
       - !type:SatiateHunger
         conditions:
         - !type:ReagentThreshold #Only satiates when eaten with nutriment
@@ -280,6 +286,8 @@
   metabolisms:
     Food:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: ButterEffect
       # Frontier: no extra nutriment, but satiation instead
 #      - !type:AdjustReagent
 #        reagent: Nutriment

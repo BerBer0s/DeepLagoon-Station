@@ -27,6 +27,7 @@ public static class WebChatMessageFormatter
         ChatChannel.AdminAlert => ("adminlog", "adminnotice"),
         ChatChannel.AdminChat => ("adminchat", "adminsay"),
         ChatChannel.CollectiveMind => ("localchat", "telepathy"),
+        ChatChannel.Telepathic => ("localchat", "telepathy"),
         _ => ("unknown", "infoplain"),
     };
 

@@ -10,6 +10,16 @@
     Medicine:
       effects:
       - !type:GenericStatusEffect
+        key: PsionicallyInsulated
+        component: PsionicInsulation
+        type: Add
+        time: 900
+      - !type:GenericStatusEffect
+        key: PsionicsDisabled
+        component: PsionicsDisabled
+        type: Add
+        time: 900
+      - !type:GenericStatusEffect
         key: Stutter
         component: ScrambledAccent
       - !type:Drunk
@@ -134,6 +144,8 @@
   metabolisms:
     Medicine:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: StrongPaincauser
       - !type:HealthChange
         damage:
           types:
@@ -153,6 +165,8 @@
     Medicine:
       metabolismRate: 0.2 # Mono 1.5 >> 1
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: MildPaincauser
       - !type:EvenHealthChange
         damage:
           Brute: -1
@@ -369,6 +383,8 @@
   metabolisms:
     Medicine:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: EpinephrineEffect
       - !type:AdjustReagent
         conditions:
         - !type:ReagentThreshold
@@ -513,6 +529,8 @@
     Medicine:
       metabolismRate: 0.1 # Smaller doses stabilize critical people for longer. Gives it a specific usecase as to not be entirely outclassed by dex+
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: MildPainkiller
       - !type:HealthChange
         conditions:
           # they gotta be in crit first
@@ -536,6 +554,8 @@
     Medicine:
       metabolismRate: 0.2 # Mono 0.5 >> 0.2
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: MildPainkiller
       - !type:HealthChange
         damage:
           types:
@@ -737,6 +757,11 @@
   metabolisms:
     Medicine:
       effects:
+        - !type:ChemRemoveMoodlet
+          moodPrototype: RomerolEffect
+          conditions:
+          - !type:ReagentThreshold
+            min: 10
         - !type:CureZombieInfection
           conditions:
             - !type:ReagentThreshold
@@ -753,6 +778,11 @@
   metabolisms:
     Medicine:
       effects:
+        - !type:ChemRemoveMoodlet
+          moodPrototype: RomerolEffect
+          conditions:
+          - !type:ReagentThreshold
+            min: 5
         - !type:CureZombieInfection
           innoculate: true
           conditions:
@@ -851,6 +881,11 @@
   metabolisms:
     Poison:
       effects:
+      - !type:ChemPurgeMoodlets
+        conditions:
+        - !type:ReagentThreshold
+          reagent: Synaptizine
+          min: 10
       - !type:HealthChange
         conditions:
         - !type:OrganType # Goobstation - Yowie
@@ -908,6 +943,8 @@
     Medicine:
       metabolismRate: 0.2 #Mono: Slower metabolism rate
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: MildPainkiller
       - !type:EvenHealthChange #Mono: Low damage healing
         conditions:
         - !type:TotalDamage
@@ -1188,6 +1225,8 @@
     Medicine:
       metabolismRate: 0.15 # Mono change - Chem rebalance
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: LacerinolEffect
       - !type:HealthChange
         damage:
           types:
@@ -1215,6 +1254,8 @@
     Medicine:
       metabolismRate: 0.15 # Mono change - Chem rebalance
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: PuncturaseEffect
       - !type:HealthChange
         damage:
           types:
@@ -1243,6 +1284,8 @@
     Medicine:
       metabolismRate: 0.15
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: BruizineEffect
       - !type:HealthChange
         damage:
           types:
@@ -1543,6 +1586,8 @@
   metabolisms:
     Medicine:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: PsicodineEffect
       - !type:HealthChange
         conditions:
         - !type:OrganType # Goobstation - Yowie

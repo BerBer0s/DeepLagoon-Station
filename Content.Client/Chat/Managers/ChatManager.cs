@@ -78,6 +78,10 @@ internal sealed partial class ChatManager : IChatManager
                 _consoleHost.ExecuteCommand($"whisper \"{CommandParsing.Escape(str)}\"");
                 break;
 
+            case ChatSelectChannel.Telepathic:
+                _consoleHost.ExecuteCommand($"tsay \"{CommandParsing.Escape(str)}\"");
+                break;
+
             case ChatSelectChannel.CollectiveMind:
                 _consoleHost.ExecuteCommand($"cmsay \"{CommandParsing.Escape(str)}\"");
                 break;

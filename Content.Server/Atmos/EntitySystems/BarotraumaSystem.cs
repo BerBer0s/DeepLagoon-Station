@@ -268,6 +268,7 @@ namespace Content.Server.Atmos.EntitySystems
                     }
 
                     _alertsSystem.ShowAlert(uid, barotrauma.LowPressureAlert, 2);
+                    RaiseLocalEvent(uid, new Content.Shared.Mood.MoodEffectEvent("MobLowPressure"));
                 }
                 else if (pressure >= Atmospherics.HazardHighPressure)
                 {
@@ -284,6 +285,7 @@ namespace Content.Server.Atmos.EntitySystems
                     }
 
                     _alertsSystem.ShowAlert(uid, barotrauma.HighPressureAlert, 2);
+                    RaiseLocalEvent(uid, new Content.Shared.Mood.MoodEffectEvent("MobHighPressure"));
                 }
                 else
                 {

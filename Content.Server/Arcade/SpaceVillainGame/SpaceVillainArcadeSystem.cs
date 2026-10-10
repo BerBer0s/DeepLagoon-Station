@@ -1,3 +1,4 @@
+using Content.Shared.Mood;
 using Content.Server.Power.Components;
 using Content.Shared.UserInterface;
 using Content.Server.Advertise;
@@ -82,6 +83,7 @@ public sealed partial class SpaceVillainArcadeSystem : EntitySystem
             case PlayerAction.Attack:
             case PlayerAction.Heal:
             case PlayerAction.Recharge:
+                RaiseLocalEvent(msg.Actor, new MoodEffectEvent("ArcadePlay"));
                 component.Game.ExecutePlayerAction(uid, msg.PlayerAction, component);
                 // Any sort of gameplay action counts
                 if (TryComp<SpeakOnUIClosedComponent>(uid, out var speakComponent))

@@ -1,0 +1,15 @@
+- type: entityTable
+  id: PsionicGlimmerEventsTable
+  table: !type:AllSelector
+    children:
+    - id: NoosphericStorm
+    - id: MundaneDischarge
+    - id: NoosphericZap
+    - id: NoosphericFry
+    - id: PsionicCatGotYourTongue
+    - id: MassMindSwap
+    - id: GlimmerWispSpawn
+    - id: GlimmerMiteSpawn
+    - id: FreeProber
+    - id: GlimmerRandomSentience
+    - id: GlimmerRevenantSpawn

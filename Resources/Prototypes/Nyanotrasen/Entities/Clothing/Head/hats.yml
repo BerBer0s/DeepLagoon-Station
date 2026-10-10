@@ -41,6 +41,7 @@
   name: tinfoil hat
   description: Protects you from all manner of intrusive thoughts.
   components:
+  - type: TinfoilHat
   - type: Sprite
     sprite: Nyanotrasen/Clothing/Head/Hats/tinfoil.rsi
   - type: Clothing

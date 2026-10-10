@@ -308,6 +308,9 @@ public sealed partial class FoodSystem : EntitySystem
             _popup.PopupEntity(Loc.GetString(entity.Comp.EatMessage, ("food", entity.Owner), ("flavors", flavors)), args.User, args.User);
 
             // log successful voluntary eating
+            foreach (var mood in entity.Comp.MoodletsOnEat)
+                RaiseLocalEvent(args.User, new Content.Shared.Mood.MoodEffectEvent(mood));
+
             _adminLogger.Add(LogType.Ingestion, LogImpact.Low, $"{ToPrettyString(args.User):target} ate {ToPrettyString(entity.Owner):food}");
         }
 

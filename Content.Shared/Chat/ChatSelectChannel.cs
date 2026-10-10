@@ -56,6 +56,8 @@ namespace Content.Shared.Chat
         /// </summary>
         Admin = ChatChannel.AdminChat,
 
+        Telepathic = ChatChannel.Telepathic,
+
         Console = ChatChannel.Unspecified
     }
 }

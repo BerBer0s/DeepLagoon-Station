@@ -95,4 +95,6 @@ public sealed partial class FoodComponent : Component
 
     [DataField]
     public LocId CannotEatAnyMoreOtherMessage = "food-system-you-cannot-eat-any-more-other"; // Frontier
+    [DataField]
+    public HashSet<string> MoodletsOnEat = new();
 }

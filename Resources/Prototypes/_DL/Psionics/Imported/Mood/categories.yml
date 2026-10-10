@@ -1,0 +1,18 @@
+- type: moodCategory
+  id: LotophagoiAddiction
+
+- type: moodCategory
+  id: Heirloom
+
+- type: moodCategory
+  id: Health
+
+- type: moodCategory
+  id: Thirst
+
+- type: moodCategory
+  id: Hunger
+
+- type: moodCategory
+  id: NicotineAddiction
+

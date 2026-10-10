@@ -161,6 +161,12 @@
   metabolisms:
     Alcohol:
       effects:
+      - !type:ChemAddMoodlet
+        moodPrototype: EthanolBenefit
+        conditions:
+        - !type:ReagentThreshold
+          reagent: Ethanol
+          min: 1
       - !type:HealthChange
         conditions:
         - !type:ReagentThreshold

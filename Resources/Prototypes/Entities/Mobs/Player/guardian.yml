@@ -155,6 +155,12 @@
   id: MobIfritGuardian
   description: A corrupted jinn, ripped from fitra to serve the wizard's petty needs. It stands wicked, tuning into its owner's life to sustain itself.
   components:
+    - type: Psionic
+      removable: false
+      roller: false
+    - type: InnatePsionicPowers
+      powersToAdd:
+      - TelepathyPower
     - type: GhostRole
       allowMovement: true
       allowSpeech: true
