@@ -16,13 +16,23 @@ public sealed class LatheUpdateState : BoundUserInterfaceState
     public bool Looping = false; // Mono
     public bool Skipping = false; // Mono
 
-    public LatheUpdateState(List<ProtoId<LatheRecipePrototype>> recipes, List<LatheRecipeBatch> queue, LatheRecipePrototype? currentlyProducing = null, bool looping = false, bool skipping = false) // Frontier: change queue type // Mono
+    /// <summary>
+    /// DeepLagoon: when the current print began and how long it takes, in server time.
+    /// Both are null while nothing is printing, so the UI can show real progress.
+    /// </summary>
+    public TimeSpan? ProductionStart;
+    public TimeSpan? ProductionLength;
+
+    public LatheUpdateState(List<ProtoId<LatheRecipePrototype>> recipes, List<LatheRecipeBatch> queue, LatheRecipePrototype? currentlyProducing = null, bool looping = false, bool skipping = false, // Frontier: change queue type // Mono
+        TimeSpan? productionStart = null, TimeSpan? productionLength = null) // DeepLagoon: print progress
     {
         Recipes = recipes;
         Queue = queue;
         CurrentlyProducing = currentlyProducing;
         Looping = looping; // Mono
         Skipping = skipping; // Mono
+        ProductionStart = productionStart; // DeepLagoon
+        ProductionLength = productionLength; // DeepLagoon
     }
 }
 
