@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using Content.Client.Stylesheets;
 using Content.Shared.Decals;
@@ -137,11 +138,8 @@ public sealed partial class DecalPlacerWindow : DefaultWindow
             return;
 
         var filter = Search.Text;
-        foreach (var (decal, tex) in _decals)
+        foreach (var (decal, tex) in FuzzySearch.Rank(_decals, filter, pair => pair.Key)) // DeepLagoon: fuzzy search
         {
-            if (!decal.ToLowerInvariant().Contains(filter.ToLowerInvariant()))
-                continue;
-
             var button = new TextureButton
             {
                 TextureNormal = tex,

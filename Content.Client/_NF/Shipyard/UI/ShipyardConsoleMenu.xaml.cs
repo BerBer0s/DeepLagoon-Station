@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using Content.Client._Mono.Shipyard;
 using Content.Client.UserInterface.Controls;
@@ -143,7 +144,7 @@ public sealed partial class ShipyardConsoleMenu : FancyWindow
     /// </summary>
     private void AddVesselsToControls(IEnumerable<VesselPrototype?> vessels, string search, bool free, bool canPurchase)
     {
-        foreach (var prototype in vessels)
+        foreach (var prototype in FuzzySearch.Rank(vessels, search, vessel => vessel?.Name)) // DeepLagoon: fuzzy search
         {
             // Filter any ships
             if (_category != null && !prototype!.Category.Equals(_category))
@@ -151,8 +152,6 @@ public sealed partial class ShipyardConsoleMenu : FancyWindow
             if (_class != null && !prototype!.Classes.Contains(_class.Value))
                 continue;
             if (_engine != null && !prototype!.Engines.Contains(_engine.Value))
-                continue;
-            if (search.Length > 0 && !prototype!.Name.ToLowerInvariant().Contains(search))
                 continue;
 
             string priceText;

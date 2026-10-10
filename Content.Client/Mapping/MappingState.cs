@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
+using System.Linq;
 using System.Numerics;
 using Content.Client.Administration.Managers;
 using Content.Client.ContextMenu.UI;
@@ -416,14 +417,9 @@ public sealed partial class MappingState : GameplayStateBase
             return;
         }
 
-        var matches = new List<MappingPrototype>();
-        foreach (var prototype in _allPrototypes)
-        {
-            if (prototype.Name.Contains(args.Text, OrdinalIgnoreCase))
-                matches.Add(prototype);
-        }
-
+        var matches = new List<MappingPrototype>(_allPrototypes);
         matches.Sort(static (a, b) => string.Compare(a.Name, b.Name, OrdinalIgnoreCase));
+        matches = FuzzySearch.Rank(matches, args.Text, prototype => prototype.Name); // DeepLagoon: fuzzy search
 
         Screen.Prototypes.PrototypeList.Visible = false;
         Screen.Prototypes.SearchList.Visible = true;

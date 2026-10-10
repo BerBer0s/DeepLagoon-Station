@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using Content.Client.UserInterface.Controls;
 using Content.Shared._NF.Bank;
@@ -86,14 +87,13 @@ namespace Content.Client.Cargo.UI
                 string.Compare(x.Name, y.Name, StringComparison.CurrentCultureIgnoreCase));
 
             var search = SearchBar.Text.Trim().ToLowerInvariant();
-            foreach (var prototype in products)
+            foreach (var prototype in FuzzySearch.Rank(products, search, product => product.Name, product => product.Description)) // DeepLagoon: fuzzy search
             {
                 // if no search or category
                 // else if search
                 // else if category and not search
                 if (search.Length == 0 && _category == null ||
-                    search.Length != 0 && prototype.Name.ToLowerInvariant().Contains(search) ||
-                    search.Length != 0 && prototype.Description.ToLowerInvariant().Contains(search) ||
+                    search.Length != 0 || // DeepLagoon: fuzzy search, matching is done by FuzzySearch.Rank above
                     search.Length == 0 && _category != null && Loc.GetString(prototype.Category).Equals(_category))
                 {
                     var button = new CargoProductRow

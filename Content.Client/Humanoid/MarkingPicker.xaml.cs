@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using Content.Shared.Humanoid;
 using Content.Shared.Humanoid.Markings;
@@ -210,10 +211,12 @@ public sealed partial class MarkingPicker : Control
         CMarkingsUnused.Clear();
         _selectedUnusedMarking = null;
 
-        var sortedMarkings = GetMarkings(_selectedMarkingCategory).Values.Where(m =>
-            m.ID.ToLower().Contains(filter.ToLower()) ||
-            GetMarkingName(m).ToLower().Contains(filter.ToLower())
-        ).OrderBy(p => Loc.GetString(GetMarkingName(p)));
+        // DeepLagoon: fuzzy search, the id matches only as a substring
+        var sortedMarkings = FuzzySearch.Rank(
+            GetMarkings(_selectedMarkingCategory).Values.OrderBy(p => Loc.GetString(GetMarkingName(p))),
+            filter,
+            m => GetMarkingName(m),
+            m => m.ID);
 
         foreach (var marking in sortedMarkings)
         {

@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using System.Numerics;
 using Content.Client.Stylesheets;
@@ -190,12 +191,7 @@ namespace Content.Client.Construction.UI
                 || _whitelistSystem.IsWhitelistFail(recipe.EntityWhitelist, _playerManager.LocalEntity.Value))
                     continue;
 
-                if (!string.IsNullOrEmpty(search))
-                {
-                    if (!recipe.Name.ToLowerInvariant().Contains(search.Trim().ToLowerInvariant()))
-                        continue;
-                }
-
+                // DeepLagoon: fuzzy search, matching and ordering by relevance moved below
                 if (!isEmptyCategory)
                 {
                     if (category == _favoriteCatName)
@@ -215,6 +211,7 @@ namespace Content.Client.Construction.UI
             }
 
             recipes.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.InvariantCulture));
+            recipes = FuzzySearch.Rank(recipes, search, recipe => recipe.Name); // DeepLagoon: fuzzy search
 
             var recipesList = _constructionView.Recipes;
             recipesList.Clear();
