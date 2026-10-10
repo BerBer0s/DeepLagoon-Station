@@ -1,0 +1,1229 @@
+$space: 8px;
+$radius: 6px;
+$row-height: 46px;
+$icon-size: 32px;
+$side-width: 320px;
+// Below this window width the recipe rows drop their cost bars and the top bar its words.
+$narrow-window: 900px;
+$fade-duration: 0.12s;
+// The width kept free at the right end of a row for the add icon (and for the printing badge).
+$slot-width: 48px;
+$cost-width-full: 60px;
+$cost-width-compact: 38px;
+// One cycle of the 45 degree stripe moves it by its period measured along the vertical.
+$stripe-period: 11.3137px;
+$flash-duration: 0.7s;
+$pulse-duration: 0.18s;
+
+// Only transform and opacity animate, and nothing runs while the window is idle (the progress bar is one
+// stepped animation per print): every repaint of the embedded browser costs the whole window.
+@keyframes LatheConsole-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes LatheConsole-pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(0.94);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes LatheConsole-stripe {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-$stripe-period);
+  }
+}
+
+@keyframes LatheConsole-slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(333%);
+  }
+}
+
+@keyframes LatheConsole-blink {
+  0% {
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes LatheConsole-fill {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.LatheConsole {
+  // The names are the research console's, so that its tips (shared) look the same here.
+  --rc-border: #68788a;
+  --rc-accent: #83bbfa;
+  --rc-good: #7ac779;
+  --rc-warn: #e0b45a;
+  --rc-bad: #e06c6c;
+  --lc-line: color-mix(in srgb, currentcolor 16%, transparent);
+  --lc-muted: color-mix(in srgb, currentcolor 62%, transparent);
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  font-size: 13px;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: LatheConsole-fade $fade-duration ease-out;
+
+  input {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  // A tip may list several lines (the materials a row has no column for).
+  .Tip {
+    white-space: pre-line;
+  }
+
+  &__body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  &__list {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    border-right: 1px solid var(--lc-line);
+
+    .VirtualList {
+      flex: 1;
+      min-height: 0;
+    }
+
+    // The width of the cost columns, for the head and for every row.
+    --lc-cost-width: #{$cost-width-full};
+
+    &--compact {
+      --lc-cost-width: #{$cost-width-compact};
+    }
+  }
+
+  &__empty {
+    position: absolute;
+    top: $space * 3;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    text-align: center;
+    color: var(--lc-muted);
+    pointer-events: none;
+  }
+
+  &__side {
+    display: flex;
+    flex: 0 0 $side-width;
+    flex-direction: column;
+    box-sizing: border-box;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .LatheBar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: $space;
+    padding: $space ($space * 1.5);
+    border-bottom: 1px solid var(--lc-line);
+
+    &__count {
+      font-size: 12px;
+      white-space: nowrap;
+      color: var(--lc-muted);
+    }
+
+    &__spacer {
+      flex: 1;
+    }
+
+    @media (max-width: $narrow-window) {
+      &__label {
+        display: none;
+      }
+    }
+  }
+
+  .Search {
+    display: flex;
+    flex: 0 1 320px;
+    align-items: center;
+    gap: $space * 0.75;
+    box-sizing: border-box;
+    min-width: 110px;
+    height: 28px;
+    padding: 0 $space;
+    border: 1px solid var(--rc-border);
+    border-radius: $radius;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      outline: none;
+      font: inherit;
+      color: inherit;
+      background: transparent;
+    }
+
+    &:focus-within {
+      border-color: var(--rc-accent);
+    }
+
+    &__clear {
+      display: flex;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+  }
+
+  .Categories {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: $space;
+    padding: $space * 0.75 ($space * 1.5);
+    border-bottom: 1px solid var(--lc-line);
+
+    &__chips {
+      display: flex;
+      flex: 1;
+      gap: 6px;
+      min-width: 0;
+      padding-bottom: 2px;
+      overflow-x: auto;
+
+      &::-webkit-scrollbar {
+        height: 4px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        border-radius: 2px;
+        background: var(--rc-border);
+      }
+    }
+  }
+
+  .Chip {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    box-sizing: border-box;
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid var(--lc-line);
+    border-radius: 999px;
+    font-size: 12px;
+    white-space: nowrap;
+    background: transparent;
+    cursor: pointer;
+
+    &:hover {
+      background: color-mix(in srgb, currentcolor 10%, transparent);
+    }
+
+    // The accent is kept for states (a print running, something missing); a pressed chip is only stronger.
+    &--active {
+      border-color: currentcolor;
+      background: color-mix(in srgb, currentcolor 16%, transparent);
+    }
+
+    &--toggle {
+      margin-left: auto;
+    }
+
+    &__count {
+      font-size: 11px;
+      color: var(--lc-muted);
+    }
+  }
+
+  // The list.
+  .VirtualList {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      border-radius: 3px;
+      background: var(--rc-border);
+    }
+
+    &__space {
+      position: relative;
+    }
+
+    &__item {
+      position: absolute;
+      right: 0;
+      left: 0;
+      overflow: hidden;
+    }
+  }
+
+  .ListHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    height: 100%;
+    padding: 0 ($space * 1.5);
+    border-bottom: 1px solid var(--lc-line);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lc-muted);
+    background: var(--player-surface);
+
+    &__count {
+      letter-spacing: 0;
+    }
+  }
+
+  .RecipeIcon {
+    position: relative;
+    flex: 0 0 auto;
+    border-radius: 4px;
+    background: color-mix(in srgb, currentcolor 7%, transparent);
+
+    img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+      -webkit-user-drag: none;
+      pointer-events: none;
+    }
+  }
+
+  .Recipe {
+    position: relative;
+    box-sizing: border-box;
+    height: 100%;
+    overflow: hidden;
+    border-bottom: 1px solid var(--lc-line);
+
+    &:hover {
+      background: color-mix(in srgb, currentcolor 5%, transparent);
+    }
+
+    &--selected,
+    &--selected:hover {
+      background: var(--player-surface);
+      border-left: 3px solid color-mix(in srgb, currentcolor 55%, transparent);
+    }
+
+    &__line {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: $space;
+      box-sizing: border-box;
+      height: $row-height;
+      padding: 0 ($space * 1.5 + $slot-width) 0 ($space * 1.5);
+    }
+
+    @at-root .LatheConsole .Recipe--selected .Recipe__line {
+      padding-left: $space * 1.5 - 3px;
+    }
+
+    // The recipe that is printing: a stripe of the accent colour on the left edge. The hatch is wider and
+    // coloured, unlike the thin hatch of the "recipe" legend, and it moves in steps, only while the print runs.
+    &--printing {
+      background: color-mix(in srgb, var(--rc-accent) 8%, transparent);
+    }
+
+    &__stripe {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1;
+      width: 4px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--rc-accent) 35%, transparent);
+
+      i {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: calc(100% + #{$stripe-period});
+        background: repeating-linear-gradient(
+          45deg,
+          var(--rc-accent) 0 4px,
+          transparent 4px 8px
+        );
+        animation-name: LatheConsole-stripe;
+        animation-iteration-count: infinite;
+      }
+    }
+
+    // One blink when the printing block asks to see this row.
+    &__flash {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: color-mix(in srgb, var(--rc-accent) 28%, transparent);
+      opacity: 0;
+      animation: LatheConsole-blink $flash-duration steps(8, end) 1;
+    }
+
+    &__badge {
+      position: absolute;
+      top: 50%;
+      right: $space * 1.5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      min-width: 32px;
+      height: 24px;
+      padding: 0 6px;
+      border: 1px solid var(--rc-accent);
+      border-radius: 12px;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: var(--rc-accent);
+      transform: translateY(-50%);
+    }
+
+    &__main {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      gap: $space * 1.25;
+      min-width: 0;
+      height: 100%;
+      cursor: pointer;
+
+      &:focus-visible {
+        outline: 2px solid var(--rc-accent);
+        outline-offset: -2px;
+      }
+    }
+
+    &__icon {
+      width: $icon-size;
+      height: $icon-size;
+    }
+
+    &__name {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    &__title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @at-root .LatheConsole .Recipe--short .Recipe__title {
+      opacity: 0.7;
+    }
+
+    &__sub {
+      overflow: hidden;
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @at-root .LatheConsole .Recipe--short .Recipe__sub {
+      color: var(--rc-bad);
+    }
+
+    @at-root .LatheConsole .Recipe--later .Recipe__sub {
+      color: var(--rc-warn);
+    }
+
+    // One fixed column per material (see costs.ts); a row only fills the columns it needs.
+    &__costs {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 4px;
+
+      @media (max-width: $narrow-window) {
+        display: none;
+      }
+    }
+
+    // The add control. At rest it is a small neutral icon; over the row or with the focus in it, the
+    // stepper and the labelled button open leftwards over the cost columns.
+    &__actions {
+      position: absolute;
+      top: 50%;
+      right: $space * 1.5;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transform: translateY(-50%);
+    }
+
+    &__actions .Amount {
+      display: none;
+    }
+
+    &__addLabel {
+      display: none;
+    }
+
+    @at-root .LatheConsole .Recipe:hover .Recipe__actions,
+    .LatheConsole .Recipe:focus-within .Recipe__actions {
+      padding: 3px 3px 3px $space;
+      border: 1px solid var(--lc-line);
+      border-radius: $radius;
+      background: var(--player-surface);
+
+      .Amount {
+        display: flex;
+      }
+    }
+
+    @at-root .LatheConsole .Recipe:hover .Recipe__addLabel,
+    .LatheConsole .Recipe:focus-within .Recipe__addLabel {
+      display: inline;
+    }
+
+    // Buttons are neutral: the accent stays for states.
+    &__add {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-sizing: border-box;
+      min-width: 26px;
+      height: 26px;
+      padding: 0 7px;
+      border: 1px solid var(--lc-line);
+      border-radius: 4px;
+      white-space: nowrap;
+      background: transparent;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        border-color: currentcolor;
+        background: color-mix(in srgb, currentcolor 14%, transparent);
+      }
+
+      &:disabled {
+        color: var(--lc-muted);
+        cursor: default;
+      }
+
+      &--pulse {
+        animation: LatheConsole-pulse $pulse-duration ease-out;
+      }
+    }
+
+    @at-root .LatheConsole .Recipe--short .Recipe__add:disabled {
+      color: var(--rc-bad);
+    }
+
+    @at-root .LatheConsole .Recipe--later .Recipe__add:disabled {
+      color: var(--rc-warn);
+    }
+
+    &__details {
+      box-sizing: border-box;
+      padding: 6px ($space * 1.5) 6px ($icon-size + $space * 1.5 + $space * 1.25);
+      overflow: hidden;
+    }
+
+    &__desc {
+      display: -webkit-box;
+      height: 36px;
+      margin: 0 0 4px;
+      overflow: hidden;
+      line-height: 18px;
+      color: var(--lc-muted);
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    &__facts {
+      display: flex;
+      gap: $space * 2;
+      height: 28px;
+      overflow: hidden;
+      line-height: 28px;
+      white-space: nowrap;
+      color: var(--lc-muted);
+
+      b {
+        color: inherit;
+        font-weight: 600;
+      }
+    }
+
+    &__needs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 ($space * 2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    &__need {
+      display: flex;
+      justify-content: space-between;
+      gap: $space;
+      height: 22px;
+      line-height: 22px;
+      white-space: nowrap;
+
+      &--short {
+        color: var(--rc-bad);
+      }
+
+      &--later {
+        color: var(--rc-warn);
+      }
+    }
+
+    &__needName {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &__footer {
+      display: flex;
+      align-items: flex-end;
+      height: 36px;
+    }
+
+    &__max {
+      height: 24px;
+      padding: 0 10px;
+      border: 1px solid var(--lc-line);
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: color-mix(in srgb, currentcolor 10%, transparent);
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+    }
+  }
+
+  // The cells of the cost columns. A cell holds the amount and a bar of how much of it is in stock.
+  .Cost {
+    flex: 0 0 var(--lc-cost-width, #{$cost-width-full});
+    min-width: 0;
+    font-size: 11px;
+    text-align: right;
+    color: var(--lc-muted);
+
+    &__text {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: currentcolor;
+    }
+
+    &__bar {
+      display: block;
+      height: 3px;
+      margin-top: 3px;
+      overflow: hidden;
+      border-radius: 2px;
+      background: var(--lc-line);
+
+      i {
+        display: block;
+        height: 100%;
+        transform-origin: left;
+        background: var(--rc-good);
+      }
+    }
+
+    @at-root .LatheConsole .Cost--later .Cost__bar i {
+      background: var(--rc-warn);
+    }
+
+    @at-root .LatheConsole .Cost--short .Cost__bar i {
+      background: var(--rc-bad);
+    }
+
+    &--short {
+      color: var(--rc-bad);
+    }
+
+    &--later {
+      color: var(--rc-warn);
+    }
+
+    &--other.Cost--ok,
+    &--other.Cost--later,
+    &--other.Cost--short {
+      font-weight: 600;
+    }
+  }
+
+  // The heads of the cost columns: above the list, so they stay while it scrolls. They line up with the
+  // rows (same paddings), the last gap being the width of the add icon.
+  .CostHeader {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: $space;
+    box-sizing: border-box;
+    height: 28px;
+    padding: 0 (6px + $space * 1.5 + $slot-width) 0 ($space * 1.5);
+    border-bottom: 1px solid var(--lc-line);
+    font-size: 11px;
+    color: var(--lc-muted);
+
+    &__fill {
+      flex: 1;
+    }
+
+    &__slot {
+      display: none;
+    }
+
+    &__columns {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 4px;
+
+      @media (max-width: $narrow-window) {
+        display: none;
+      }
+    }
+
+    &__cell {
+      display: flex;
+      flex: 0 0 var(--lc-cost-width, #{$cost-width-full});
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      min-width: 0;
+      overflow: hidden;
+
+      img {
+        flex: 0 0 auto;
+        width: 14px;
+        height: 14px;
+        image-rendering: pixelated;
+        -webkit-user-drag: none;
+      }
+    }
+
+    &__name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    // The short name stands in for a material that has no icon, in narrow columns only.
+    &__short {
+      display: none;
+    }
+
+    @at-root .LatheConsole .CostHeader--compact .CostHeader__short {
+      display: inline;
+    }
+
+    // Narrow columns show the icon only; the name is in the tip.
+    @at-root .LatheConsole .CostHeader--compact .CostHeader__name {
+      display: none;
+    }
+  }
+
+  .Amount {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+
+    button {
+      display: grid;
+      place-items: center;
+      box-sizing: border-box;
+      width: 22px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid var(--lc-line);
+      font-size: 10px;
+      background: transparent;
+      cursor: pointer;
+
+      &:first-child {
+        border-radius: 4px 0 0 4px;
+      }
+
+      &:last-child {
+        border-radius: 0 4px 4px 0;
+      }
+
+      &:hover:not(:disabled) {
+        background: color-mix(in srgb, currentcolor 10%, transparent);
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+    }
+
+    input {
+      box-sizing: border-box;
+      width: 36px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid var(--lc-line);
+      border-right: none;
+      border-left: none;
+      outline: none;
+      font: inherit;
+      text-align: center;
+      color: inherit;
+      background: transparent;
+
+      &:focus {
+        background: color-mix(in srgb, currentcolor 12%, transparent);
+      }
+    }
+  }
+
+  // The side column.
+  .Block {
+    flex: 0 0 auto;
+    padding: $space * 1.25 ($space * 1.5);
+    border-bottom: 1px solid var(--lc-line);
+
+    &__title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: $space;
+      margin: 0 0 $space;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--lc-muted);
+    }
+
+    &__note {
+      letter-spacing: 0;
+      text-transform: none;
+    }
+  }
+
+  // The materials scroll inside their own block when there are many, so that the print and the queue
+  // below them always stay in view.
+  .Materials {
+    flex: 0 1 auto;
+    min-height: 90px;
+    max-height: 46%;
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      border-radius: 2px;
+      background: var(--rc-border);
+    }
+
+    &__empty,
+    &__silo {
+      font-size: 12px;
+      color: var(--lc-muted);
+    }
+  }
+
+  .Material {
+    margin-bottom: $space * 1.25;
+
+    &__line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      img {
+        width: 16px;
+        height: 16px;
+        image-rendering: pixelated;
+        -webkit-user-drag: none;
+      }
+    }
+
+    &__name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &__amount {
+      font-size: 12px;
+      white-space: nowrap;
+      color: var(--lc-muted);
+    }
+
+    &__bar {
+      display: flex;
+      align-items: center;
+      gap: $space;
+      margin-top: 4px;
+
+      .Gauge {
+        flex: 1;
+        margin-top: 0;
+      }
+    }
+
+    &__eject {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 2px;
+
+      button {
+        height: 18px;
+        padding: 0 5px;
+        border: 1px solid var(--lc-line);
+        border-radius: 3px;
+        font-size: 11px;
+        background: transparent;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+          background: color-mix(in srgb, currentcolor 10%, transparent);
+        }
+
+        &:disabled {
+          opacity: 0.35;
+          cursor: default;
+        }
+      }
+    }
+  }
+
+  .Gauge {
+    display: flex;
+    height: 8px;
+    margin-top: 4px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--lc-line);
+
+    i {
+      display: block;
+      height: 100%;
+    }
+
+    &__free {
+      background: color-mix(in srgb, currentcolor 55%, transparent);
+    }
+
+    &__preview {
+      background: repeating-linear-gradient(
+        45deg,
+        currentcolor 0 2px,
+        transparent 2px 5px
+      );
+    }
+
+    &__queued {
+      background: var(--rc-warn);
+    }
+
+    &--short {
+      outline: 1px solid var(--rc-bad);
+    }
+  }
+
+  .Legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px ($space * 1.25);
+    margin-top: $space * 0.5;
+    font-size: 11px;
+    color: var(--lc-muted);
+
+    i {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 4px;
+      border-radius: 2px;
+    }
+
+    &__free {
+      background: color-mix(in srgb, currentcolor 55%, transparent);
+    }
+
+    &__queued {
+      background: var(--rc-warn);
+    }
+
+    &__preview {
+      background: repeating-linear-gradient(
+        45deg,
+        currentcolor 0 2px,
+        transparent 2px 4px
+      );
+    }
+  }
+
+  .Current {
+    &__card {
+      padding: $space;
+      border: 1px solid var(--lc-line);
+      border-radius: $radius;
+      background: var(--player-surface);
+      cursor: pointer;
+
+      &:hover {
+        border-color: currentcolor;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--rc-accent);
+      }
+    }
+
+    &__locate {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--lc-muted);
+    }
+
+    &__line {
+      display: flex;
+      align-items: center;
+      gap: $space;
+    }
+
+    &__icon {
+      width: $icon-size;
+      height: $icon-size;
+    }
+
+    &__name {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        color: var(--lc-muted);
+      }
+    }
+
+    &__meta {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--lc-muted);
+    }
+
+    &__waiting,
+    &__idle {
+      margin-top: $space;
+      font-size: 12px;
+      color: var(--lc-muted);
+    }
+
+    &__idle {
+      margin-top: 0;
+    }
+  }
+
+  // The print: an accent bar. `estimate` fills over the print's time; `indeterminate` is a band going round
+  // the track. Both step, so the window repaints four times a second while a print runs and not otherwise.
+  .Progress {
+    height: 6px;
+    margin-top: $space;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--lc-line);
+
+    i {
+      display: block;
+      height: 100%;
+      background: var(--rc-accent);
+      animation-iteration-count: 1;
+    }
+
+    &--estimate i {
+      width: 100%;
+      transform: scaleX(0);
+      transform-origin: left;
+      animation-name: LatheConsole-fill;
+      animation-fill-mode: forwards;
+    }
+
+    &--indeterminate i {
+      width: 30%;
+      animation-name: LatheConsole-slide;
+      animation-iteration-count: infinite;
+    }
+  }
+
+  .Queue {
+    display: flex;
+    flex: 1 1 120px;
+    flex-direction: column;
+    min-height: 120px;
+    border-bottom: none;
+
+    &__list {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        border-radius: 2px;
+        background: var(--rc-border);
+      }
+    }
+
+    &__empty {
+      font-size: 12px;
+      color: var(--lc-muted);
+    }
+  }
+
+  .QueueItem {
+    display: flex;
+    align-items: center;
+    gap: $space;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--lc-line);
+
+    &__icon {
+      width: 24px;
+      height: 24px;
+    }
+
+    &__name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &__count {
+      font-size: 11px;
+      color: var(--lc-muted);
+    }
+
+    &__cancel {
+      display: flex;
+      padding: 2px 4px;
+      border: none;
+      color: var(--lc-muted);
+      background: transparent;
+      cursor: pointer;
+
+      &:hover {
+        color: var(--rc-bad);
+      }
+    }
+  }
+
+  .Toggles {
+    display: flex;
+    gap: 6px;
+
+    .Chip {
+      flex: 1;
+      height: auto;
+      min-height: 24px;
+      padding: 3px 10px;
+      line-height: 1.2;
+      text-align: center;
+      white-space: normal;
+      border-radius: 12px;
+    }
+  }
+}

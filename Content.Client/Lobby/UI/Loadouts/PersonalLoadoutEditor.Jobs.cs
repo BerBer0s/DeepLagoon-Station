@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using System.Numerics;
 using Content.Client.UserInterface.Controls;
@@ -100,10 +101,12 @@ public sealed partial class PersonalLoadoutEditor
     {
         if (_profile == null || _jobRole == null)
             return Enumerable.Empty<JobEntry>();
-        return _jobEntries.Where(x => category == null || x.Category == category)
+        // DeepLagoon: fuzzy search; the category is applied after the text match, so the typo rule sees the whole list
+        var entries = _jobEntries
             .Where(x => _slotFilter == null || FitsJobSlot(x.Item, _slotFilter))
-            .Where(x => string.IsNullOrWhiteSpace(_search.Text) || JobItemName(x.Item).Contains(_search.Text, StringComparison.OrdinalIgnoreCase) || x.Item.ID.Contains(_search.Text, StringComparison.OrdinalIgnoreCase))
             .Where(x => _showUnavailable.Pressed || _jobRole.SelectedLoadouts.TryGetValue(x.Group.ID, out var selected) && selected.Any(i => i.Prototype.Id == x.Item.ID) || _jobRole.IsValid(_entities.System<Content.Shared._DeepLagoon.Loadouts.PersonalLoadoutSystem>().RemovePersonalConflicts(_profile, x.Item), _session, x.Item.ID, IoCManager.Instance!, out _));
+        return FuzzySearch.Filter(entries.ToList(), _search.Text, x => JobItemName(x.Item), x => x.Item.ID)
+            .Where(x => category == null || x.Category == category);
     }
 
     private void AddJobCards(GridContainer grid, string? category)

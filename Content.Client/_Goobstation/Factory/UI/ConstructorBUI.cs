@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using Content.Client.Construction;
 using Content.Client.Construction.UI;
 using Content.Shared._Goobstation.Factory;
@@ -113,7 +114,6 @@ public sealed partial class ConstructorBUI : BoundUserInterface
             return;
 
         search = search.Trim().ToLowerInvariant();
-        var searching = !string.IsNullOrEmpty(search);
         var isEmptyCategory = string.IsNullOrEmpty(category) || category == _forAllCategoryName;
 
         _recipes.Clear();
@@ -123,10 +123,6 @@ public sealed partial class ConstructorBUI : BoundUserInterface
                 continue;
 
             if (_whitelist.IsWhitelistFail(recipe.EntityWhitelist, user))
-                continue;
-
-            if (searching
-                && !recipe.Name.ToLowerInvariant().Contains(search))
                 continue;
 
             if (!isEmptyCategory)
@@ -144,6 +140,9 @@ public sealed partial class ConstructorBUI : BoundUserInterface
         }
 
         _recipes.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.InvariantCulture));
+        var matched = FuzzySearch.Filter(_recipes, search, recipe => recipe.Name); // DeepLagoon: fuzzy search
+        _recipes.Clear();
+        _recipes.AddRange(matched);
 
         var recipesList = menu.Recipes;
         recipesList.Clear();

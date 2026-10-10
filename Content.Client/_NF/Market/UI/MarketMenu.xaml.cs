@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
+using System.Linq;
 using Content.Client.UserInterface.Controls;
 using Content.Shared._NF.Market;
 using Content.Shared._NF.Market.BUI;
@@ -91,16 +92,14 @@ public sealed partial class MarketMenu : FancyWindow
 
     private void AddRows(Control container, bool isCart, List<MarketData> data, float marketModifier, bool enabled = true)
     {
-        foreach (var marketData in data.OrderBy(md => md.Prototype))
+        // DeepLagoon: fuzzy search
+        foreach (var marketData in FuzzySearch.Rank(data.OrderBy(md => md.Prototype), _searchText, md => _protoManager.TryIndex<EntityPrototype>(md.Prototype, out var found) ? found.Name : null))
         {
             // Try to get the EntityPrototype that matches marketData.Prototype
             if (!_protoManager.TryIndex<EntityPrototype>(marketData.Prototype, out var prototype))
             {
                 continue; // Skip this iteration if the prototype was not found
             }
-
-            if (!IsWithinSearchQuery(prototype))
-                continue;
 
             if (!prototype.TryGetComponent<SpriteComponent>(out var sprite))
             {
@@ -180,11 +179,5 @@ public sealed partial class MarketMenu : FancyWindow
                 container.AddChild(productRow);
             }
         }
-    }
-
-    private bool IsWithinSearchQuery(EntityPrototype prototype)
-    {
-        var text = _searchText.Trim();
-        return string.IsNullOrEmpty(text) || prototype.Name.Contains(text, StringComparison.CurrentCultureIgnoreCase);
     }
 }

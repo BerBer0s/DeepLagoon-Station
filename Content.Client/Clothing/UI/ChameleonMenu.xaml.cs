@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using System.Numerics;
 using Content.Client.Clothing.Systems;
@@ -50,17 +51,17 @@ public sealed partial class ChameleonMenu : DefaultWindow
         ClearGrid();
 
         var group = new ButtonGroup();
-        var searchFilterLow = _searchFilter.ToLowerInvariant();
 
-        foreach (var id in _possibleIds)
+        // DeepLagoon: fuzzy search; the id still matches as a substring
+        var entries = new List<(string Id, EntityPrototype Proto)>();
+        foreach (var possibleId in _possibleIds)
         {
-            if (!_prototypeManager.TryIndex(id, out EntityPrototype? proto))
-                continue;
+            if (_prototypeManager.TryIndex(possibleId, out EntityPrototype? possibleProto))
+                entries.Add((possibleId, possibleProto));
+        }
 
-            var lowId = id.ToLowerInvariant();
-            var lowName = proto.Name.ToLowerInvariant();
-            if (!lowId.Contains(searchFilterLow) && !lowName.Contains(_searchFilter))
-                continue;
+        foreach (var (id, proto) in FuzzySearch.Filter(entries, _searchFilter, entry => entry.Proto.Name, entry => entry.Id))
+        {
 
             var button = new Button
             {

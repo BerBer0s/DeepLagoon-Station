@@ -6,7 +6,7 @@ using Robust.Client.UserInterface;
 namespace Content.Client.Lathe.UI
 {
     [UsedImplicitly]
-    public sealed class LatheBoundUserInterface : BoundUserInterface
+    public sealed partial class LatheBoundUserInterface : BoundUserInterface // DeepLagoon: partial, see _DeepLagoon/Lathe
     {
         [ViewVariables]
         private LatheMenu? _menu;
@@ -17,6 +17,9 @@ namespace Content.Client.Lathe.UI
         protected override void Open()
         {
             base.Open();
+
+            if (OpenTgui()) // DeepLagoon: TGUI menu, this one is the fallback
+                return;
 
             _menu = this.CreateWindowCenteredRight<LatheMenu>();
             _menu.SetEntity(Owner);
@@ -41,6 +44,9 @@ namespace Content.Client.Lathe.UI
         protected override void UpdateState(BoundUserInterfaceState state)
         {
             base.UpdateState(state);
+
+            if (UpdateTgui(state)) // DeepLagoon
+                return;
 
             switch (state)
             {

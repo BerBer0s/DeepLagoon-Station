@@ -1,3 +1,5 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
+using System.Linq; // DeepLagoon: fuzzy search
 using System.Numerics;
 using Content.Client.UserInterface.Controls;
 using Content.Shared.VendingMachines;
@@ -27,6 +29,7 @@ namespace Content.Client.VendingMachines.UI
         public event Action<GUIBoundKeyEventArgs, ListData>? OnItemSelected;
 
         private readonly StyleBoxFlat _styleBox = new() { BackgroundColor = new Color(70, 73, 102) };
+        private readonly FuzzyFilter _fuzzy = new(); // DeepLagoon: fuzzy search
 
         public VendingMachineMenu()
         {
@@ -64,7 +67,7 @@ namespace Content.Client.VendingMachines.UI
             if (string.IsNullOrEmpty(filter))
                 return true;
 
-            return text.Contains(filter, StringComparison.CurrentCultureIgnoreCase);
+            return _fuzzy.Test(filter, text); // DeepLagoon: fuzzy search
         }
 
         private void GenerateButton(ListData data, ListContainerButton button)
@@ -144,6 +147,7 @@ namespace Content.Client.VendingMachines.UI
                 listData.Add(new VendorItemsListData(prototype!.ID, itemText, i)); // Frontier: prototype<prototype!
             }
 
+            _fuzzy.SetCorpus(listData.Select(data => data.ItemText)); // DeepLagoon: fuzzy search
             VendingContents.PopulateList(listData);
 
             SetSizeAfterUpdate(longestEntry.Length, inventory.Count);
