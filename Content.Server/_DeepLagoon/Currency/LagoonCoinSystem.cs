@@ -280,6 +280,22 @@ public sealed class LagoonCoinSystem : EntitySystem
         return await ChangeBalance(user, -amount, reason, actor, operationId);
     }
 
+    /// <summary>Future payment backend calls this only after verifying the external payment, using its stable order ID.</summary>
+    public async Task<LagoonCoinResult> RecordPurchase(NetUserId user, long amount, string orderId, string reason)
+    {
+        if (amount <= 0 || string.IsNullOrWhiteSpace(orderId) || orderId.Length > 180)
+            throw new ArgumentException("Invalid verified LC purchase.");
+        return await ChangeBalance(user, amount, reason, null, $"purchase:{orderId}");
+    }
+
+    /// <summary>Future shop confirms this debit before issuing goods. Reuse the same order ID on retries.</summary>
+    public async Task<LagoonCoinResult> Spend(NetUserId user, long amount, string orderId, string reason)
+    {
+        if (amount <= 0 || string.IsNullOrWhiteSpace(orderId) || orderId.Length > 180)
+            throw new ArgumentException("Invalid LC spending operation.");
+        return await ChangeBalance(user, -amount, reason, user, $"spend:{orderId}");
+    }
+
     private async Task<LagoonCoinResult> ChangeBalance(NetUserId user, long amount, string reason, NetUserId? actor, string? operationId)
     {
         await _walletOperations.WaitAsync();

@@ -4,6 +4,10 @@ namespace Content.Shared.CCVar;
 
 public sealed partial class CCVars
 {
+    /// <summary>Donation wallet audit webhook. Empty disables delivery; receipts remain in the DB.</summary>
+    public static readonly CVarDef<string> DiscordLagoonCoinWebhook =
+        CVarDef.Create("discord.lagoon_coin_webhook", string.Empty, CVar.SERVERONLY | CVar.CONFIDENTIAL);
+
     /// <summary>
     ///     The role that will get mentioned if a new SOS ahelp comes in.
     /// </summary>
@@ -64,6 +68,10 @@ public sealed partial class CCVars
     /// </summary>
     public static readonly CVarDef<string> DiscordWatchlistConnectionWebhook =
         CVarDef.Create("discord.watchlist_connection_webhook", string.Empty, CVar.SERVERONLY | CVar.CONFIDENTIAL);
+
+    /// <summary>Committed bans, role bans, notes, watchlists and messages. Empty disables delivery.</summary>
+    public static readonly CVarDef<string> DiscordModerationWebhook =
+        CVarDef.Create("discord.moderation_webhook", string.Empty, CVar.SERVERONLY | CVar.CONFIDENTIAL);
 
     /// <summary>
     ///     Mono: URL of the Discord webhook which will relay a summary at round end. If left empty, disables the webhook.

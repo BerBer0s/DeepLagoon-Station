@@ -56,6 +56,9 @@ namespace Content.Server.Database
             modelBuilder.Entity<LagoonCoinOperation>().HasKey(p => new { p.UserId, p.OperationId });
             modelBuilder.Entity<LagoonCoinOperation>().Property(p => p.OperationId).HasMaxLength(200);
             modelBuilder.Entity<LagoonCoinOperation>().Property(p => p.Reason).HasMaxLength(500);
+            // Existing journal entries precede webhook logging; do not replay them on upgrade.
+            modelBuilder.Entity<LagoonCoinOperation>().Property(p => p.WebhookDelivered).HasDefaultValue(true);
+            modelBuilder.Entity<LagoonCoinOperation>().HasIndex(p => new { p.WebhookDelivered, p.WebhookLeaseUntil });
             modelBuilder.Entity<Preference>()
                 .HasIndex(p => p.UserId)
                 .IsUnique();

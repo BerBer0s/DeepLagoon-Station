@@ -20,4 +20,8 @@ public sealed class LagoonCoinOperation
     public string Reason { get; set; } = "";
     public Guid? ActorId { get; set; }
     public DateTime CreatedAt { get; set; }
+    public long BalanceAfter { get; set; }
+    public bool WebhookDelivered { get; set; }
+    public Guid? WebhookLeaseOwner { get; set; }
+    public DateTime? WebhookLeaseUntil { get; set; }
 }

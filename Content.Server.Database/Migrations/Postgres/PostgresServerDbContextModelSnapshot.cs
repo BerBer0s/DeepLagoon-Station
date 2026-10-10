@@ -742,6 +742,10 @@ namespace Content.Server.Database.Migrations.Postgres
                         .HasColumnType("bigint")
                         .HasColumnName("amount");
 
+                    b.Property<long>("BalanceAfter")
+                        .HasColumnType("bigint")
+                        .HasColumnName("balance_after");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -760,8 +764,24 @@ namespace Content.Server.Database.Migrations.Postgres
                         .HasColumnType("bigint")
                         .HasColumnName("subscriber_ticks");
 
+                    b.Property<bool>("WebhookDelivered")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("webhook_delivered");
+
+                    b.Property<Guid?>("WebhookLeaseOwner")
+                        .HasColumnType("uuid")
+                        .HasColumnName("webhook_lease_owner");
+
+                    b.Property<DateTime?>("WebhookLeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("webhook_lease_until");
+
                     b.HasKey("UserId", "OperationId")
                         .HasName("PK_lagoon_coin_operations");
+
+                    b.HasIndex("WebhookDelivered", "WebhookLeaseUntil");
 
                     b.ToTable("lagoon_coin_operations", (string)null);
                 });

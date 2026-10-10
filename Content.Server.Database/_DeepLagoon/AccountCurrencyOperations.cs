@@ -18,6 +18,27 @@ public sealed class InsufficientLagoonCoinsException : InvalidOperationException
 /// <summary>All writers lock the preference row before reading it. Works across server processes.</summary>
 public static class AccountCurrencyOperations
 {
+    public static async Task<LagoonCoinOperation?> ClaimLagoonCoinWebhook(ServerDbContext db, Guid owner,
+        CancellationToken cancel = default)
+    {
+        var now = DateTime.UtcNow;
+        var pending = db.LagoonCoinOperations.AsNoTracking().Where(p => !p.WebhookDelivered &&
+            (p.WebhookLeaseUntil == null || p.WebhookLeaseUntil < now));
+        var row = await pending.OrderBy(p => p.CreatedAt).ThenBy(p => p.OperationId).FirstOrDefaultAsync(cancel);
+        if (row == null) return null;
+        var updated = await pending.Where(p => p.UserId == row.UserId && p.OperationId == row.OperationId)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.WebhookLeaseOwner, (Guid?)owner)
+                .SetProperty(p => p.WebhookLeaseUntil, (DateTime?)now.AddMinutes(2)), cancel);
+        return updated == 1 ? row : null;
+    }
+
+    public static async Task CompleteLagoonCoinWebhook(ServerDbContext db, Guid user, string key, Guid owner,
+        CancellationToken cancel = default)
+    {
+        await db.LagoonCoinOperations.Where(p => p.UserId == user && p.OperationId == key && p.WebhookLeaseOwner == owner)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.WebhookDelivered, true)
+                .SetProperty(p => p.WebhookLeaseOwner, (Guid?)null).SetProperty(p => p.WebhookLeaseUntil, (DateTime?)null), cancel);
+    }
     public static async Task<System.Collections.Generic.List<LagoonCoinOperation>> GetLagoonCoinHistory(
         ServerDbContext db, Guid user, int page, CancellationToken cancel = default)
     {
@@ -155,6 +176,7 @@ public static class AccountCurrencyOperations
         {
             UserId = user, OperationId = operationId, Amount = amount, Reason = reason,
             ActorId = actorId, PlayedTicks = playedTicks, SubscriberTicks = subscriberTicks, CreatedAt = DateTime.UtcNow,
+            BalanceAfter = row.LagoonCoins, WebhookDelivered = amount == 0,
         });
         await db.SaveChangesAsync(cancel);
         await transaction.CommitAsync(cancel);

@@ -156,11 +156,11 @@ namespace Content.Server.Database
             return await query.ToListAsync();
         }
 
-        public override async Task AddServerBanAsync(ServerBanDef serverBan)
+        public override async Task<int> AddServerBanAsync(ServerBanDef serverBan)
         {
             await using var db = await GetDbImpl();
 
-            db.SqliteDbContext.Ban.Add(new ServerBan
+            var entry = new ServerBan
             {
                 Address = serverBan.Address.ToNpgsqlInet(),
                 Reason = serverBan.Reason,
@@ -173,9 +173,12 @@ namespace Content.Server.Database
                 PlaytimeAtNote = serverBan.PlaytimeAtNote,
                 PlayerUserId = serverBan.UserId?.UserId,
                 ExemptFlags = serverBan.ExemptFlags
-            });
+            };
+
+            db.SqliteDbContext.Ban.Add(entry);
 
             await db.SqliteDbContext.SaveChangesAsync();
+            return entry.Id;
         }
 
         public override async Task AddServerUnbanAsync(ServerUnbanDef serverUnban)

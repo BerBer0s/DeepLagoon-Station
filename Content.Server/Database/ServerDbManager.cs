@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Content.Server.Administration.Logs;
 using Content.Shared.Administration.Logs;
+using Content.Shared.Administration.Notes;
 using Content.Shared.CCVar;
 using Content.Shared.Database;
 using Content.Shared.Preferences;
@@ -61,6 +62,8 @@ namespace Content.Server.Database
             int bankAmount, long moneyAmount, CancellationToken cancel = default);
         Task<long> GetLagoonCoinsAsync(NetUserId user, CancellationToken cancel = default);
         Task<List<LagoonCoinOperation>> GetLagoonCoinHistoryAsync(NetUserId user, int page, CancellationToken cancel = default);
+        Task<LagoonCoinOperation?> ClaimLagoonCoinWebhookAsync(Guid owner, CancellationToken cancel = default);
+        Task CompleteLagoonCoinWebhookAsync(Guid user, string key, Guid owner, CancellationToken cancel = default);
         Task<LagoonCoinResult> AwardLagoonCoinsAsync(NetUserId user, string operationId, long amount, string reason,
             NetUserId? actor = null, long playedTicks = 0, long subscriberTicks = 0, CancellationToken cancel = default);
         #endregion
@@ -113,7 +116,7 @@ namespace Content.Server.Database
             ImmutableArray<ImmutableArray<byte>>? modernHWIds,
             bool includeUnbanned = true);
 
-        Task AddServerBanAsync(ServerBanDef serverBan);
+        Task<int> AddServerBanAsync(ServerBanDef serverBan);
         Task AddServerUnbanAsync(ServerUnbanDef serverBan);
 
         public Task EditServerBan(
@@ -597,22 +600,24 @@ namespace Content.Server.Database
             return RunDbCommand(() => _db.GetServerBansAsync(address, userId, hwId, modernHWIds, includeUnbanned));
         }
 
-        public Task AddServerBanAsync(ServerBanDef serverBan)
+        public Task<int> AddServerBanAsync(ServerBanDef serverBan)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.AddServerBanAsync(serverBan));
+            return AddModerationRemark(() => RunDbCommand(() => _db.AddServerBanAsync(serverBan)),
+                new ModerationEvent(NoteType.ServerBan, 0, "Выдано", serverBan.UserId, serverBan.BanningAdmin?.UserId,
+                    serverBan.Reason, serverBan.Severity, false, serverBan.ExpirationTime, serverBan.RoundId, null, serverBan.BanTime));
         }
 
         public Task AddServerUnbanAsync(ServerUnbanDef serverUnban)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.AddServerUnbanAsync(serverUnban));
+            return WriteModeration(() => RunDbCommand(() => _db.AddServerUnbanAsync(serverUnban)), NoteType.ServerBan, serverUnban.BanId, serverUnban.UnbanningAdmin?.UserId, "Снят");
         }
 
         public Task EditServerBan(int id, string reason, NoteSeverity severity, DateTimeOffset? expiration, Guid editedBy, DateTimeOffset editedAt)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.EditServerBan(id, reason, severity, expiration, editedBy, editedAt));
+            return WriteModeration(() => RunDbCommand(() => _db.EditServerBan(id, reason, severity, expiration, editedBy, editedAt)), NoteType.ServerBan, id, editedBy, "Изменено");
         }
 
         public Task UpdateBanExemption(NetUserId userId, ServerBanExemptFlags flags)
@@ -645,22 +650,26 @@ namespace Content.Server.Database
             return RunDbCommand(() => _db.GetServerRoleBansAsync(address, userId, hwId, modernHWIds, includeUnbanned));
         }
 
-        public Task<ServerRoleBanDef> AddServerRoleBanAsync(ServerRoleBanDef serverRoleBan)
+        public async Task<ServerRoleBanDef> AddServerRoleBanAsync(ServerRoleBanDef serverRoleBan)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.AddServerRoleBanAsync(serverRoleBan));
+            var ban = await RunDbCommand(() => _db.AddServerRoleBanAsync(serverRoleBan));
+            PublishModeration(new ModerationEvent(NoteType.RoleBan, ban.Id!.Value, "Выдано", ban.UserId,
+                ban.BanningAdmin?.UserId, ban.Reason, ban.Severity, false, ban.ExpirationTime, ban.RoundId,
+                new[] { ban.Role }, ban.BanTime));
+            return ban;
         }
 
         public Task AddServerRoleUnbanAsync(ServerRoleUnbanDef serverRoleUnban)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.AddServerRoleUnbanAsync(serverRoleUnban));
+            return WriteModeration(() => RunDbCommand(() => _db.AddServerRoleUnbanAsync(serverRoleUnban)), NoteType.RoleBan, serverRoleUnban.BanId, serverRoleUnban.UnbanningAdmin?.UserId, "Снят");
         }
 
         public Task EditServerRoleBan(int id, string reason, NoteSeverity severity, DateTimeOffset? expiration, Guid editedBy, DateTimeOffset editedAt)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.EditServerRoleBan(id, reason, severity, expiration, editedBy, editedAt));
+            return WriteModeration(() => RunDbCommand(() => _db.EditServerRoleBan(id, reason, severity, expiration, editedBy, editedAt)), NoteType.RoleBan, id, editedBy, "Изменено");
         }
         #endregion
 
@@ -919,7 +928,9 @@ namespace Content.Server.Database
                 ExpirationTime = expiryTime?.UtcDateTime
             };
 
-            return RunDbCommand(() => _db.AddAdminNote(note));
+            return AddModerationRemark(() => RunDbCommand(() => _db.AddAdminNote(note)),
+                new ModerationEvent(NoteType.Note, 0, "Добавлено", new NetUserId(player), createdBy, message,
+                    severity, secret, expiryTime, roundId, null, createdAt));
         }
 
         public Task<int> AddAdminWatchlist(int? roundId, Guid player, TimeSpan playtimeAtNote, string message, Guid createdBy, DateTimeOffset createdAt, DateTimeOffset? expiryTime)
@@ -938,7 +949,9 @@ namespace Content.Server.Database
                 ExpirationTime = expiryTime?.UtcDateTime
             };
 
-            return RunDbCommand(() => _db.AddAdminWatchlist(note));
+            return AddModerationRemark(() => RunDbCommand(() => _db.AddAdminWatchlist(note)),
+                new ModerationEvent(NoteType.Watchlist, 0, "Добавлено", new NetUserId(player), createdBy, message,
+                    null, true, expiryTime, roundId, null, createdAt));
         }
 
         public Task<int> AddAdminMessage(int? roundId, Guid player, TimeSpan playtimeAtNote, string message, Guid createdBy, DateTimeOffset createdAt, DateTimeOffset? expiryTime)
@@ -957,7 +970,9 @@ namespace Content.Server.Database
                 ExpirationTime = expiryTime?.UtcDateTime
             };
 
-            return RunDbCommand(() => _db.AddAdminMessage(note));
+            return AddModerationRemark(() => RunDbCommand(() => _db.AddAdminMessage(note)),
+                new ModerationEvent(NoteType.Message, 0, "Добавлено", new NetUserId(player), createdBy, message,
+                    null, false, expiryTime, roundId, null, createdAt));
         }
 
         public Task<AdminNoteRecord?> GetAdminNote(int id)
@@ -1014,49 +1029,49 @@ namespace Content.Server.Database
         public Task EditAdminNote(int id, string message, NoteSeverity severity, bool secret, Guid editedBy, DateTimeOffset editedAt, DateTimeOffset? expiryTime)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.EditAdminNote(id, message, severity, secret, editedBy, editedAt, expiryTime));
+            return WriteModeration(() => RunDbCommand(() => _db.EditAdminNote(id, message, severity, secret, editedBy, editedAt, expiryTime)), NoteType.Note, id, editedBy, "Изменено");
         }
 
         public Task EditAdminWatchlist(int id, string message, Guid editedBy, DateTimeOffset editedAt, DateTimeOffset? expiryTime)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.EditAdminWatchlist(id, message, editedBy, editedAt, expiryTime));
+            return WriteModeration(() => RunDbCommand(() => _db.EditAdminWatchlist(id, message, editedBy, editedAt, expiryTime)), NoteType.Watchlist, id, editedBy, "Изменено");
         }
 
         public Task EditAdminMessage(int id, string message, Guid editedBy, DateTimeOffset editedAt, DateTimeOffset? expiryTime)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.EditAdminMessage(id, message, editedBy, editedAt, expiryTime));
+            return WriteModeration(() => RunDbCommand(() => _db.EditAdminMessage(id, message, editedBy, editedAt, expiryTime)), NoteType.Message, id, editedBy, "Изменено");
         }
 
         public Task DeleteAdminNote(int id, Guid deletedBy, DateTimeOffset deletedAt)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.DeleteAdminNote(id, deletedBy, deletedAt));
+            return WriteModeration(() => RunDbCommand(() => _db.DeleteAdminNote(id, deletedBy, deletedAt)), NoteType.Note, id, deletedBy, "Удалено");
         }
 
         public Task DeleteAdminWatchlist(int id, Guid deletedBy, DateTimeOffset deletedAt)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.DeleteAdminWatchlist(id, deletedBy, deletedAt));
+            return WriteModeration(() => RunDbCommand(() => _db.DeleteAdminWatchlist(id, deletedBy, deletedAt)), NoteType.Watchlist, id, deletedBy, "Удалено");
         }
 
         public Task DeleteAdminMessage(int id, Guid deletedBy, DateTimeOffset deletedAt)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.DeleteAdminMessage(id, deletedBy, deletedAt));
+            return WriteModeration(() => RunDbCommand(() => _db.DeleteAdminMessage(id, deletedBy, deletedAt)), NoteType.Message, id, deletedBy, "Удалено");
         }
 
         public Task HideServerBanFromNotes(int id, Guid deletedBy, DateTimeOffset deletedAt)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.HideServerBanFromNotes(id, deletedBy, deletedAt));
+            return WriteModeration(() => RunDbCommand(() => _db.HideServerBanFromNotes(id, deletedBy, deletedAt)), NoteType.ServerBan, id, deletedBy, "Скрыто из заметок");
         }
 
         public Task HideServerRoleBanFromNotes(int id, Guid deletedBy, DateTimeOffset deletedAt)
         {
             DbWriteOpsMetric.Inc();
-            return RunDbCommand(() => _db.HideServerRoleBanFromNotes(id, deletedBy, deletedAt));
+            return WriteModeration(() => RunDbCommand(() => _db.HideServerRoleBanFromNotes(id, deletedBy, deletedAt)), NoteType.RoleBan, id, deletedBy, "Скрыто из заметок");
         }
 
         public Task MarkMessageAsSeen(int id, bool dismissedToo)

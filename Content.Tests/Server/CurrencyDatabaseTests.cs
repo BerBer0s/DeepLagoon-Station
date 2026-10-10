@@ -50,6 +50,70 @@ public sealed class CurrencyDatabaseTests
     public void Cleanup() => File.Delete(_path);
 
     [Test]
+    public async Task WebhookOutboxIsTransactionalAndSurvivesRestart()
+    {
+        await using (var db = new SqliteServerDbContext(_options))
+        {
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "admin:1", 10, "admin");
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "admin:1", 10, "admin");
+            await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "checkpoint", 0, "playtime", playedTicks: 1);
+            Assert.ThrowsAsync<InsufficientLagoonCoinsException>(async () =>
+                await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "failed", -11, "deduct"));
+        }
+        var owner = Guid.NewGuid();
+        await using var fresh = new SqliteServerDbContext(_options);
+        var pending = await AccountCurrencyOperations.ClaimLagoonCoinWebhook(fresh, owner);
+        Assert.That(pending, Is.Not.Null);
+        Assert.That(pending!.OperationId, Is.EqualTo("admin:1"));
+        Assert.That(pending.BalanceAfter, Is.EqualTo(10));
+        Assert.That(await AccountCurrencyOperations.ClaimLagoonCoinWebhook(fresh, Guid.NewGuid()), Is.Null);
+        await AccountCurrencyOperations.CompleteLagoonCoinWebhook(fresh, _user, pending.OperationId, Guid.NewGuid());
+        Assert.That(await fresh.LagoonCoinOperations.AsNoTracking().Where(p => !p.WebhookDelivered).CountAsync(), Is.EqualTo(1));
+        await AccountCurrencyOperations.CompleteLagoonCoinWebhook(fresh, _user, pending.OperationId, owner);
+        Assert.That(await AccountCurrencyOperations.ClaimLagoonCoinWebhook(fresh, owner), Is.Null);
+    }
+
+    [Test]
+    public async Task EveryGameplayAwardUsesTheSameWebhookJournal()
+    {
+        await using var db = new SqliteServerDbContext(_options);
+        await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "round:1:ready", 5, "ready");
+        await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "round:1:objective:1", 2, "antagonist-objective");
+        await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "time:1", 0, "playtime", playedTicks: TimeSpan.TicksPerHour);
+        await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "spend:1", -3, "Shop item");
+        await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "purchase:1", 100, "Verified order");
+        var pending = await db.LagoonCoinOperations.AsNoTracking().Where(p => !p.WebhookDelivered).OrderBy(p => p.CreatedAt).ToListAsync();
+        Assert.That(pending.Select(p => p.Amount), Is.EqualTo(new long[] { 5, 2, 2, -3, 100 }));
+        Assert.That(pending.Select(p => p.BalanceAfter), Is.EqualTo(new long[] { 5, 7, 9, 6, 106 }));
+    }
+
+    [Test]
+    public async Task ExpiredWebhookLeaseCanBeReclaimedByAnotherServer()
+    {
+        await using var db = new SqliteServerDbContext(_options);
+        await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "purchase:order", 100, "purchase");
+        var first = Guid.NewGuid();
+        Assert.That(await AccountCurrencyOperations.ClaimLagoonCoinWebhook(db, first), Is.Not.Null);
+        await db.LagoonCoinOperations.ExecuteUpdateAsync(s => s.SetProperty(p => p.WebhookLeaseUntil, (DateTime?)DateTime.UtcNow.AddMinutes(-1)));
+        var second = Guid.NewGuid();
+        Assert.That(await AccountCurrencyOperations.ClaimLagoonCoinWebhook(db, second), Is.Not.Null);
+        await AccountCurrencyOperations.CompleteLagoonCoinWebhook(db, _user, "purchase:order", first);
+        Assert.That(await db.LagoonCoinOperations.AsNoTracking().Where(p => !p.WebhookDelivered).CountAsync(), Is.EqualTo(1));
+        await AccountCurrencyOperations.CompleteLagoonCoinWebhook(db, _user, "purchase:order", second);
+        Assert.That(await db.LagoonCoinOperations.AsNoTracking().Where(p => !p.WebhookDelivered).CountAsync(), Is.Zero);
+    }
+
+    [Test]
+    public async Task UpgradeDoesNotReplayPreWebhookHistory()
+    {
+        await using var db = new SqliteServerDbContext(_options);
+        await db.GetService<IMigrator>().MigrateAsync("20261009210957_LagoonCoinWallet");
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO lagoon_coin_operations(user_id,operation_id,amount,played_ticks,subscriber_ticks,reason,created_at) VALUES ({_user}, 'old', 5, 0, 0, 'admin', {DateTime.UtcNow})");
+        await db.Database.MigrateAsync();
+        Assert.That(await AccountCurrencyOperations.ClaimLagoonCoinWebhook(db, Guid.NewGuid()), Is.Null);
+    }
+
+    [Test]
     public async Task LagoonCoinDeductionIsAtomicIdempotentAndJournaled()
     {
         await using (var db = new SqliteServerDbContext(_options))
