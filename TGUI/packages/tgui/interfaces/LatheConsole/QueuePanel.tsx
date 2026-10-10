@@ -1,46 +1,37 @@
-import { type CSSProperties, useRef } from 'react';
+import type { KeyboardEvent } from 'react';
 
 import { Icon } from '../../components';
-import { formatNumber, type Current, type QueueEntry } from './model';
+import { type Current, formatNumber, type QueueEntry } from './model';
+import {
+  type Printing,
+  type ProgressMode,
+  useEstimateStyle,
+  useIndeterminateStyle,
+} from './printing';
 import { RecipeIcon } from './RecipeIcon';
 import type { T } from './text';
 
-// The bar moves in this many steps per second: a smooth bar would repaint the whole window every
-// frame, and four steps a second is smooth enough for a print of a few seconds.
-const STEPS_PER_SECOND = 4;
-const MAX_STEPS = 60;
-
-type ProgressProps = { current: Current };
+type ProgressProps = { printing: Printing; mode: ProgressMode };
 
 /**
- * One animation for the whole print, started where the server says the print is (negative delay).
- * The style is fixed per print: a later state of the same print must not restart the bar.
+ * Two ways to show a print, because the page does not measure it, it only knows when the server says it
+ * began and how long it takes. `estimate` is a bar filling over that time. `indeterminate` is a band going
+ * round, which claims only that something is printing. Both step four times a second.
  */
-const Progress = ({ current }: ProgressProps) => {
-  const frozen = useRef<{ key: string | undefined; style: CSSProperties }>(undefined);
-  let fixed = frozen.current;
-  if (!fixed || fixed.key !== current.key) {
-    const total = Math.max(0.1, current.total ?? 0.1);
-    const steps = Math.max(1, Math.min(MAX_STEPS, Math.round(total * STEPS_PER_SECOND)));
-    fixed = {
-      key: current.key,
-      style: {
-        animationDuration: `${total}s`,
-        animationDelay: `-${Math.min(total, current.elapsed ?? 0)}s`,
-        animationTimingFunction: `steps(${steps}, end)`,
-      },
-    };
-    frozen.current = fixed;
-  }
+const Progress = ({ printing, mode }: ProgressProps) => {
+  const estimate = useEstimateStyle(mode === 'estimate' ? printing : null);
+  const indeterminate = useIndeterminateStyle(mode === 'indeterminate' ? printing : null);
   return (
-    <div className="Progress">
-      <i key={current.key} style={fixed.style} />
+    <div className={`Progress Progress--${mode}`}>
+      <i key={printing.key} style={mode === 'estimate' ? estimate : indeterminate} />
     </div>
   );
 };
 
 type QueuePanelProps = {
   current: Current;
+  printing: Printing | null;
+  progressMode: ProgressMode;
   queue: QueueEntry[];
   looping: boolean;
   skipping: boolean;
@@ -49,10 +40,14 @@ type QueuePanelProps = {
   onCancel: (index: number) => void;
   onLoop: (value: boolean) => void;
   onSkip: (value: boolean) => void;
+  /** Scrolls the list to the row of the recipe that is printing. */
+  onLocate: () => void;
 };
 
 export const QueuePanel = ({
   current,
+  printing,
+  progressMode,
   queue,
   looping,
   skipping,
@@ -61,6 +56,7 @@ export const QueuePanel = ({
   onCancel,
   onLoop,
   onSkip,
+  onLocate,
 }: QueuePanelProps) => {
   // The batch the current print belongs to, while it still has items to print.
   const batch = current.id ? queue.find((entry) => entry.id === current.id) : undefined;
@@ -71,7 +67,18 @@ export const QueuePanel = ({
           <span>{t('current')}</span>
         </h4>
         {current.id ? (
-          <div className="Current__card">
+          <div
+            className="Current__card"
+            role="button"
+            tabIndex={0}
+            onClick={onLocate}
+            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onLocate();
+              }
+            }}
+          >
             <div className="Current__line">
               <RecipeIcon id={current.id} className="Current__icon" />
               <div className="Current__name">
@@ -82,15 +89,18 @@ export const QueuePanel = ({
                   </small>
                 )}
               </div>
+              <Icon name="crosshairs" className="Current__locate" />
             </div>
-            {current.active ? (
+            {printing ? (
               <>
-                <Progress current={current} />
-                <div className="Current__meta">
-                  <span>
-                    {formatNumber(current.total ?? 0, separator)} {t('time-unit')}
-                  </span>
-                </div>
+                <Progress printing={printing} mode={progressMode} />
+                {progressMode === 'estimate' && (
+                  <div className="Current__meta">
+                    <span>
+                      ≈ {formatNumber(printing.total, separator)} {t('time-unit')}
+                    </span>
+                  </div>
+                )}
               </>
             ) : (
               <div className="Current__waiting">{t('current-waiting')}</div>

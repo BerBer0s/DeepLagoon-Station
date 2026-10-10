@@ -73,6 +73,8 @@ export type WireData = {
   reagentStock?: { id: string; n: number }[];
   queue?: QueueEntry[];
   current?: Current;
+  /** How the print is shown; not sent by the host (the page picks `estimate`), the test stand sets it. */
+  progressMode?: 'estimate' | 'indeterminate';
 
   chatState?: string;
 };

@@ -9,12 +9,14 @@ import {
   type Stock,
   worstStatus,
 } from './availability';
+import type { CostLayout } from './costs';
 import {
   formatNumber,
   formatSheets,
   type Recipe,
   type WireMaterial,
 } from './model';
+import { type Printing, useStripeStyle } from './printing';
 import { RecipeIcon } from './RecipeIcon';
 import type { T } from './text';
 
@@ -38,14 +40,20 @@ export const detailsHeight = (recipe: Recipe): number => {
   );
 };
 
-const COSTS_SHOWN = 3;
-
 type RecipeRowProps = {
   recipe: Recipe;
   amount: number;
   selected: boolean;
   stock: Stock;
   materials: Map<string, WireMaterial>;
+  layout: CostLayout;
+  /** Set on the row of the recipe that is being printed. */
+  printing: Printing | null;
+  /** How far the batch of the printing recipe is; 0 and 0 when the print is the last of its batch. */
+  batchPrinted: number;
+  batchRequested: number;
+  /** Counts the requests to show this row; the row blinks once for each. 0 for other rows. */
+  flash: number;
   /** Counts the queued presses of this recipe; restarts the button's flash. 0 for other rows. */
   pulse: number;
   separator: string;
@@ -53,6 +61,7 @@ type RecipeRowProps = {
   onSelect: (id: string) => void;
   onAmount: (id: string, amount: number) => void;
   onQueue: (id: string) => void;
+  onFlashEnd: () => void;
 };
 
 const nameOf = (need: Need, materials: Map<string, WireMaterial>) =>
@@ -69,10 +78,16 @@ const amountText = (
     case 'material':
       return formatSheets(value, materials.get(need.id)?.sheet ?? 100, separator);
     case 'reagent':
-      return `${formatNumber(value, separator)} ${t('unit-reagent')}`;
+      return `${formatNumber(value, separator)} ${t('unit-reagent')}`;
     default:
       return String(value);
   }
+};
+
+/** What of a need is in stock, as a fraction of what is needed: the cell's bar. */
+const filledOf = (need: Need) => {
+  const have = need.kind === 'material' && need.status === 'later' ? need.free : need.have;
+  return need.need <= 0 ? 1 : Math.max(0, Math.min(1, have / need.need));
 };
 
 export const RecipeRow = memo(function RecipeRow({
@@ -81,16 +96,23 @@ export const RecipeRow = memo(function RecipeRow({
   selected,
   stock,
   materials,
+  layout,
+  printing,
+  batchPrinted,
+  batchRequested,
+  flash,
   pulse,
   separator,
   t,
   onSelect,
   onAmount,
   onQueue,
+  onFlashEnd,
 }: RecipeRowProps) {
   const needs = needsOf(recipe, amount, stock);
   const status: Status = worstStatus(needs);
   const text = (need: Need, value: number) => amountText(need, value, materials, separator, t);
+  const stripe = useStripeStyle(printing);
 
   let sub = '';
   if (status === 'later') {
@@ -115,11 +137,31 @@ export const RecipeRow = memo(function RecipeRow({
 
   const most = selected ? maxAmount(recipe, stock, MAX_AMOUNT) : 0;
 
+  // One cell per column, in the order of the columns; what has no column is counted in the last one.
+  const columnIds = new Set(layout.columns.map((column) => column.id));
+  const others = needs.filter((need) => need.kind !== 'material' || !columnIds.has(need.id));
+  const othersStatus = worstStatus(others);
+
   return (
     <div
-      className={`Recipe Recipe--${status}${selected ? ' Recipe--selected' : ''}`}
+      className={[
+        'Recipe',
+        `Recipe--${status}`,
+        selected ? 'Recipe--selected' : '',
+        printing ? 'Recipe--printing' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       data-recipe={recipe.id}
     >
+      {printing && (
+        <span className="Recipe__stripe" aria-hidden="true">
+          <i key={printing.key} style={stripe} />
+        </span>
+      )}
+      {flash > 0 && (
+        <span key={flash} className="Recipe__flash" aria-hidden="true" onAnimationEnd={onFlashEnd} />
+      )}
       <div className="Recipe__line">
         <div
           className="Recipe__main"
@@ -135,70 +177,106 @@ export const RecipeRow = memo(function RecipeRow({
             {sub !== '' && !selected && <small className="Recipe__sub">{sub}</small>}
           </div>
           <div className="Recipe__costs">
-            {needs.slice(0, COSTS_SHOWN).map((need) => {
-              const have =
-                need.kind === 'material' && need.status === 'later' ? need.free : need.have;
-              const filled = need.need <= 0 ? 1 : Math.max(0, Math.min(1, have / need.need));
+            {layout.columns.map((column) => {
+              const need = needs.find((entry) => entry.kind === 'material' && entry.id === column.id);
               return (
                 <div
-                  key={need.kind + need.id}
-                  className={`Cost Cost--${need.status}`}
-                  data-tip={`${nameOf(need, materials)}: ${text(need, need.have)} / ${text(need, need.need)}`}
+                  key={column.id}
+                  className={`Cost${need ? ` Cost--${need.status}` : ' Cost--none'}`}
+                  data-tip={
+                    need
+                      ? `${column.name}: ${text(need, need.have)} / ${text(need, need.need)}`
+                      : undefined
+                  }
                 >
-                  <span className="Cost__text">
-                    <b>{text(need, need.need)}</b> {nameOf(need, materials)}
-                  </span>
-                  <span className="Cost__bar">
-                    <i style={{ transform: `scaleX(${filled})` }} />
-                  </span>
+                  {need && (
+                    <>
+                      <b className="Cost__text">{text(need, need.need)}</b>
+                      <span className="Cost__bar">
+                        <i style={{ transform: `scaleX(${filledOf(need)})` }} />
+                      </span>
+                    </>
+                  )}
                 </div>
               );
             })}
-            {needs.length > COSTS_SHOWN && (
-              <span className="Cost__more">+{needs.length - COSTS_SHOWN}</span>
+            {layout.other && (
+              <div
+                className={`Cost Cost--other${others.length > 0 ? ` Cost--${othersStatus}` : ' Cost--none'}`}
+                data-tip={
+                  others.length > 0
+                    ? others
+                        .map(
+                          (need) =>
+                            `${nameOf(need, materials)}: ${text(need, need.have)} / ${text(need, need.need)}`,
+                        )
+                        .join('\n')
+                    : undefined
+                }
+              >
+                {others.length > 0 && <b className="Cost__text">+{others.length}</b>}
+              </div>
             )}
           </div>
         </div>
-        <div className="Amount">
-          <button
-            type="button"
-            aria-label={t('amount-decrease')}
-            disabled={amount <= 1}
-            onClick={() => setAmount(amount - 1)}
-          >
-            <Icon name="minus" />
-          </button>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={amount}
-            maxLength={3}
-            aria-label={recipe.name}
-            onFocus={(event) => event.target.select()}
-            onChange={(event) => {
-              const digits = event.target.value.replace(/\D/g, '');
-              setAmount(digits === '' ? 1 : parseInt(digits, 10));
-            }}
-          />
-          <button
-            type="button"
-            aria-label={t('amount-increase')}
-            disabled={amount >= MAX_AMOUNT}
-            onClick={() => setAmount(amount + 1)}
-          >
-            <Icon name="plus" />
-          </button>
-        </div>
-        <button
-          key={pulse}
-          type="button"
-          className={`Recipe__add${pulse > 0 ? ' Recipe__add--pulse' : ''}`}
-          disabled={status !== 'ok'}
-          data-tip={status === 'later' ? t('short-after-queue') : undefined}
-          onClick={() => onQueue(recipe.id)}
-        >
-          {status === 'short' ? t('queue-unavailable') : t('queue-action')}
-        </button>
+        {printing ? (
+          <div className="Recipe__badge" data-tip={t('current')}>
+            {batchRequested > 0 ? (
+              <span>
+                {batchPrinted}/{batchRequested}
+              </span>
+            ) : (
+              <Icon name="print" />
+            )}
+          </div>
+        ) : (
+          <div className="Recipe__actions">
+            <div className="Amount">
+              <button
+                type="button"
+                aria-label={t('amount-decrease')}
+                disabled={amount <= 1}
+                onClick={() => setAmount(amount - 1)}
+              >
+                <Icon name="minus" />
+              </button>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amount}
+                maxLength={3}
+                aria-label={recipe.name}
+                onFocus={(event) => event.target.select()}
+                onChange={(event) => {
+                  const digits = event.target.value.replace(/\D/g, '');
+                  setAmount(digits === '' ? 1 : parseInt(digits, 10));
+                }}
+              />
+              <button
+                type="button"
+                aria-label={t('amount-increase')}
+                disabled={amount >= MAX_AMOUNT}
+                onClick={() => setAmount(amount + 1)}
+              >
+                <Icon name="plus" />
+              </button>
+            </div>
+            <button
+              key={pulse}
+              type="button"
+              className={`Recipe__add${pulse > 0 ? ' Recipe__add--pulse' : ''}`}
+              disabled={status !== 'ok'}
+              aria-label={t('queue-action')}
+              data-tip={status === 'later' ? t('short-after-queue') : undefined}
+              onClick={() => onQueue(recipe.id)}
+            >
+              <Icon name={status === 'ok' ? 'plus' : status === 'later' ? 'clock' : 'ban'} />
+              <span className="Recipe__addLabel">
+                {status === 'short' ? t('queue-unavailable') : t('queue-action')}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
       {selected && (
         <div className="Recipe__details" style={{ height: detailsHeight(recipe) }}>
@@ -239,7 +317,7 @@ export const RecipeRow = memo(function RecipeRow({
               </li>
             ))}
           </ul>
-          <div className="Recipe__actions">
+          <div className="Recipe__footer">
             <button
               type="button"
               className="Recipe__max"

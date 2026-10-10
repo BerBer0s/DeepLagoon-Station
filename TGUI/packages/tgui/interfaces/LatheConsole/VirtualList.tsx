@@ -19,6 +19,8 @@ type VirtualListProps<T extends Item> = {
   resetKey: string;
   /** The key of an item that has to be fully in view when this changes. */
   revealKey: string | null;
+  /** Centers the item with this key each time `n` grows; waits for the item if it is not in the list yet. */
+  scrollTo: { key: string; n: number } | null;
 };
 
 /**
@@ -30,6 +32,7 @@ export const VirtualList = <T extends Item>({
   renderItem,
   resetKey,
   revealKey,
+  scrollTo,
 }: VirtualListProps<T>) => {
   const box = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
@@ -107,6 +110,24 @@ export const VirtualList = <T extends Item>({
     // Only a change of the revealed item moves the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealKey]);
+
+  // After the reset above, so that a request made together with a new filter wins over the reset.
+  const handled = useRef(0);
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (!element || !scrollTo || scrollTo.n === handled.current) {
+      return;
+    }
+    const index = items.findIndex((item) => item.key === scrollTo.key);
+    if (index < 0) {
+      return;
+    }
+    handled.current = scrollTo.n;
+    const middle = offsets[index] + items[index].height / 2;
+    const most = Math.max(0, offsets[items.length] - element.clientHeight);
+    element.scrollTop = Math.max(0, Math.min(most, middle - element.clientHeight / 2));
+    measure();
+  }, [scrollTo, items, offsets, measure]);
 
   // The first item whose bottom is past the top of the view, found by bisection.
   let first = 0;

@@ -13,11 +13,15 @@ import { sendMessage, useBackend } from '../../backend';
 import { playerTheme } from '../../components/PlayerTheme';
 import { Tips } from '../ResearchConsole/Tips';
 import { buildStock, statusOf } from './availability';
+import { buildCostLayout } from './costs';
+import { CostHeader } from './CostHeader';
 import { buildItems, filterRecipes, type ListItem, ROW_HEIGHT } from './list';
 import { Materials } from './Materials';
+import { makePrinting } from './printing';
 import {
   buildRecipes,
   compareNames,
+  type Current,
   NO_CATEGORY,
   type Recipe,
   type WireData,
@@ -31,6 +35,7 @@ import { VirtualList } from './VirtualList';
 import './LatheConsole.scss';
 
 const NO_AMOUNTS: Record<string, number> = {};
+const NO_CURRENT: Current = {};
 
 // Left mouse button drags belong to the window, so the browser must not start text selection or image
 // dragging. Text fields keep their behavior.
@@ -56,6 +61,7 @@ export const LatheConsole = () => {
     () => new Map((data.materials ?? []).map((material) => [material.id, material])),
     [data.materials],
   );
+  const layout = useMemo(() => buildCostLayout(recipes, materials), [recipes, materials]);
   const categoryNames = useMemo(
     () => new Map((data.categories ?? []).map((category) => [category.id, category.name])),
     [data.categories],
@@ -65,6 +71,16 @@ export const LatheConsole = () => {
     [data.stock, data.reserved, data.entityStock, data.reagentStock],
   );
 
+  const current = data.current ?? NO_CURRENT;
+  // The page's clock for the print is taken when the print first appears; later states of the same print
+  // leave it alone.
+  const printing = useMemo(
+    () => makePrinting(current),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [current.active, current.id, current.key],
+  );
+  const batch = current.id ? (data.queue ?? []).find((entry) => entry.id === current.id) : undefined;
+
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
@@ -72,6 +88,8 @@ export const LatheConsole = () => {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [amounts, setAmounts] = useState<Record<string, number>>(NO_AMOUNTS);
   const [pulse, setPulse] = useState({ id: '', count: 0 });
+  // A click on the printing block asks the list to show that row, which then blinks once.
+  const [locate, setLocate] = useState({ id: '', n: 0, blinking: false });
   const searchInput = useRef<HTMLInputElement>(null);
 
   const amountOf = useCallback(
@@ -158,6 +176,24 @@ export const LatheConsole = () => {
     t,
   ]);
 
+  const filteredIds = useMemo(() => new Set(filtered.map((recipe) => recipe.id)), [filtered]);
+  const onLocate = useCallback(() => {
+    if (!current.id) {
+      return;
+    }
+    // A search or a category that hides the row is dropped: the request is to see the row.
+    if (!filteredIds.has(current.id)) {
+      setQuery('');
+      setCategory(null);
+      setOnlyAvailable(false);
+    }
+    setLocate((previous) => ({ id: current.id ?? '', n: previous.n + 1, blinking: true }));
+  }, [current.id, filteredIds]);
+  const onFlashEnd = useCallback(
+    () => setLocate((previous) => ({ ...previous, blinking: false })),
+    [],
+  );
+
   const latest = useRef({ query, selectedId });
   useEffect(() => {
     latest.current = { query, selectedId };
@@ -220,15 +256,38 @@ export const LatheConsole = () => {
           selected={item.recipe.id === selectedId}
           stock={stock}
           materials={materials}
+          layout={layout}
+          printing={printing?.id === item.recipe.id ? printing : null}
+          batchPrinted={printing?.id === item.recipe.id ? (batch?.printed ?? 0) : 0}
+          batchRequested={printing?.id === item.recipe.id ? (batch?.requested ?? 0) : 0}
+          flash={locate.blinking && locate.id === item.recipe.id ? locate.n : 0}
           pulse={pulse.id === item.recipe.id ? pulse.count : 0}
           separator={separator}
           t={t}
           onSelect={select}
           onAmount={setAmount}
           onQueue={queue}
+          onFlashEnd={onFlashEnd}
         />
       ),
-    [amountOf, selectedId, stock, materials, pulse, separator, t, select, setAmount, queue],
+    [
+      amountOf,
+      selectedId,
+      stock,
+      materials,
+      layout,
+      printing,
+      batch?.printed,
+      batch?.requested,
+      locate,
+      pulse,
+      separator,
+      t,
+      select,
+      setAmount,
+      queue,
+      onFlashEnd,
+    ],
   );
 
   const theme = playerTheme(data.chatState);
@@ -261,16 +320,18 @@ export const LatheConsole = () => {
       />
       <div className="LatheConsole__body">
         <div
-          className="LatheConsole__list"
+          className={`LatheConsole__list${layout.compact ? ' LatheConsole__list--compact' : ''}`}
           onPointerOver={onPointerOver}
           onPointerLeave={onPointerLeave}
         >
+          <CostHeader layout={layout} />
           {items.length === 0 && <div className="LatheConsole__empty">{t('search-empty')}</div>}
           <VirtualList
             items={items}
             renderItem={renderItem}
             resetKey={`${category}|${searchQuery}|${onlyAvailable}`}
             revealKey={selectedId}
+            scrollTo={locate.n > 0 ? { key: locate.id, n: locate.n } : null}
           />
         </div>
         <aside className="LatheConsole__side">
@@ -289,7 +350,9 @@ export const LatheConsole = () => {
             onEject={(id, sheets) => act('eject', { id, sheets })}
           />
           <QueuePanel
-            current={data.current ?? {}}
+            current={current}
+            printing={printing}
+            progressMode={data.progressMode === 'indeterminate' ? 'indeterminate' : 'estimate'}
             queue={data.queue ?? []}
             looping={data.looping === true}
             skipping={data.skipping === true}
@@ -298,6 +361,7 @@ export const LatheConsole = () => {
             onCancel={(index) => act('cancel', { index })}
             onLoop={(value) => act('loop', { value: String(value) })}
             onSkip={(value) => act('skip', { value: String(value) })}
+            onLocate={onLocate}
           />
         </aside>
       </div>
