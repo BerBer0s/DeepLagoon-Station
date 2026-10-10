@@ -1,0 +1,31 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-NFBaseBlueprint = { ent-BaseBlueprint }
+    .desc = { ent-BaseBlueprint.desc }
+
+ent-BaseBlueprintFaxable = { ent-NFBaseBlueprint }
+    .desc = { ent-NFBaseBlueprint.desc }
+
+ent-NFBaseBlueprintEngineering = { ent-BaseBlueprintFaxable }
+    .desc = { ent-BaseBlueprintFaxable.desc }
+
+ent-NFBaseBlueprintSalvage = { ent-BaseBlueprintFaxable }
+    .desc = { ent-BaseBlueprintFaxable.desc }
+
+ent-NFBaseBlueprintScience = { ent-BaseBlueprintFaxable }
+    .desc = { ent-BaseBlueprintFaxable.desc }
+
+ent-NFBaseBlueprintService = { ent-BaseBlueprintFaxable }
+    .desc = { ent-BaseBlueprintFaxable.desc }
+
+ent-NFBaseBlueprintMedical = { ent-BaseBlueprintFaxable }
+    .desc = { ent-BaseBlueprintFaxable.desc }
+
+ent-NFBaseBlueprintArmory = { ent-BaseBlueprintFaxable }
+    .desc = { ent-BaseBlueprintFaxable.desc }
+
+ent-NFBaseBlueprintChurch = { ent-BaseBlueprintFaxable }
+    .desc = { ent-BaseBlueprintFaxable.desc }
+
+ent-BaseBlueprintExpedition = { ent-NFBaseBlueprint }
+    .desc = { ent-NFBaseBlueprint.desc }

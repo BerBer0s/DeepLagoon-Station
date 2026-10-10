@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+prayer-chat-notify-high = ЗАПРОС
+
+prayer-verbs-request = Запрос
+
+prayer-popup-notify-request-sent = Вы оставили голосовое сообщение для вышестоящего командования...

@@ -1,0 +1,11 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+thief-fulton-set = Координаты доставки установлены.
+
+thief-fulton-clear = Координаты доставки удалены.
+
+thief-fulton-examined-set = Координаты введены. Блюспейс телепортация ближайших объектов будет выполнена, когда эвакуационный шаттл отправится.
+
+thief-fulton-verb-text = Установить координаты
+
+thief-fulton-verb-message = Установить координаты вашего воровского убежища, куда в конце раунда будут отправлены все близлежащие предметы.

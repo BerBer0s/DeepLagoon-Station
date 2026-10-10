@@ -1,0 +1,4 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-WeaponLauncherMk348 = НТ-ВС МК348 "Слюда"
+    .desc = Многоствольное орудие, патроны к которому подаются напрямую из упаковок. Радуйтесь, что вам не приходится его чистить. Использует патроны калибра 9х19мм.

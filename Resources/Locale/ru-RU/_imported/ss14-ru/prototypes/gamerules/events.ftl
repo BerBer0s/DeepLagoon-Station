@@ -1,0 +1,25 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-BaseStationEvent = { ent-BaseGameRule }
+    .desc = { ent-BaseGameRule.desc }
+
+ent-BaseStationEventShortDelay = { ent-BaseGameRule }
+    .desc = { ent-BaseGameRule.desc }
+
+ent-BaseStationEventLongDelay = { ent-BaseGameRule }
+    .desc = { ent-BaseGameRule.desc }
+
+ent-GasLeak = { ent-BaseStationEventShortDelay }
+    .desc = { ent-BaseStationEventShortDelay.desc }
+
+ent-SolarFlare = { ent-BaseGameRule }
+    .desc = { ent-BaseGameRule.desc }
+
+ent-VentClog = { ent-BaseStationEventLongDelay }
+    .desc = { ent-BaseStationEventLongDelay.desc }
+
+ent-MassHallucinations = { ent-BaseGameRule }
+    .desc = { ent-BaseGameRule.desc }
+
+ent-IonStorm = { ent-BaseGameRule }
+    .desc = { ent-BaseGameRule.desc }

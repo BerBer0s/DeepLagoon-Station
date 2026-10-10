@@ -1,0 +1,3 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+flavor-text-placeholder = Внешнее описание вашего персонажа, которое другие могут узнать, осмотрев его...

@@ -1,0 +1,17 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-WelderEmpty = { ent-Welder }
+    .suffix = Пустой
+    .desc = { ent-Welder.desc }
+
+ent-WelderIndustrialEmpty = { ent-WelderIndustrial }
+    .suffix = Пустой
+    .desc = { ent-WelderIndustrial.desc }
+
+ent-WelderIndustrialAdvancedEmpty = { ent-WelderIndustrialAdvanced }
+    .suffix = Пустой
+    .desc = { ent-WelderIndustrialAdvanced.desc }
+
+ent-WelderExperimentalEmpty = { ent-WelderExperimental }
+    .suffix = Пустой
+    .desc = { ent-WelderExperimental.desc }

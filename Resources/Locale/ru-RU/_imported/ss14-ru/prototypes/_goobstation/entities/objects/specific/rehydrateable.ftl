@@ -1,0 +1,55 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-HumanCube = человеческий кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-DionaCube = дионий кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-FelinidCube = фелинидский кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-GingerbreadCube = печеньковый кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-MothCube = нианий кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-DwarfCube = дворфийский кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-HarpyCube = гарпий кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-RodentiaCube = родентрийный кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-ReptilianCube = унатховый кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-VulpkaninCube = вульпканинский кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-SlimePersonCube = слаймолюдский кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-YowieCube = йовий кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-VoxCube = воксовый кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-ResomiCube = резомий кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-GoblinCube = гоблинский кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-ChitinidCube = хитинидский кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-ProtogenCube = протогенский кубик
+    .desc = { ent-MonkeyCube.desc }
+
+ent-TajaranCube = таярский кубик
+    .desc = { ent-MonkeyCube.desc }

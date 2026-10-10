@@ -1,0 +1,25 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ClothingHandsGlovesMopp = перчатки ОЗК
+    .desc = Высококачественные резиновые перчатки с изоляцией для повышенной РХБЗ-защиты.
+
+ent-ClothingHandsGlovesTacticalCombatTan = бежевые тактические боевые перчатки
+    .desc = { ent-ClothingHandsGlovesCombat.desc }
+
+ent-ClothingHandsGlovesTacticalCombatBlack = чёрные тактические боевые перчатки
+    .desc = { ent-ClothingHandsGlovesCombat.desc }
+
+ent-ClothingHandsGlovesTacticalCombatRangerGreen = серо-зеленые тактические боевые перчатки
+    .desc = { ent-ClothingHandsGlovesCombat.desc }
+
+ent-ClothingHandsGlovesTacticalCombatOlive = оливковые тактические боевые перчатки
+    .desc = { ent-ClothingHandsGlovesCombat.desc }
+
+ent-ClothingHandsGlovesTacticalCombatCoyoteBrown = песочно-коричневые тактические боевые перчатки
+    .desc = { ent-ClothingHandsGlovesCombat.desc }
+
+ent-ClothingHandsGlovesTacticalCombatWhite = белые тактические боевые перчатки
+    .desc = { ent-ClothingHandsGlovesCombat.desc }
+
+ent-ClothingHandsConcussiveGauntlets = ударные перчатки
+    .desc = Пара перчаток, предназначенных для шахтёрских работ, способных наносить удары, разрушающие всё на своём пути. Дорогие и мощные.

@@ -1,0 +1,5 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+station-event-gas-leak-nf-start-announcement = Внимание, на шаттлах зафиксированы возможные утечки газа. Избегайте аварийных мест и носите кислородные маски.
+
+station-event-gas-leak-nf-end-announcement = Источник утечки газа был устранён. Пожалуйста, не снимайте кислородные маски до полного устранения газа и будьте осторожны.

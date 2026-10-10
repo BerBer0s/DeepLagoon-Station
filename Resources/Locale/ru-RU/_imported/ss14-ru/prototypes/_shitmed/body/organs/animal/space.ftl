@@ -1,0 +1,19 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-OrganSpaceAnimalLungs = лёгкие космозверя
+    .desc = { ent-OrganAnimalLungs.desc }
+
+ent-OrganSpaceAnimalHeart = сердце космозверя
+    .desc = { ent-OrganAnimalHeart.desc }
+
+ent-OrganGoliathHeart = сердце голиафа
+    .desc = { ent-OrganAnimalHeart.desc }
+
+ent-OrganDragonLungs = лёгкие дракона
+    .desc = { ent-OrganAnimalLungs.desc }
+
+ent-OrganLaserEyes = глаза лазерного раптора
+    .desc = { ent-OrganHumanEyes.desc }
+
+ent-OrganCobraHeart = железа кобры
+    .desc = { ent-OrganAnimalHeart.desc }

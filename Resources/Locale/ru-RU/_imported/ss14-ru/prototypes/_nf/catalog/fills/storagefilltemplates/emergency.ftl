@@ -1,0 +1,16 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-StorageFillO2N2Random = { "" }
+    .desc = { "" }
+
+ent-StorageFillN2Random = { "" }
+    .desc = { "" }
+
+ent-StorageFillO2N2 = { "" }
+    .desc = { "" }
+
+ent-StorageFillN2 = { "" }
+    .desc = { "" }
+
+ent-StorageFillO2 = { "" }
+    .desc = { "" }

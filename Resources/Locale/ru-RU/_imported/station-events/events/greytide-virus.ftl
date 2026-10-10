@@ -1,0 +1,3 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+station-event-greytide-virus-start-announcement = Вирус Gr3y.T1d3 обнаружен в подпрограммах шифрования защитных систем станции. Уровень серьёзности: { $severity }. Рекомендуется вмешательство станционного ИИ.

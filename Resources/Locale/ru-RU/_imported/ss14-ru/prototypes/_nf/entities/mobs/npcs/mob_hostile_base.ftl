@@ -1,0 +1,80 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-NFMobAtmos = { "" }
+    .desc = { "" }
+
+ent-MobPassiveRegenWeak = { "" }
+    .desc = { "" }
+
+ent-MobPassiveRegen = { "" }
+    .desc = { "" }
+
+ent-MobPassiveRegenStrong = { "" }
+    .desc = { "" }
+
+ent-MobLaserReflect = { "" }
+    .desc = { "" }
+
+ent-NFMobRestrictions = { "" }
+    .desc = { "" }
+
+ent-NFMobBossRestrictions = { "" }
+    .desc = { "" }
+
+ent-NFMobRestrictionsSilicon = { "" }
+    .desc = { "" }
+
+ent-NFMobTimedDespawn30 = { "" }
+    .desc = { "" }
+
+ent-NFMobTimedDespawn60 = { "" }
+    .desc = { "" }
+
+ent-NFMobTimedDespawn80 = { "" }
+    .desc = { "" }
+
+ent-NFMobTimedDespawn120 = { "" }
+    .desc = { "" }
+
+ent-NFMobTimedDespawn180 = { "" }
+    .desc = { "" }
+
+ent-NFMobTimedDespawn1200 = { "" }
+    .desc = { "" }
+
+ent-NFMobTimedDespawn1800 = { "" }
+    .desc = { "" }
+
+ent-NFMobTimedDespawn3000 = { "" }
+    .desc = { "" }
+
+ent-MobEnhancedMovement = { "" }
+    .desc = { "" }
+
+ent-MobStepTriggerImmune = { "" }
+    .desc = { "" }
+
+ent-MobPrying = { "" }
+    .desc = { "" }
+
+ent-MobHostileBossBase = { ent-MobEnhancedMovement }
+    .desc = { ent-MobEnhancedMovement.desc }
+
+ent-MobHumanoidInvetory = { "" }
+    .desc = { "" }
+
+ent-MobHumanoidInvetorySimplified = { "" }
+    .desc = { "" }
+
+ent-MobHumanoidHostileAISimpleMelee = { "" }
+    .desc = { "" }
+
+ent-MobHumanoidHostileAISimpleRanged = { "" }
+    .desc = { "" }
+
+ent-MobHumanoidHostileAIComplex = { "" }
+    .desc = { "" }
+
+ent-MobHumanoidHostileBase = { ent-NFMobAtmos }
+    .suffix = AI, Hostile
+    .desc = { ent-NFMobAtmos.desc }

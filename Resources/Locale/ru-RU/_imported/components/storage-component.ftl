@@ -1,0 +1,19 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+comp-storage-no-item-size = Нет
+
+comp-storage-cant-insert = Невозможно поместить.
+
+comp-storage-too-big = Слишком большое!
+
+comp-storage-insufficient-capacity = Недостаточная вместимость.
+
+comp-storage-invalid-container = Это сюда не лезет!
+
+comp-storage-anchored-failure = Невозможно поместить закреплённый предмет.
+
+comp-storage-cant-drop = Вы не можете отпустить { $entity }!
+
+comp-storage-verb-open-storage = Открыть хранилище
+
+comp-storage-verb-close-storage = Закрыть хранилище

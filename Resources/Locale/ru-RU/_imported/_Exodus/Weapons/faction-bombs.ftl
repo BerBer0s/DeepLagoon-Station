@@ -1,0 +1,15 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+uplink-HardBomb-PDV-name = Бункерная бомба Династии Фаэтон «Адам»
+
+uplink-HardBomb-PDV-desc = Взрывное устройство для уничтожения укреплений противника.
+
+uplink-HardBomb-TSF-name = Бункерная бомба ТСФ «Хиросима»
+
+uplink-HardBomb-TSF-desc = Взрывное устройство для уничтожения укреплений противника.
+
+ent-TSFBomb = бункерная бомба ТСФ «Хиросима»
+    .desc = Взрывное устройство для уничтожения укреплений противника.
+
+ent-PDVBomb = бункерная бомба Династии Фаэтон «Адам»
+    .desc = Взрывное устройство для уничтожения укреплений противника.

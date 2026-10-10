@@ -1,0 +1,4 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ChemMaster = ХимМастер 4000
+    .desc = Химический манипулятор промышленного класса с возможностью производства таблеток и бутылочек.

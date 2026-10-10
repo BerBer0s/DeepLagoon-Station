@@ -1,0 +1,28 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-BaseStructureDisableToolUse = { "" }
+    .desc = { "" }
+
+ent-BaseStructureDisableAnchoring = { "" }
+    .desc = { "" }
+
+ent-BaseStructureDisablePrying = { "" }
+    .desc = { "" }
+
+ent-BaseStructureDisableScrewing = { "" }
+    .desc = { "" }
+
+ent-BaseStructureDestructible = { "" }
+    .desc = { "" }
+
+ent-BaseStructureIndestructible = { "" }
+    .desc = { "" }
+
+ent-BaseStructureWallmount = { ent-BaseStructureDisableAnchoring }
+    .desc = { ent-BaseStructureDisableAnchoring.desc }
+
+ent-BaseStructureLockImmuneToEmag = { "" }
+    .desc = { "" }
+
+ent-BaseStructureAccessReaderImmuneToEmag = { "" }
+    .desc = { "" }

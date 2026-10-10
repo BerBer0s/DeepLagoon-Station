@@ -1,0 +1,8 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ParticleAcceleratorEndCap = торцевая крышка УЧ
+    .desc = Официально известна как Массив генерации альфа-частиц. Здесь альфа-частицы генерируются из [УДАЛЕНО].
+
+ent-ParticleAcceleratorEndCapUnfinished = торцевая крышка УЧ
+    .desc = Официально известна как Массив генерации альфа-частиц. Здесь альфа-частицы генерируются из [УДАЛЕНО]. Выглядит незаконченной.
+    .suffix = Незаконченный

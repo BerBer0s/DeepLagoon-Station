@@ -1,0 +1,21 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ThrusterSecurity = ракетный двигатель
+    .suffix = Охрана
+    .desc = { ent-Thruster.desc }
+
+ent-DebugThrusterSecurity = ракетный двигатель
+    .suffix = DEBUG, Охрана
+    .desc = { ent-DebugThruster.desc }
+
+ent-GyroscopeSecurity = { ent-Gyroscope }
+    .suffix = Охрана
+    .desc = { ent-Gyroscope.desc }
+
+ent-DebugGyroscopeSecurity = гироскоп
+    .suffix = DEBUG, Охрана
+    .desc = { ent-DebugGyroscope.desc }
+
+ent-SmallGyroscopeSecurity = малый гироскоп
+    .suffix = Охрана
+    .desc = { ent-SmallGyroscope.desc }

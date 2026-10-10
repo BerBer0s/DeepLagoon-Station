@@ -1,0 +1,10 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-BaseEnergyBall = { "" }
+    .desc = { "" }
+
+ent-TeslaEnergyBall = шаровая молния
+    .desc = Гигантский шар чистой энергии. Пространство вокруг него гудит и плавится.
+
+ent-TeslaMiniEnergyBall = маленькая шаровая молния
+    .desc = Детёныш разрушительной энергетической клетки. Не так опасен, но всё же не стоит трогать его голыми руками.

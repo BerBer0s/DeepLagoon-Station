@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ClothingShoesBootsMagVoidTrauma = магнитные ботинки ATU
+    .desc = Лёгкие магнитные ботинки для работы в открытом космосе. Уменьшают замедление от ранений.
+
+ent-ClothingShoesBootsMagVoidTraumaLeader = улучшенные магнитные ботинки ATU
+    .desc = Усиленные магнитные ботинки травматологического подразделения. Система поддержки подвижности помогает передвигаться даже при тяжёлых ранениях.

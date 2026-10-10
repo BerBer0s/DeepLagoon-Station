@@ -1,0 +1,61 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-MaterialPyrogel = пирогель
+    .desc = Эксперементальный химический гель.
+    .suffix = Полный
+
+ent-MaterialPyrogel1 = { ent-MaterialPyrogel }
+    .suffix = 1
+    .desc = { ent-MaterialPyrogel.desc }
+
+ent-MaterialIridite = иридит
+    .desc = Сложный сплав, синтезируемый из атмосферных газов. Обычно используется за пределами сектора для тяжёлого промышленного оборудования, нановолокон и высококлассных компьютеров.
+    .suffix = Полный
+
+ent-SheetIridite1 = { ent-MaterialIridite }
+    .suffix = 1
+    .desc = { ent-MaterialIridite.desc }
+
+ent-SheetIridite10 = { ent-MaterialIridite }
+    .suffix = 10
+    .desc = { ent-MaterialIridite.desc }
+
+ent-SheetIridite50 = { ent-MaterialIridite }
+    .suffix = 50
+    .desc = { ent-MaterialIridite.desc }
+
+ent-SheetPlastitanium = пластитан
+    .desc = Широко производимый высокопрочный сплав. Даже если здесь он редок, в более цивилизованных и развитых секторах его чрезвычайно много.
+    .suffix = Полный
+
+ent-SheetPlastitanium1 = { ent-SheetPlastitanium }
+    .suffix = 1
+    .desc = { ent-SheetPlastitanium.desc }
+
+ent-SheetPlastitanium10 = { ent-SheetPlastitanium }
+    .suffix = 10
+    .desc = { ent-SheetPlastitanium.desc }
+
+ent-MaterialDiamond5 = { ent-MaterialDiamond }
+    .suffix = Экспедиция
+    .desc = { ent-MaterialDiamond.desc }
+
+ent-SheetUraniumFissile = делящийся уран
+    .desc = Слитки чистых, беспримесных изотопов оружейного урана. С ними жди неприятностей. И ТОЧНО не храни их рядом друг с другом.
+    .suffix = Полный
+
+ent-SheetUraniumFissile3 = { ent-SheetUraniumFissile }
+    .desc = { ent-SheetUraniumFissile.desc }
+    .suffix = 3
+
+ent-SheetUraniumFissile1 = { ent-SheetUraniumFissile }
+    .desc = { ent-SheetUraniumFissile.desc }
+    .suffix = 1
+
+ent-SheetUraniumDepleted = обеднённый уран
+    .desc = Слитки прочного, плотного и до смешного тяжёлого обеднённого урана. Он больше не делится, но всё ещё полезен для дел, не связанных с военными преступлениями.
+    .suffix = Полный
+
+ent-SheetUraniumDepleted1 = { ent-SheetUraniumDepleted }
+    .desc = { ent-SheetUraniumDepleted.desc }
+    .suffix = 1

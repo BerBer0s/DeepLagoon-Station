@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-AirAlarm = воздушная сигнализация
+    .desc = Воздушная сигнализация. Сигнализирует... воздух?
+
+ent-AirAlarmAssembly = корпус воздушной сигнализации
+    .desc = Воздушная сигнализация. Не похоже, что в ближайшее время она подаст сигнал.

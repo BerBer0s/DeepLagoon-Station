@@ -1,0 +1,4 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-WeaponRifleMR3C = СКР-ВС МР-3С (8x65mm SKR)
+    .desc = Точная и надежная полуавтоматическая винтовка, разработанная на базе ранних прототипов МР-8С. Использует патроны калибра 8х65мм.

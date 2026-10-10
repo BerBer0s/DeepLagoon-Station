@@ -1,0 +1,37 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ClothingShoesBootsCombatFilled = { ent-ClothingShoesBootsCombat }
+    .suffix = Заполненный
+    .desc = { ent-ClothingShoesBootsCombat.desc }
+
+ent-ClothingShoesBootsJackFilled = { ent-ClothingShoesBootsJack }
+    .desc = { ent-ClothingShoesBootsJack.desc }
+    .suffix = Заполненный
+
+ent-ClothingShoesBootsWinterSecFilled = { ent-ClothingShoesBootsWinterSec }
+    .desc = { ent-ClothingShoesBootsWinterSec.desc }
+    .suffix = Заполненный
+
+ent-ClothingShoesBootsCowboyBlackFilled = { ent-ClothingShoesBootsCowboyBlack }
+    .desc = { ent-ClothingShoesBootsCowboyBlack.desc }
+    .suffix = Заполненный
+
+ent-ClothingShoesBootsCowboyBrownFilled = { ent-ClothingShoesBootsCowboyBrown }
+    .desc = { ent-ClothingShoesBootsCowboyBrown.desc }
+    .suffix = Заполненный
+
+ent-ClothingShoesBootsCowboyWhiteFilled = { ent-ClothingShoesBootsCowboyWhite }
+    .desc = { ent-ClothingShoesBootsCowboyWhite.desc }
+    .suffix = Заполненный
+
+ent-ClothingShoesBootsCowboyFancyFilled = { ent-ClothingShoesBootsCowboyFancy }
+    .desc = { ent-ClothingShoesBootsCowboyFancy.desc }
+    .suffix = Заполненный
+
+ent-ClothingShoesHighheelBootsFilled = { ent-ClothingShoesHighheelBoots }
+    .desc = { ent-ClothingShoesHighheelBoots.desc }
+    .suffix = Заполненный
+
+ent-ClothingShoesBootsSyndieFilled = { ent-ClothingShoesBootsCombat }
+    .suffix = Заполненный, Метательный нож
+    .desc = { ent-ClothingShoesBootsCombat.desc }

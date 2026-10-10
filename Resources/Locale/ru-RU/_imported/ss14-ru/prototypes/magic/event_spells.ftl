@@ -1,0 +1,10 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ActionSummonGhosts = Призыв призраков
+    .desc = Делает всех существующих призраков видимыми навсегда.
+
+ent-ActionSummonGuns = Призыв оружия
+    .desc = Оружие для всех! Размещает перед каждым случайное огнестрельное оружие.
+
+ent-ActionSummonMagic = Призыв магии
+    .desc = Размещает перед каждым случайный магический предмет. Что может пойти не так?

@@ -1,0 +1,13 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+cmd-motd-desc = Позывает или устанавливает Сообщение дня.
+
+cmd-get-motd-desc = Показывает Сообщение дня.
+
+cmd-set-motd-desc = Устанавливает или очищает Сообщение дня.
+
+cmd-set-motd-cleared-motd-message = Сообщение дня очищено.
+
+cmd-set-motd-set-motd-message = Установлено следующее Сообщение дня: "{ $motd }".
+
+motd-wrap-message = Сообщение дня: { $motd }

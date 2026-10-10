@@ -1,0 +1,31 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-BaseFoam = { "" }
+    .desc = { "" }
+
+ent-Smoke = дым
+    .desc = { ent-BaseFoam.desc }
+
+ent-WizardSmoke = дым
+    .desc = { ent-Smoke.desc }
+
+ent-Foam = пена
+    .desc = { ent-BaseFoam.desc }
+
+ent-MetalFoam = металлическая пена
+    .desc = { ent-Foam.desc }
+
+ent-IronMetalFoam = железная пена
+    .desc = { ent-MetalFoam.desc }
+
+ent-AluminiumMetalFoam = алюминиевая пена
+    .desc = { ent-MetalFoam.desc }
+
+ent-FoamedIronMetal = вспененное железо
+    .desc = Для заделывания пробоин в корпусе.
+
+ent-FoamedAluminiumMetal = вспененный алюминий
+    .desc = Для заделывания пробоин в корпусе.
+
+ent-ReactionFlash = { "" }
+    .desc = { "" }

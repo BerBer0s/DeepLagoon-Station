@@ -1,0 +1,25 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-AirlockShuttle = стыковочный шлюз
+    .desc = Необходим для соединения двух космических кораблей вместе.
+    .suffix = Стыковочный
+
+ent-AirlockGlassShuttle = стыковочный шлюз
+    .desc = Необходим для соединения двух космических кораблей вместе.
+    .suffix = Стыковочный, Стеклянный
+
+ent-AirlockShuttleAssembly = каркас стыковочного шлюза
+    .desc = Незавершённая конструкция, необходимая для соединения двух космических кораблей вместе.
+    .suffix = Стыковочный
+
+ent-AirlockGlassShuttleSyndicate = { ent-AirlockGlassShuttle }
+    .desc = { ent-AirlockGlassShuttle.desc }
+    .suffix = { ent-AirlockGlassShuttle.suffix }
+
+ent-AirlockShuttleSyndicate = { ent-AirlockShuttle }
+    .desc = { ent-AirlockShuttle.desc }
+    .suffix = { ent-AirlockShuttle.suffix }
+
+ent-AirlockShuttleXenoborg = { ent-AirlockShuttle }
+    .desc = { ent-AirlockShuttle.desc }
+    .suffix = Стыковочный, ксеноборги

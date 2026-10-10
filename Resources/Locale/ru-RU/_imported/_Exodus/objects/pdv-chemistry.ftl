@@ -1,0 +1,5 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+uplink-pirate-vestine-vial-name = Пробирка вестина (30 ед.)
+
+uplink-pirate-vestine-vial-desc = Пробирка дорогой аномальной жидкости, полученной из местной фауны. Используется в сложном химическом производстве.

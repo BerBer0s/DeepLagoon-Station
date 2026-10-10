@@ -1,0 +1,41 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+traitor-round-end-agent-name = предатель
+
+objective-issuer-syndicate = [color=crimson]Синдикат[/color]
+
+objective-issuer-unknown = Неизвестно
+
+traitor-round-end-codewords = Кодовыми словами были: [color=White]{ $codewords }[/color].
+
+traitor-title = Предатели
+
+traitor-description = Среди нас есть предатели...
+
+traitor-role-greeting =
+    Вы - агент организации { $corporation } на задании [color = darkred]Синдиката.[/color].
+    Ваши цели и кодовые слова перечислены в меню персонажа.
+    Воспользуйтесь своим аплинком, чтобы приобрести всё необходимое для выполнения работы.
+    Смерть NanoTrasen!
+
+traitor-role-codewords =
+    Кодовые слова следующие: [color = lightgray]
+    { $codewords }.[/color]
+    Кодовые слова можно использовать в обычном разговоре, чтобы незаметно идентифицировать себя для других агентов Синдиката.
+    Прислушивайтесь к ним и храните их в тайне.
+
+traitor-role-uplink-code =
+    Установите рингтон Вашего КПК на [color = lightgray]{ $code }[/color] чтобы заблокировать или разблокировать аплинк.
+    Не забудьте заблокировать его и сменить код, иначе кто угодно из экипажа станции сможет открыть аплинк!
+
+traitor-role-codewords-short =
+    Кодовые слова:
+    { $codewords }.
+
+traitor-role-uplink-implant =
+    Ваш имплант аплинк активирован, воспользуйтесь им из хотбара.
+    Аплинк надежно защищён, пока кто-нибудь не извлечёт его из вашего тела.
+
+traitor-role-uplink-code-short = Ваш код аплинка: { $code }. Установите его в качестве рингтона КПК для доступа к аплинку.
+
+traitor-role-uplink-implant-short = Ваш аплинк был имплантирован. Воспользуйтесь им из хотбара.

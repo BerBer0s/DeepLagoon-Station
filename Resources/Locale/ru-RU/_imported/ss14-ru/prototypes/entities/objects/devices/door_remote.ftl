@@ -1,0 +1,35 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-DoorRemoteDefault = пульт от шлюзов
+    .desc = Гаджет, который может открывать и закрывать шлюзы дистанционно.
+
+ent-DoorRemoteCommand = пульт от шлюзов капитана
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteSecurity = пульт от шлюзов главы службы безопасности
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteArmory = пульт от шлюзов оружейной
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteService = пульт от шлюзов главы персонала
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteResearch = пульт от шлюзов научного руководителя
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteCargo = пульт от шлюзов квартирмейстера
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteMedical = пульт от шлюзов главного врача
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteEngineering = пульт от шлюзов старшего инженера
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteAll = супер-пульт от шлюзов
+    .suffix = Адмемы
+    .desc = { ent-DoorRemoteDefault.desc }
+
+ent-DoorRemoteXenoborg = пульт от шлюзов ксеноборгов
+    .desc = { ent-DoorRemoteDefault.desc }

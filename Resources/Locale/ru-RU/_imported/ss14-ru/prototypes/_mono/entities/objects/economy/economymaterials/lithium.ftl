@@ -1,0 +1,17 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-MaterialLithium = литий
+    .desc = Литий — мягкий хрупкий металл, широко применяемый в электронике, прежде всего в щелочных батареях. А ещё он опасно реакционноспособен!
+    .suffix = Полный
+
+ent-SheetLithium1 = { ent-MaterialLithium }
+    .desc = { ent-MaterialLithium.desc }
+    .suffix = 1
+
+ent-SheetLithium10 = { ent-MaterialLithium }
+    .desc = { ent-MaterialLithium.desc }
+    .suffix = 10
+
+ent-SheetLithium50 = { ent-MaterialLithium }
+    .desc = { ent-MaterialLithium.desc }
+    .suffix = 50

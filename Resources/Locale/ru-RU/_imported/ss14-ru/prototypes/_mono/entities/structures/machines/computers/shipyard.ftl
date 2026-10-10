@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ComputerShipyardUSSP = консоль верфи СССП
+    .desc = Используется для покупки шаттлов из резерва Союза Советских Социалистических Планет.
+
+ent-ComputerShipyardDrakeIndustries = консоль верфи Дрэйк Индастрис
+    .desc = Используется для покупки шаттлов Дрэйк Индастриc.

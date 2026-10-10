@@ -1,0 +1,18 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ComputerTelevision = деревянный телевизор
+    .desc = Наконец-то тут появился нормальный сигнал...
+
+ent-WallmountTelescreenFrame = каркас телеэкрана
+    .desc = Наконец-то тут появился нормальный сигнал...
+
+ent-WallmountTelescreen = телеэкран
+    .desc = Наконец-то тут появился нормальный сигнал...
+    .suffix = Монитор камер
+
+ent-WallmountTelevisionFrame = каркас телевизора
+    .desc = Наконец-то тут появился нормальный сигнал...
+
+ent-WallmountTelevision = телевизор
+    .desc = Наконец-то тут появился нормальный сигнал...
+    .suffix = Развлечения

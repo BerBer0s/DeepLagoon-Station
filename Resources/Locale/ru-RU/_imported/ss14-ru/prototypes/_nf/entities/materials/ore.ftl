@@ -1,0 +1,36 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ScrapOre = куски скрапа
+    .desc = Разнообразные обломки бывшей в употреблении техники. Перед использованием нужно отсортировать или переработать.
+    .suffix = Полный
+
+ent-ScrapOre1 = { ent-ScrapOre }
+    .suffix = Один
+    .desc = { ent-ScrapOre.desc }
+
+ent-ScrapOre3 = { ent-ScrapOre }
+    .suffix = 3
+    .desc = { ent-ScrapOre.desc }
+
+ent-ScrapOre4 = { ent-ScrapOre }
+    .suffix = 4
+    .desc = { ent-ScrapOre.desc }
+
+ent-ScrapOre10 = { ent-ScrapOre }
+    .suffix = 10
+    .desc = { ent-ScrapOre.desc }
+
+ent-ScrapOre20 = { ent-ScrapOre }
+    .suffix = 20
+    .desc = { ent-ScrapOre.desc }
+
+ent-ScrapOre50 = { ent-ScrapOre }
+    .suffix = 50
+    .desc = { ent-ScrapOre.desc }
+
+ent-ScrapOre100 = { ent-ScrapOre }
+    .suffix = 100
+    .desc = { ent-ScrapOre.desc }
+
+ent-SpawnRandomRefinedScrap = очищенный скрап
+    .desc = Переберите скрап в поисках целых плат, инструментов и исходных материалов. Результат непредсказуем.

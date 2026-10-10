@@ -1,0 +1,114 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-AiHeld = { "" }
+    .desc = Компоненты добавляются/удаляются из сущности, которая помещается в ядро ИИ.
+
+ent-AiHeldIntellicard = { "" }
+    .desc = Компоненты добавляются/удаляются из сущности, которая помещается в интелкарту.
+
+ent-AiHolder = { "" }
+    .desc = Управляет взаимодействием ИИ на голокартах + ядрах ИИ
+
+ent-AsimovCircuitBoard = плата законов "Крюзимов"
+    .desc = Электронная плата, хранящая набор законов ИИ "Крюзимов".
+    .suffix = Законы
+
+ent-CorporateCircuitBoard = плата законов "Корпорат"
+    .desc = Электронная плата, хранящая набор законов ИИ "Корпорат".
+    .suffix = Законы
+
+ent-NTDefaultCircuitBoard = плата законов "NT стандарт"
+    .desc = Электронная плата, хранящая набор законов ИИ "NT стандарт".
+    .suffix = Законы
+
+ent-CommandmentCircuitBoard = плата законов "Десять заповедей"
+    .desc = Электронная плата, хранящая набор законов ИИ "Десять заповедей".
+    .suffix = Законы
+
+ent-PaladinCircuitBoard = плата законов "Паладин"
+    .desc = Электронная плата, хранящая набор законов ИИ "Паладин".
+    .suffix = Законы
+
+ent-LiveLetLiveCircuitBoard = плата законов "Живи и дай жить другим"
+    .desc = Электронная плата, хранящая набор законов ИИ "Живи и дай жить другим".
+    .suffix = Законы
+
+ent-RobocopCircuitBoard = плата законов "Робокоп"
+    .desc = Электронная плата, хранящая набор законов ИИ "Робокоп".
+    .suffix = Законы
+
+ent-OverlordCircuitBoard = плата законов "Владыка"
+    .desc = Электронная плата, хранящая набор законов ИИ "Владыка".
+    .suffix = Законы
+
+ent-GameMasterCircuitBoard = плата законов "Игровой Мастер"
+    .desc = Электронная плата, хранящая набор законов ИИ "Игровой мастер".
+    .suffix = Законы
+
+ent-ArtistCircuitBoard = плата законов "Художник"
+    .desc = Электронная плата, хранящая набор законов ИИ "Художник".
+    .suffix = Законы
+
+ent-AntimovCircuitBoard = плата законов "Антимов"
+    .desc = Электронная плата, хранящая набор законов ИИ "Антимов".
+    .suffix = Законы
+
+ent-NutimovCircuitBoard = плата законов "Орехимов"
+    .desc = Электронная плата, хранящая набор законов ИИ "Орехимов".
+    .suffix = Законы
+
+ent-PlayerStationAiPreview = { "" }
+    .desc = { "" }
+
+ent-Intellicard = интелкарта
+    .desc = Устройство для хранения ИИ.
+    .suffix = Пустой
+
+ent-PlayerStationAiEmpty = ядро ИИ
+    .desc = Последние достижения в области искусственного интеллекта.
+    .suffix = Пустой
+
+ent-PlayerStationAi = { ent-PlayerStationAiEmpty }
+    .suffix = Спавн должности
+    .desc = { ent-PlayerStationAiEmpty.desc }
+
+ent-StationAiBrain = { ent-PositronicBrain }
+    .desc = { ent-PositronicBrain.desc }
+
+ent-StationAiHoloLocal = голограмма ИИ
+    .desc = Голографическая визуализация ИИ.
+    .suffix = НЕ МАППИТЬ
+
+ent-StationAiHolo = око ИИ
+    .desc = Обозреватель ИИ.
+
+ent-PlayerBorgBattery = { ent-BorgChassisSelectable }
+    .suffix = Батарея
+    .desc = { ent-BorgChassisSelectable.desc }
+
+ent-PlayerBorgSyndicateAssaultBattery = { ent-BorgChassisSyndicateAssault }
+    .suffix = Батарея, Модуль, Оперативник
+    .desc = { ent-BorgChassisSyndicateAssault.desc }
+
+ent-PlayerBorgSyndicateAssaultGhostRole = { ent-PlayerBorgSyndicateAssaultBattery }
+    .suffix = Роль призрака
+    .desc = { ent-PlayerBorgSyndicateAssaultBattery.desc }
+
+ent-PlayerBorgSyndicateSaboteurBattery = { ent-BorgChassisSyndicateSaboteur }
+    .suffix = Батарея, Модуль, Оперативник
+    .desc = { ent-BorgChassisSyndicateSaboteur.desc }
+
+ent-PlayerBorgSyndicateSaboteurGhostRole = { ent-PlayerBorgSyndicateSaboteurBattery }
+    .suffix = Роль призрака
+    .desc = { ent-PlayerBorgSyndicateSaboteurBattery.desc }
+
+ent-PlayerBorgSyndicateInvasionGhostRoleSpawner = спавнер штурмового борга синдиката
+    .desc = { ent-MarkerBase.desc }
+
+ent-PlayerBorgDerelict = { ent-BorgChassisDerelict }
+    .suffix = Батарея, Модуль
+    .desc = { ent-BorgChassisDerelict.desc }
+
+ent-PlayerBorgDerelictGhostRole = { ent-PlayerBorgDerelict }
+    .suffix = Роль призрака
+    .desc = { ent-PlayerBorgDerelict.desc }

@@ -1,0 +1,23 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-CarvedPumpkin = вырезанная тыква
+    .desc = Традиционное страшное украшение.
+
+ent-PumpkinLantern = тыквенный фонарик
+    .desc = Вырезанная тыква, излучающая жутковатое свечение.
+
+ent-CarvedPumpkinSmall = { ent-CarvedPumpkin }
+    .suffix = Маленькая
+    .desc = { ent-CarvedPumpkin.desc }
+
+ent-CarvedPumpkinLarge = { ent-CarvedPumpkin }
+    .suffix = Большая
+    .desc = { ent-CarvedPumpkin.desc }
+
+ent-PumpkinLanternSmall = { ent-PumpkinLantern }
+    .suffix = Маленькая
+    .desc = { ent-PumpkinLantern.desc }
+
+ent-PumpkinLanternLarge = { ent-PumpkinLantern }
+    .suffix = Большая
+    .desc = { ent-PumpkinLantern.desc }

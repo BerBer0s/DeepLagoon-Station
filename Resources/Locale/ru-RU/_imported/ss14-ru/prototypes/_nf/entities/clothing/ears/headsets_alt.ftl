@@ -1,0 +1,49 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ClothingHeadsetAltNfsdBrown = TSFMC over-ear headset
+    .desc = { ent-ClothingHeadsetAlt.desc }
+
+ent-ClothingHeadsetAltNfsdGreen = { ent-ClothingHeadsetAltNfsdBrown }
+    .desc = { ent-ClothingHeadsetAltNfsdBrown.desc }
+
+ent-ClothingHeadsetAltNfsdCreamandBrown = { ent-ClothingHeadsetAltNfsdBrown }
+    .desc = { ent-ClothingHeadsetAltNfsdBrown.desc }
+
+ent-ClothingHeadsetAltNfsdBrownCentcom = sheriff's over-ear headset
+    .desc = { ent-ClothingHeadsetAlt.desc }
+
+ent-ClothingHeadsetAltNfsdGreenCentcom = { ent-ClothingHeadsetAltNfsdBrownCentcom }
+    .desc = { ent-ClothingHeadsetAltNfsdBrownCentcom.desc }
+
+ent-ClothingHeadsetAltNfsdCreamandBrownCentcom = { ent-ClothingHeadsetAltNfsdBrownCentcom }
+    .desc = { ent-ClothingHeadsetAltNfsdBrownCentcom.desc }
+
+ent-ClothingHeadsetAltMercenaryCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltPilotCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltCargoCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltCommandCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltEngineeringCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltMedicalCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltSecurityCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltScienceCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltCentComCommon = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }
+
+ent-ClothingHeadsetAltCentComCommonSR = { ent-ClothingHeadsetCommon }
+    .desc = { ent-ClothingHeadsetCommon.desc }

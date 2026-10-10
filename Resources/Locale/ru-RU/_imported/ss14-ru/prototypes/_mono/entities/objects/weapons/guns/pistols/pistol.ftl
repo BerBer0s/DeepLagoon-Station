@@ -1,0 +1,4 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-WeaponPistolUllmanSmartMagnumMK5 = ПР-2 МК12 (.55 SAM)
+    .desc = Прототип пистолета с автоматической доводкой боеприпасов. Выделяется изящным дизайном и усовершенствованной системой наводки. Использует патроны калибра .55 инт.

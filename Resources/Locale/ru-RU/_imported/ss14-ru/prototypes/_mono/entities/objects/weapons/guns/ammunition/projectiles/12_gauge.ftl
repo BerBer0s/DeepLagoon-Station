@@ -1,0 +1,55 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-Pellet12_gauge = Pellet12_gauge (12 gauge)
+    .desc = { ent-BaseBullet.desc }
+
+ent-Pellet12_gaugeSpread = { ent-Pellet12_gauge }
+    .desc = { ent-Pellet12_gauge.desc }
+
+ent-Pellet12_gaugeIncendiary = Pellet12_gauge (12 gauge incendiary)
+    .desc = { ent-BaseBulletIncendiary.desc }
+
+ent-Pellet12_gaugeIncendiarySpread = { ent-Pellet12_gaugeIncendiary }
+    .desc = { ent-Pellet12_gaugeIncendiary.desc }
+
+ent-Pellet12_gaugePractice = Pellet12_gauge (12 gauge practice)
+    .desc = { ent-BaseBulletPractice.desc }
+
+ent-Pellet12_gaugePracticeSpread = { ent-Pellet12_gaugePractice }
+    .desc = { ent-Pellet12_gaugePractice.desc }
+
+ent-Pellet12_gaugeImprovised = improvised Pellet12_gauge
+    .desc = { ent-BaseBullet.desc }
+
+ent-Pellet12_gaugeImprovisedSpread = { ent-Pellet12_gaugeImprovised }
+    .desc = { ent-Pellet12_gaugeImprovised.desc }
+
+ent-Pellet12_gaugeUranium = Pellet12_gauge (12 gauge uranium)
+    .desc = { ent-BaseBullet.desc }
+
+ent-Pellet12_gaugeUraniumSpread = { ent-Pellet12_gaugeUranium }
+    .desc = { ent-Pellet12_gaugeUranium.desc }
+
+ent-Pellet12_gaugeGrapeshot = grapeshot Pellet12_gauge
+    .desc = { ent-BaseBullet.desc }
+
+ent-Pellet12_gaugeGrapeshotSpread = { ent-Pellet12_gaugeGrapeshot }
+    .desc = { ent-Pellet12_gaugeGrapeshot.desc }
+
+ent-Pellet12_gaugeGlass = glass shard
+    .desc = { ent-BaseBullet.desc }
+
+ent-Pellet12_gaugeGlassSpread = { ent-Pellet12_gaugeGlass }
+    .desc = { ent-Pellet12_gaugeGlass.desc }
+
+ent-Pellet12_gaugeOOBuckshot = Pellet12_gauge (12 gauge OO magnum buckshot)
+    .desc = { ent-BaseBullet.desc }
+
+ent-Pellet12_gaugeOOBuckshotSpread = { ent-Pellet12_gaugeOOBuckshot }
+    .desc = { ent-Pellet12_gaugeOOBuckshot.desc }
+
+ent-Pellet12_gaugeFlechette = Pellet12_gauge (12 gauge flechette)
+    .desc = { ent-BaseBullet.desc }
+
+ent-Pellet12_gaugeFlechetteSpread = { ent-Pellet12_gaugeFlechette }
+    .desc = { ent-Pellet12_gaugeFlechette.desc }

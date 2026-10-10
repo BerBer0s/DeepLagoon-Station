@@ -1,0 +1,15 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-FultonBeacon = маяк фултона
+    .desc = Маяк для получения эвакуированных фултонами вещей.
+
+ent-Fulton = фултон
+    .desc = Используется для эвакуации контейнеров, предметов или насильственной вербовки людей на вашу оперативную базу.
+    .suffix = Полный
+
+ent-Fulton1 = фултон
+    .suffix = Один
+    .desc = { ent-Fulton.desc }
+
+ent-FultonEffect = эффект фултона
+    .desc = { "" }

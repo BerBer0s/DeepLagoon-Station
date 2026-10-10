@@ -1,0 +1,13 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-WeaponLaserCellSMG = ЕР-5 "Маршрутизатор"
+    .desc = Высокотехнологичный лазерный пистолет-пулемет.
+
+ent-WeaponLaserCellSniper = ЕР-7 "Кинескоп"
+    .desc = Высокотехнологичная лазерная снайперская винтовка.
+
+ent-WeaponLaserCellRevolver = EР-1 "Смитти"
+    .desc = Высокотехнологичный лазерный револьвер.
+
+ent-WeaponLaserLMG = EР-20 ХАМР-Р
+    .desc = Высокотехнологичный лазерный пулемет, использующий специальный рюкзак как аккумулятор.

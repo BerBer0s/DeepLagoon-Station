@@ -1,0 +1,14 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-BaseBigBox = картонная коробка
+    .desc = А? Просто коробка...
+
+ent-StealthBox = { ent-BaseBigBox }
+    .desc = Kept ya waiting, huh?
+    .suffix = Невидимость
+
+ent-BigBox = { ent-BaseBigBox }
+    .desc = { ent-BaseBigBox.desc }
+
+ent-GhostBox = призрачная коробка
+    .desc = Остерегайтесь!

@@ -1,0 +1,20 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-PunkMessengerGiftBox = punk bundle
+    .desc = Loot boxes? Here?
+    .suffix = NPC Loot
+
+ent-ClothingBackpackPunkLootA = punk gear bundle
+    .desc = { ent-PunkMessengerGiftBox.desc }
+
+ent-ClothingBackpackPunkLootB = { ent-ClothingBackpackPunkLootA }
+    .desc = { ent-ClothingBackpackPunkLootA.desc }
+
+ent-ClothingBackpackPunkLootC = { ent-ClothingBackpackPunkLootA }
+    .desc = { ent-ClothingBackpackPunkLootA.desc }
+
+ent-ClothingBackpackPunkLootD = { ent-ClothingBackpackPunkLootA }
+    .desc = { ent-ClothingBackpackPunkLootA.desc }
+
+ent-ClothingBackpackPunkLootBoss = { ent-ClothingBackpackPunkLootA }
+    .desc = { ent-ClothingBackpackPunkLootA.desc }

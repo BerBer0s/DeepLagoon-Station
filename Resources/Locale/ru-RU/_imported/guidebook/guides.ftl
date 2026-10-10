@@ -1,0 +1,301 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+guide-entry-engineering = Инженерное дело
+
+guide-entry-construction = Строительство
+
+guide-entry-airlock-security = Улучшение шлюзов
+
+guide-entry-expandingrepairingstation = Расширение и ремонт станций
+
+guide-entry-atmospherics = Атмосфера
+
+guide-entry-wirepanels = Панели с проводами
+
+guide-entry-airlocks = Шлюзы
+
+guide-entry-botany = Ботаника
+
+guide-entry-pipes = Трубы
+
+guide-entry-pumps = Насосы
+
+guide-entry-gasmanipulation = Манипуляция газами
+
+guide-entry-atmosphereinout = Атмосфера в/из
+
+guide-entry-airvent = Вентиляция
+
+guide-entry-passivevent = Пассивная вентиляция
+
+guide-entry-airinjector = Инжектор
+
+guide-entry-airscrubber = Скруббер
+
+guide-entry-portablescrubber = Переносной скруббер
+
+guide-entry-valves = Клапаны
+
+guide-entry-manualvalve = Ручной клапан
+
+guide-entry-signalvalve = Сигнальный клапан
+
+guide-entry-pneumaticvalve = Пневматический клапан
+
+guide-entry-passivegate = Пассивный клапан
+
+guide-entry-ressureregulator = Регулятор давления
+
+guide-entry-mixingandfiltering = Смешивание и фильтрация
+
+guide-entry-gascanisters = Газовые канистры
+
+guide-entry-thermomachines = Термомашины
+
+guide-entry-gascondensing = Конденсация газов
+
+guide-entry-radiators = Радиаторы
+
+guide-entry-atmosphericssystems = Атмосферные системы
+
+guide-entry-pipenetworks = Сети труб
+
+guide-entry-devicemonitoringandcontrol = Мониторинг и управление устройствами
+
+guide-entry-airalarms = Воздушные сигнализации
+
+guide-entry-atmosphericalertscomputer = Консоль атмосферной сигнализации
+
+guide-entry-atmosphericnetworkmonitor = Мониторинг атмосферной сети
+
+guide-entry-fireandgascontrol = Сдержание огня и газов
+
+guide-entry-gasminingandstorage = Добыча и хранение газов
+
+guide-entry-atmosphericupsets = Атмосферные катастрофы
+
+guide-entry-fires = Пожары
+
+guide-entry-spacing = Разгерметизации
+
+guide-entry-atmostools = Атмосферные инструменты
+
+guide-entry-gasses = Газы
+
+guide-entry-shuttle-craft = Шаттлостроение
+
+guide-entry-networking = Сетевые соединения
+
+guide-entry-access-configurator = Конфигуратор доступа
+
+guide-entry-power = Электропитание
+
+guide-entry-inspectingpower = Проверка питания
+
+guide-entry-powerstorage = Хранилища энергии
+
+guide-entry-ramping = Нарастающий темп
+
+guide-entry-voltagenetworks = Вольтажность
+
+guide-entry-generators = Генераторы
+
+guide-entry-portable-generator = Портативные генераторы
+
+guide-entry-ame = Двигатель антиматерии (ДАМ)
+
+guide-entry-singularityteslaengine = Сингулярность / Тесла
+
+guide-entry-singularityengine = Генератор гравитационной сингулярности
+
+guide-entry-teslaengine = Генератор Теслы
+
+guide-entry-solarpanels = Солнечнные панели
+
+guide-entry-teg = Термоэлектрический генератор (ТЭГ)
+
+guide-entry-rtg = РИТЭГ
+
+guide-entry-science = Научный отдел
+
+guide-entry-machine-upgrading = Улучшение оборудования
+
+guide-entry-technologies = Технологии
+
+guide-entry-anomalous-research = Исследование аномалий
+
+guide-entry-scanners-and-vessels = Сканеры и сосуды
+
+guide-entry-ape = М.А.К.А.К.
+
+guide-entry-xenoarchaeology = Ксеноархеология
+
+guide-entry-artifact-reports = Отчёты об артефактах
+
+guide-entry-robotics = Робототехника
+
+guide-entry-cyborgs = Борги
+
+guide-entry-cargo = Отдел снабжения
+
+guide-entry-cargo-bounties = Запросы отдела снабжения
+
+guide-entry-salvage = Утилизация обломков
+
+guide-entry-chemicals = Химические вещества
+
+guide-entry-elements = Элементы
+
+guide-entry-narcotics = Наркотики
+
+guide-entry-pyrotechnics = Пиротехника
+
+guide-entry-toxins = Токсины
+
+guide-entry-foods = Пищевые
+
+guide-entry-biological = Биологические
+
+guide-entry-others = Другие
+
+guide-entry-botanical = Ботанические
+
+guide-entry-medical = Медицинский отдел
+
+guide-entry-medicaldoctor = Врач
+
+guide-entry-chemist = Химик
+
+guide-entry-medicine = Медицина
+
+guide-entry-brute =
+    Продвинутое лечение
+    механических повреждений
+
+guide-entry-cloning = Клонирование
+
+guide-entry-cryogenics = Криогеника
+
+guide-entry-jobs = Должности
+
+guide-entry-command = Командование
+
+guide-entry-janitorial = Уборка станции
+
+guide-entry-bartender = Бармен
+
+guide-entry-chef = Шеф-повар
+
+guide-entry-service = Сервис
+
+guide-entry-radio = Радиосвязь
+
+guide-entry-controls = Управление
+
+guide-entry-foodrecipes = Рецепты еды
+
+guide-entry-botanicals = Ботаника
+
+guide-entry-newplayer = Новичок? Вам сюда!
+
+guide-entry-survival = Выживание
+
+guide-entry-charactercreation = Создание персонажа
+
+guide-entry-yourfirstcharacter = Ваш первый персонаж
+
+guide-entry-ss14 = Станции и смены
+
+guide-entry-species = Расы
+
+guide-entry-references = Таблицы и референсы
+
+guide-entry-drinks = Напитки
+
+guide-entry-pizza-recipes = Пиццы
+
+guide-entry-savory-recipes = Солёно-пряное
+
+guide-entry-bread-recipes = Хлеба
+
+guide-entry-breakfast-recipes = Завтраки
+
+guide-entry-moth-recipes = Еда для молей
+
+guide-entry-pasta-recipes = Паста и лапша
+
+guide-entry-dessert-recipes = Десерты и выпечка
+
+guide-entry-soup-recipes = Супы и рагу
+
+guide-entry-pie-recipes = Пироги и тарты
+
+guide-entry-barsandcookies-recipes = Плитки и пряники
+
+guide-entry-cake-recipes = Торты
+
+guide-entry-salad-recipes = Салаты
+
+guide-entry-medicinal-recipes = Лечебные
+
+guide-entry-other-recipes = Другие
+
+guide-entry-secret-recipes = Секретные
+
+guide-entry-special = Специальные
+
+guide-entry-antagonists = Антагонисты
+
+guide-entry-nuclear-operatives = Ядерные оперативники
+
+guide-entry-traitors = Предатели
+
+guide-entry-zombies = Зомби
+
+guide-entry-revolutionaries = Революционеры
+
+guide-entry-minor-antagonists = Малые антагонисты
+
+guide-entry-space-ninja = Космический ниндзя
+
+guide-entry-wizard = Маг
+
+guide-entry-thieves = Воры
+
+guide-entry-writing = Разметка письма
+
+guide-entry-glossary = Словарь терминов
+
+guide-entry-surgery = Хирургия
+
+guide-entry-utilitysurgeries = Вспомогательные операции
+
+guide-entry-partmanipulation = Операции с конечностями
+
+guide-entry-organmanipulation = Операции с органами
+
+guide-entry-rules = Правила сервера
+
+guide-entry-rules-space-law = Космический закон
+
+guide-entry-rules-ban-types = Виды банов
+
+guide-entry-rules-ban-durations = Длительности банов
+
+guide-entry-rules-sl-crime-list = Список преступлений
+
+guide-entry-rules-core-only = Только основные правила
+
+guide-entry-rules-lrp = Стандартный набор правил
+
+guide-entry-rules-mrp = Набор правил MRP
+
+guide-entry-rules-role-types = Типы ролей
+
+guide-entry-rules-core = Основные правила
+
+guide-entry-rules-roleplay = Ролевые правила
+
+guide-entry-rules-silicon = Правила синтетиков
+
+guide-entry-rules-mrp-m0 = Правила MRP

@@ -24,10 +24,15 @@ public sealed class RussianFallbackTest
             Assert.That(loc.GetString("dl-character-setup-characters"), Is.EqualTo("Персонажи"));
             Assert.That(loc.GetEntityData("GridMagnet").Name, Is.EqualTo("гридовый магнит"));
 
-            // These messages only exist in English and exercise content functions in the fallback bundle.
-            Assert.That(loc.GetString("contraband-job-plural", ("job", "engineer")), Is.EqualTo("engineers"));
+            // Imported Russian messages use Russian numeric formatting.
             Assert.That(loc.GetString("zzzz-fmt-power-watts", ("divided", 1.5), ("places", 1)),
-                Is.EqualTo("1.5 kW"));
+                Is.EqualTo("1,5 кВт"));
+
+            // The pack's version requires an extra variable, so this message keeps the English fallback.
+            // Exercise both English number formatting and grammar functions in that fallback bundle.
+            Assert.That(loc.GetString("lathe-menu-material-amount-missing",
+                    ("amount", 1.5), ("unit", "sheet"), ("material", "steel"), ("missingAmount", 2.5)),
+                Is.EqualTo("1.5 sheets of steel ([color=red]2.5 sheets missing[/color])"));
         });
     }
 }

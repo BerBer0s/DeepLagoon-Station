@@ -1,0 +1,17 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-MaterialHexNut = стальная гайка 
+    .suffix = Полный
+    .desc = { ent-PartBase.desc }
+
+ent-MaterialHexNutSingle = { ent-MaterialHexNut }
+    .suffix = Один
+    .desc = { ent-MaterialHexNut.desc }
+
+ent-MaterialScrew = стальной винт
+    .suffix = Полный
+    .desc = { ent-PartBase.desc }
+
+ent-MaterialScrewSingle = { ent-MaterialScrew }
+    .suffix = Один
+    .desc = { ent-MaterialScrew.desc }

@@ -1,0 +1,5 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+advertisement-genedrobe-1 = Идеально для безумного учёного внутри тебя!
+
+advertisement-genedrobe-2 = Экспериментировать с обезьянами гораздо веселее, чем вы думаете!

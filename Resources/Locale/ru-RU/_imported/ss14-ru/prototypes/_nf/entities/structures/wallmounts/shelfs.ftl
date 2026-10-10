@@ -1,0 +1,17 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ShelfWallFreezerWhite = настенный холодильник
+    .desc = Удобное место для хранения скоропортящихся продуктов.
+    .suffix = Фронтир, Белый
+
+ent-ShelfWallFreezerDark = настенный холодильник
+    .suffix = Фронтир, Dark
+    .desc = { ent-ShelfWallFreezerWhite.desc }
+
+ent-ShelfRMetalSecurity = { ent-ShelfRMetal }
+    .suffix = СБ, Закрыт
+    .desc = { ent-ShelfRMetal.desc }
+
+ent-ShelfRWoodSecurity = { ent-ShelfRWood }
+    .suffix = СБ, Закрыт
+    .desc = { ent-ShelfRWood.desc }

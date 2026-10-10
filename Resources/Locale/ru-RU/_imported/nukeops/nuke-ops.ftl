@@ -1,0 +1,5 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+nuke-ops-no-more-threat-announcement-shuttle-call = Согласно данным наших сенсоров дальнего действия, ядерная угроза была устранена. Мы вызовем аварийный шаттл, его расчётное время прибытия: { $time } { $units }. Вы можете отозвать шаттл, если хотите продолжить смену.
+
+nuke-ops-no-more-threat-announcement = Согласно данным наших сенсоров дальнего действия, ядерная угроза была устранена. Шаттл уже вызван.

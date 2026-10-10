@@ -1,0 +1,35 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+medical-bounty-redemption-fail-no-items = В капсуле ничего не обнаружено.
+
+medical-bounty-redemption-fail-no-bounty = Выплата за тело в капсуле не найдена.
+
+medical-bounty-redemption-fail-too-much-damage = Найденное тело слишком повреждено, чтобы получить за него выплату.
+
+medical-bounty-redemption-success = Обмен совершён! Оплата произведена.
+
+medical-bounty-redemption-ui-title = Устройство для выкупа тела
+
+medical-bounty-redemption-body-label-init = Загрузка систем.
+
+medical-bounty-redemption-body-label-no-items = Тело не обнаружено.
+
+medical-bounty-redemption-body-label-body-present = Тело присутствует.
+
+medical-bounty-redemption-body-label-valid-bounty = За это спасённое тело вы можете получить выплату.
+
+medical-bounty-redemption-redeem-label-init = Загрузка TSF BIOS v72.1...
+
+medical-bounty-redemption-redeem-label-no-items = Вставьте подлежащее спасению тело в капсулу.
+
+medical-bounty-redemption-redeem-label-no-bounty = Вознаграждение не обнаружено.
+
+medical-bounty-redemption-redeem-label-too-much-damage = Тело слишком повреждено, чтобы получить за него выплату.
+
+medical-bounty-redemption-redeem-label-not-alive = Тело должно быть реанимировано перед получением выплаты.
+
+medical-bounty-redemption-redeem-label-valid-bounty = Сумма: { $amount }.
+
+medical-bounty-redemption-ui-sell-button = Обменять
+
+medical-bounty-console-flavor-left = Относитесь ко всем телам как к членам своей семьи.

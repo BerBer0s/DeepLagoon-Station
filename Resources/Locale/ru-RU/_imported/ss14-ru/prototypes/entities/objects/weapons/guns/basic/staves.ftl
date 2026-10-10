@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-WeaponStaffHealing = посох исцеления
+    .desc = Вряд ли вам придётся использовать его слишком часто в своём стремлении к резне.
+
+ent-WeaponStaffPolymorphDoor = посох входа
+    .desc = На случай, когда нужен маршрут для побега.

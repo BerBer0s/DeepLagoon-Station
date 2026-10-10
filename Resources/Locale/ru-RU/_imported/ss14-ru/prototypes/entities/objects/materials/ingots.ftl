@@ -1,0 +1,20 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-IngotBase = { ent-BaseItem }
+    .desc = Тяжёлый металлический слиток с выдавленным логотипом NanoTrasen.
+
+ent-IngotGold = золотой слиток
+    .suffix = Полный
+    .desc = { ent-IngotBase.desc }
+
+ent-IngotGold1 = золотой слиток
+    .suffix = Один
+    .desc = { ent-IngotGold.desc }
+
+ent-IngotSilver = серебряный слиток
+    .suffix = Полный
+    .desc = { ent-IngotBase.desc }
+
+ent-IngotSilver1 = серебряный слиток
+    .suffix = Один
+    .desc = { ent-IngotSilver.desc }

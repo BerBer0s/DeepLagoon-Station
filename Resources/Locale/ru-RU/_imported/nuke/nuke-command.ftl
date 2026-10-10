@@ -1,0 +1,9 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+cmd-nukearm-desc = Переключение таймера ядерной боеголовки. Вы можете самостоятельно установить таймер. Uid является необязательным.
+
+cmd-nukearm-not-found = Не удалось найти сущность, имеющую NukeComponent.
+
+cmd-nukearm-1-help = Время (в секундах)
+
+cmd-nukearm-2-help = Боеголовка

@@ -1,0 +1,19 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-BaseChimeraOrgan = орган химеры
+    .desc = { ent-BaseItem.desc }
+
+ent-OrganChimeraStomach = желудок химеры
+    .desc = Странный орган, что служит центром метаболизма химеры.
+
+ent-OrganChimeraBrain = мозг химеры
+    .desc = Ядро развития химеры.
+
+ent-OrganChimeraLiver = шиповидная железа химеры
+    .desc = Заменяет печень в организме и перепрофилирует её в железу для выращивания костяных шипов.
+
+ent-OrganChimeraHeart = сердце химеры
+    .desc = { ent-BaseChimeraOrgan.desc }
+
+ent-OrganChimeraLungs = феромопод химеры
+    .desc = Выделяет феромоны, позволяя общаться с другими химерами с помощью коллективного разума. Также служит как лёгкие для химеры.

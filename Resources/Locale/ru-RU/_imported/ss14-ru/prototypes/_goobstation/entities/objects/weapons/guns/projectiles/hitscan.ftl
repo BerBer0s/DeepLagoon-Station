@@ -1,0 +1,25 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-SmallRedLaser = { ent-BasicHitscan }
+    .desc = { ent-BasicHitscan.desc }
+
+ent-SmallXrayLaser = { ent-BasicHitscan }
+    .desc = { ent-BasicHitscan.desc }
+
+ent-SmallOverchargedLaser = { ent-BasicHitscan }
+    .desc = { ent-BasicHitscan.desc }
+
+ent-SmallPulseLaser = { ent-BasicHitscan }
+    .desc = { ent-BasicHitscan.desc }
+
+ent-MediumRedLaser = { ent-BasicHitscan }
+    .desc = { ent-BasicHitscan.desc }
+
+ent-MediumXrayLaser = { ent-BasicHitscan }
+    .desc = { ent-BasicHitscan.desc }
+
+ent-MediumOverchargedLaser = { ent-BasicHitscan }
+    .desc = { ent-BasicHitscan.desc }
+
+ent-MediumPulseLaser = { ent-BasicHitscan }
+    .desc = { ent-BasicHitscan.desc }

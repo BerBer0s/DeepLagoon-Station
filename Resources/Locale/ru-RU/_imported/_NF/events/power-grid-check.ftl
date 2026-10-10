@@ -1,0 +1,5 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+station-event-power-grid-check-nf-start-announcement = Обнаружена аномальная активность в сети электропитания шаттлов. В качестве меры предосторожности питание шаттлов будет отключено на неопределённый срок.
+
+station-event-power-grid-check-nf-end-announcement = Электропитание на шаттлах восстановлено. Мы приносим извинения за причинённые неудобства.

@@ -1,0 +1,33 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-Doubloon = дата чип
+    .desc = Прочный экранированный чип, содержащий зашифрованные разведывательные данные.
+    .suffix = 100 ДЧ
+
+ent-Doubloon1 = { ent-Doubloon }
+    .suffix = 1 ДЧ
+    .desc = { ent-Doubloon.desc }
+
+ent-Doubloon5 = { ent-Doubloon }
+    .suffix = 5 ДЧ
+    .desc = { ent-Doubloon.desc }
+
+ent-Doubloon25 = { ent-Doubloon }
+    .suffix = 25 ДЧ
+    .desc = { ent-Doubloon.desc }
+
+ent-Doubloon50 = { ent-Doubloon }
+    .suffix = 50 ДЧ
+    .desc = { ent-Doubloon.desc }
+
+ent-BasePirateUplink = аплинк Династии Фаэтон
+    .desc = Исцарапанный планшет в теплостойком композитном корпусе, оснащённый сбоку разъёмом для чипов.
+    .suffix = Пустой
+
+ent-BasePirateUplinkRadioPirateCaptain = { ent-BasePirateUplink }
+    .suffix = Визирь, 100 ДЧ
+    .desc = { ent-BasePirateUplink.desc }
+
+ent-BasePirateUplinkPirateCrew = { ent-BasePirateUplink }
+    .suffix = Денасфар, Рахкшакан, 75 ДЧ
+    .desc = { ent-BasePirateUplink.desc }

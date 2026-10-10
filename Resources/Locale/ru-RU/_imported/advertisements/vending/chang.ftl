@@ -1,0 +1,15 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+advertisement-chang-1 = Ощутите вкус 5000 лет культуры!
+
+advertisement-chang-2 = Мистер Чанг, одобрен для безопасного употребления более чем в 10 секторах!
+
+advertisement-chang-3 = Китайская кухня отлично подойдёт для вечернего свидания или одинокого вечера!
+
+advertisement-chang-4 = Вы не ошибётесь, если отведаете настоящей китайской кухни от мистера Чанга!
+
+advertisement-chang-5 = На 100% настоящая китайская еда!
+
+thankyou-chang-1 = Мистер Чанг благодарит вас!
+
+thankyou-chang-2 = Наслаждайтесь настоящей едой!

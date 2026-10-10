@@ -1,0 +1,10 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ForensicScanner = криминалистический сканер
+    .desc = Портативное устройство, которое позволяет сканировать предметы на наличие отпечатков пальцев и частичек одежды.
+
+ent-ForensicReportPaper = заключение криминалистической экспертизы
+    .desc = В лучшем случае, косвенные улики.
+
+ent-PaperAccessLogs = журнал доступа
+    .desc = Распечатка с надежного приложения "Зонд Логов".

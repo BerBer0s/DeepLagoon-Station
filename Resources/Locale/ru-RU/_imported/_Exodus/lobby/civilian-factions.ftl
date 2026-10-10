@@ -1,0 +1,5 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+monolith-lobby-tsf-industry-subtext = Центр гражданской деятельности ТСФ.
+
+monolith-lobby-tsf-industry-description = «Звёздное благословение» — небольшой колониальный корабль, на котором базируются гражданские наёмники Транс-Солнечной Федерации, прибывшие в сектор «Колосс» на заработки.

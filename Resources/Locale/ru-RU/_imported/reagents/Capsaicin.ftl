@@ -1,0 +1,3 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+capsaicin-effect-light-burn = Вы ощущаете лёгкое жжение в горле...

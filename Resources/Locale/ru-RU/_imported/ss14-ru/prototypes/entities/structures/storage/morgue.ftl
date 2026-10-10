@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-Morgue = морг
+    .desc = Используется для хранения тел, пока их не найдут. Включает высокотехнологичную систему оповещения о ложных срабатываниях!
+
+ent-Crematorium = крематорий
+    .desc = Человекосжигатель. Хорошо работает и в ночь барбекю.

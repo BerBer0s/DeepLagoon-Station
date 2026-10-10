@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-CrateEngineeringThruster = ящик с ракетным двигателем
+    .desc = Содержит упаковку, при помощи которой можно создать ракетный двигатель.
+
+ent-CrateEngineeringGyroscope = ящик с гироскопом
+    .desc = Содержит упаковку, при помощи которой можно создать гироскоп.

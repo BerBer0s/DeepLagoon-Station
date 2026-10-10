@@ -1,0 +1,8 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-CavemanClub = дубина пещерного человека
+    .desc = Большая палка больно бить.
+
+ent-CavemanClubCursed = дубина пещерного человека
+    .desc = Большая палка больно... Это дерево?
+    .suffix = Неснимаемая, Пенопласт

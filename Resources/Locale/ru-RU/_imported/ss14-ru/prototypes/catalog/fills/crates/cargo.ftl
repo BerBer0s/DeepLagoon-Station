@@ -1,0 +1,8 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-CrateCargoLuxuryHardsuit = ящик элитного шахтёрского скафандра
+    .desc = Наконец-то, скафандр, который квартирмейстеры могут назвать своим собственным. Центком услышал вас, а теперь перестаньте спрашивать.
+
+ent-CrateCargoGambling = грандиозная лотерея $$$
+    .desc = Ящик с сокровищами, не поддающимися воображению!
+    .suffix = Закрыто

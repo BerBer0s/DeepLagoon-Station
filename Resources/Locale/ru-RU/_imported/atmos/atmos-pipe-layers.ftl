@@ -1,0 +1,13 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+atmos-pipe-layers-component-change-layer = Теперь выбран { $layerName } слой.
+
+atmos-pipe-layers-component-current-layer = Выбран { $layerName } слой.
+
+atmos-pipe-layers-component-select-layer = { CAPITALIZE($layerName) } слой
+
+atmos-pipe-layers-component-tool-missing = Требуется { $toolName }
+
+atmos-pipe-layers-component-pipes-are-covered = Отсутствует прямой доступ к трубам
+
+atmos-pipe-layers-component-cannot-adjust-pipes = Вам нужно получить прямой доступ к трубам для их настройки.

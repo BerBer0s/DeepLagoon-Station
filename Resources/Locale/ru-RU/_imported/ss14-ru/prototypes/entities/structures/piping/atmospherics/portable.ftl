@@ -1,0 +1,16 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-PortableScrubber = переносной скруббер
+    .desc = Он скруббит, в переносном смысле!
+
+ent-SpaceHeater = термостат
+    .desc = Блюспейс-технологическое устройство, изменяющее локальную температуру. Обычно его называют "термостат".
+    .suffix = Незакреплённый
+
+ent-SpaceHeaterAnchored = { ent-SpaceHeater }
+    .suffix = Закреплённый
+    .desc = { ent-SpaceHeater.desc }
+
+ent-SpaceHeaterEnabled = { ent-SpaceHeaterAnchored }
+    .suffix = Закреплённый, Включён
+    .desc = { ent-SpaceHeaterAnchored.desc }

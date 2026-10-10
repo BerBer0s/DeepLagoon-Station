@@ -1,0 +1,3 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+frost-oil-effect-light-cold = Ты чуствуешь холодное покалывание в горле...

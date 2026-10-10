@@ -1,0 +1,26 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ClothingOuterBase = { ent-Clothing }
+    .desc = { ent-Clothing.desc }
+
+ent-ClothingOuterBaseLarge = { ent-ClothingOuterBase }
+    .desc = { ent-ClothingOuterBase.desc }
+
+ent-ClothingOuterStorageBase = { ent-ClothingOuterBase }
+    .desc = { ent-ClothingOuterBase.desc }
+
+ent-ClothingOuterStorageFoldableBase = { ent-ClothingOuterStorageBase }
+    .desc = { ent-ClothingOuterStorageBase.desc }
+
+ent-ClothingOuterStorageFoldableBaseOpened = { ent-ClothingOuterStorageFoldableBase }
+    .suffix = Открытый
+    .desc = { ent-ClothingOuterStorageFoldableBase.desc }
+
+ent-ClothingOuterStorageToggleableBase = { ent-ClothingOuterStorageBase }
+    .desc = { ent-ClothingOuterStorageBase.desc }
+
+ent-ClothingOuterHardsuitBase = base hardsuit
+    .desc = { ent-ClothingOuterBase.desc }
+
+ent-ClothingOuterBaseMedium = { ent-ClothingOuterBase }
+    .desc = { ent-ClothingOuterBase.desc }

@@ -1,0 +1,10 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-OrganBloodsuckerStomach = желудок
+    .desc = { ent-OrganAnimalStomach.desc }
+
+ent-OrganBloodsuckerLiver = печень
+    .desc = { ent-OrganAnimalLiver.desc }
+
+ent-OrganBloodsuckerHeart = сердце
+    .desc = { ent-OrganAnimalHeart.desc }

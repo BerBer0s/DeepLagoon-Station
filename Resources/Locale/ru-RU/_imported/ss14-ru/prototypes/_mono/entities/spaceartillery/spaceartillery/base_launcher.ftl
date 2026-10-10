@@ -1,0 +1,28 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-BallisticArtilleryBase = { "" }
+    .desc = { "" }
+
+ent-BallisticArtilleryUnanchorable = { ent-BallisticArtilleryBase }
+    .desc = { ent-BallisticArtilleryBase.desc }
+
+ent-BallisticArtillery = { ent-BallisticArtilleryBase }
+    .desc = { ent-BallisticArtilleryBase.desc }
+
+ent-BallisticArtilleryBaseCartridge = { "" }
+    .desc = { "" }
+
+ent-BallisticArtilleryCartridge = { ent-BallisticArtilleryBaseCartridge }
+    .desc = { ent-BallisticArtilleryBaseCartridge.desc }
+
+ent-BallisticArtilleryUnanchorableCartridge = { ent-BallisticArtilleryBaseCartridge }
+    .desc = { ent-BallisticArtilleryBaseCartridge.desc }
+
+ent-BallisticArtilleryBaseMagazine = { "" }
+    .desc = { "" }
+
+ent-BallisticArtilleryMagazine = { ent-BallisticArtilleryBaseMagazine }
+    .desc = { ent-BallisticArtilleryBaseMagazine.desc }
+
+ent-BallisticArtilleryUnanchorableMagazine = { ent-BallisticArtilleryBaseMagazine }
+    .desc = { ent-BallisticArtilleryBaseMagazine.desc }

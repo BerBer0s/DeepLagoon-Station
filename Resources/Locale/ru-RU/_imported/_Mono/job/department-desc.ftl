@@ -1,0 +1,5 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+department-PMC-description = Контрактники, на которых распространяется меньше ограничений по боевому снаряжению.
+
+department-Medical-description = Сотрудники службы неотложной медицинской помощи, дислоцированные в космическом пространстве с целью оказания оперативной помощи и проведения спасательных операций.

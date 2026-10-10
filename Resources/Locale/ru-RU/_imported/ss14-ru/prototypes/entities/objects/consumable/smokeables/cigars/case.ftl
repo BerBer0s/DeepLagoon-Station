@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-CigarCase = портсигар
+    .desc = Футляр для хранения сигар, пока вы их не курите.
+
+ent-CigarGoldCase = премиум портсигар
+    .desc = Футляр премиальных Гаванских сигар. С ними вы увидите только головы.

@@ -1,0 +1,40 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-ClothingHeadBandBase = { ent-ClothingHeadBaseButcherable }
+    .desc = { ent-ClothingHeadBaseButcherable.desc }
+
+ent-ClothingHeadBandBlack = чёрная бандана
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова
+
+ent-ClothingHeadBandBlue = синяя бандана
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова
+
+ent-ClothingHeadBandBotany = ботаническая бандана
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова
+
+ent-ClothingHeadBandGold = золотая бандана
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова
+
+ent-ClothingHeadBandGreen = зелёная бандана
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова
+
+ent-ClothingHeadBandGrey = серая бандана
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова
+
+ent-ClothingHeadBandRed = красная бандана
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова
+
+ent-ClothingHeadBandSkull = бандана с черепом
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова
+
+ent-ClothingHeadBandBrown = коричневая бандана
+    .desc = { ent-ClothingHeadBandBase.desc }
+    .suffix = Голова

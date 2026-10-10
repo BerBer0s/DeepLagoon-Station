@@ -1,0 +1,7 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-InflatableWall = надувная баррикада
+    .desc = Надувная мембрана. Активируйте, чтобы спустить воздух. Не протыкать.
+
+ent-InflatableDoor = надувная дверь
+    .desc = Надувная мембрана. Активируйте, чтобы спустить воздух. Теперь с дверью. Не протыкать.

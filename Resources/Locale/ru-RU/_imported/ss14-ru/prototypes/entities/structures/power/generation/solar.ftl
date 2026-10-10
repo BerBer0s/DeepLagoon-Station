@@ -1,0 +1,31 @@
+# Imported from ru-RU-additional; existing Russian keys are preserved.
+
+ent-SolarPanelBasePhysSprite = солнечная панель
+    .desc = { "" }
+
+ent-SolarPanel = { ent-SolarPanelBasePhysSprite }
+    .desc = Солнечная панель, вырабатывающая электроэнергию.
+
+ent-SolarPanelBroken = { ent-SolarPanelBasePhysSprite }
+    .suffix = Сломанная
+    .desc = { ent-SolarPanelBasePhysSprite.desc }
+
+ent-SolarAssembly = каркас солнечной панели
+    .desc = Каркас солнечной панели. Закрепите чтобы начать строить солнечную панель или солнечный трекер.
+
+ent-SolarTracker = солнечный трекер
+    .desc = Солнечный трекер. Отслеживает ближайшую звезду.
+
+ent-SolarPanelPlasma = плазменная солнечная панель
+    .desc = Плазменная солнечная панель, вырабатывающая электроэнергию.
+
+ent-SolarPanelPlasmaBroken = { ent-SolarPanelPlasma }
+    .suffix = Сломанная
+    .desc = { ent-SolarPanelPlasma.desc }
+
+ent-SolarPanelUranium = урановая солнечная панель
+    .desc = Урановая солнечная панель, вырабатывающая электроэнергию.
+
+ent-SolarPanelUraniumBroken = { ent-SolarPanelUranium }
+    .suffix = Сломанная
+    .desc = { ent-SolarPanelUranium.desc }
