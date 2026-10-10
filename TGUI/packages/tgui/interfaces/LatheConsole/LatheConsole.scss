@@ -425,7 +425,7 @@ $pulse-duration: 0.18s;
       pointer-events: none;
       background: color-mix(in srgb, var(--rc-accent) 28%, transparent);
       opacity: 0;
-      animation: LatheConsole-blink $flash-duration ease-out 1;
+      animation: LatheConsole-blink $flash-duration steps(8, end) 1;
     }
 
     &__badge {
