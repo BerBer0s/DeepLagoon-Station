@@ -23,8 +23,8 @@ public static class ModerationWebhookFormatter
             text.Append("\n\n**Предыдущий текст**\n").Append(change.PreviousMessage);
         var fields = new List<WebhookEmbedField>
         {
-            new() { Name = "Игрок", Value = Limit($"{player}\n{change.Player?.ToString() ?? "Без игрового UID (адресный / аппаратный бан)"}", 512) },
-            new() { Name = "Автор действия", Value = Limit($"{actor}\n{change.Actor?.ToString() ?? "Система"}", 512) },
+            new() { Name = "Игрок", Value = Limit(player, 512) },
+            new() { Name = "Автор действия", Value = Limit(actor, 512) },
             new() { Name = "Запись", Value = $"{change.Type} #{change.Id}", Inline = true },
             new() { Name = "Раунд", Value = change.Round?.ToString() ?? "—", Inline = true },
             new() { Name = "Тяжесть", Value = change.Severity?.ToString() ?? "—", Inline = true },
@@ -42,7 +42,6 @@ public static class ModerationWebhookFormatter
                 length--;
             payloads.Add(new WebhookPayload
             {
-                Username = "SS14 · Модерация",
                 AllowedMentions = new WebhookMentions(),
                 Embeds = new List<WebhookEmbed>
                 {
