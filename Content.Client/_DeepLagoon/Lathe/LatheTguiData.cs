@@ -32,7 +32,6 @@ public sealed class LatheTguiData
         "dl-lathe-amount-increase",
         "dl-lathe-category-all",
         "dl-lathe-category-none",
-        "dl-lathe-classic",
         "dl-lathe-count",
         "dl-lathe-current",
         "dl-lathe-current-idle",

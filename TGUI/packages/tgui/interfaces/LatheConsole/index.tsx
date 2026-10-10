@@ -249,7 +249,6 @@ export const LatheConsole = () => {
         t={t}
         onQuery={setQuery}
         onServers={() => act('servers')}
-        onClassic={() => act('classic')}
       />
       <Categories
         active={category}

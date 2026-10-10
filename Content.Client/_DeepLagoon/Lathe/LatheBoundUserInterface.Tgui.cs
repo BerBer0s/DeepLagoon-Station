@@ -14,7 +14,7 @@ namespace Content.Client.Lathe.UI;
 /// <summary>
 /// DeepLagoon: the TGUI menu of every lathe. It uses the lathe's existing state and messages (the server only
 /// adds the progress of the current print), and the native <see cref="LatheMenu"/> stays as the fallback:
-/// from the window's "classic view" button, and when the page does not come up.
+/// when the page does not come up (no CEF, a broken bundle).
 /// </summary>
 public sealed partial class LatheBoundUserInterface
 {
@@ -219,9 +219,6 @@ public sealed partial class LatheBoundUserInterface
     {
         switch (action)
         {
-            case "classic":
-                DeferSwitchToClassic();
-                return;
             case "servers":
                 SendMessage(new ConsoleServerSelectionMessage());
                 return;

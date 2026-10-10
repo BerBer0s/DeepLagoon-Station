@@ -2,7 +2,6 @@ dl-lathe-amount-decrease = Меньше
 dl-lathe-amount-increase = Больше
 dl-lathe-category-all = Все
 dl-lathe-category-none = Прочее
-dl-lathe-classic = Классический вид
 dl-lathe-count = Даёт
 dl-lathe-current = Печатается сейчас
 dl-lathe-current-idle = Свободен

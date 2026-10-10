@@ -2,7 +2,6 @@ dl-lathe-amount-decrease = Fewer
 dl-lathe-amount-increase = More
 dl-lathe-category-all = All
 dl-lathe-category-none = Other
-dl-lathe-classic = Classic view
 dl-lathe-count = Makes
 dl-lathe-current = Printing now
 dl-lathe-current-idle = Idle

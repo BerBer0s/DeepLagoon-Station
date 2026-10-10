@@ -63,7 +63,6 @@ type TopBarProps = {
   t: T;
   onQuery: (query: string) => void;
   onServers: () => void;
-  onClassic: () => void;
 };
 
 /** The search, how many recipes it shows, and the buttons that open other windows. */
@@ -76,7 +75,6 @@ export const TopBar = ({
   t,
   onQuery,
   onServers,
-  onClassic,
 }: TopBarProps) => (
   <header className="LatheBar">
     <Search query={query} input={input} t={t} onChange={onQuery} />
@@ -94,14 +92,6 @@ export const TopBar = ({
         <span className="LatheBar__label">{t('servers')}</span>
       </Button>
     )}
-    <Button
-      aria-label={t('classic')}
-      data-tip={t('classic')}
-      icon="window-restore"
-      onClick={onClassic}
-    >
-      <span className="LatheBar__label">{t('classic')}</span>
-    </Button>
   </header>
 );
 
