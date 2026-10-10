@@ -8,6 +8,7 @@ import { CharacterText } from '../components/CharacterText';
 import { CharacterTextEditor } from '../components/CharacterTextEditor';
 import { CharacterHeadshots } from './CharacterHeadshots';
 import { EquipmentBrowser } from './EquipmentBrowser';
+import { filter as fuzzyFilter } from './fuzzySearch'; // DeepLagoon: fuzzy search
 import { CharacterEditorSettings, editorAppearance } from './CharacterEditorSettings';
 import { configureNativeChatBackground, clearNativeChatBackground } from '../../tgui-panel/chat/nativeBackground';
 
@@ -66,7 +67,9 @@ export const CharacterEditor = () => {
     {data.setup && <div className="CharacterEditor__headerActions"><Button icon="times" onClick={() => act('setup/close')}>Закрыть</Button></div>}
     </header>
     Выберите персонажа.</div>;
-  const matches = name => name.toLowerCase().includes(search.toLowerCase());
+  // DeepLagoon: fuzzy search; one list per search, so the typo rule counts all jobs (or all markings) together
+  const matchedJobs = new Set(fuzzyFilter((data.departments || []).flatMap(department => department.jobs), search, job => job.name));
+  const matchedMarkings = new Set(fuzzyFilter(data.markingOptions || [], search, option => option.name));
   const theme = playerTheme(JSON.stringify({ settings: appearance }));
   return <div ref={backgroundRoot} className={'CharacterEditor Chat ' + theme.className + ' CharacterEditor--' + data.mode +
     (appearance.smoothScroll ? ' CharacterEditor--smooth' : '') + (appearance.hoverEffect ? ' CharacterEditor--hover' : '')}
@@ -150,7 +153,7 @@ export const CharacterEditor = () => {
       <Select label="Если предпочтения недоступны" value={data.unavailable}
         options={[{ id: '0', name: 'Остаться в лобби' }, { id: '1', name: 'Выбрать запасную профессию' }]} onChange={change('unavailable')} />
       {(data.departments || []).map(department => <Section key={department.id} title={department.name}>
-        {department.jobs.filter(job => matches(job.name)).map(job => <div key={job.id} className="CharacterEditor__job">
+        {department.jobs.filter(job => matchedJobs.has(job)).map(job => <div key={job.id} className="CharacterEditor__job">
           <div title={job.description}><strong>{job.name}</strong>{!job.allowed && <small>{job.reason}</small>}</div>
           <Select label={'Приоритет: ' + job.name} value={job.priority} options={priorities} disabled={!job.allowed}
             onChange={value => act('job', { id: job.id, value: Number(value) })} />
@@ -186,7 +189,7 @@ export const CharacterEditor = () => {
         {(marking.colors||[]).map((color,i)=><ColorEditor key={i} label={'Цвет '+(i+1)} value={color.name} disabled={marking.locked} onChange={value=>act('marking-color',{index:marking.index,layer:i,value})} />)}
       </div>)}</Section>
       <DraftInput label="Поиск" value={search} onCommit={setSearch} />
-      {[...new Set((data.markingOptions||[]).map(m=>m.category))].map(category=><details key={category}><summary>{category}</summary><div className="CharacterEditor__tiles">{data.markingOptions.filter(m=>m.category===category&&matches(m.name)).map(option=><button type="button" key={option.id} onClick={()=>act('marking-add',{value:option.id})}><div className="CharacterEditor__sprite">{option.images.map((image,i)=><img key={i} src={image.url} alt="" />)}</div>{option.name}</button>)}</div></details>)}
+      {[...new Set((data.markingOptions||[]).map(m=>m.category))].map(category=><details key={category}><summary>{category}</summary><div className="CharacterEditor__tiles">{data.markingOptions.filter(m=>m.category===category&&matchedMarkings.has(m)).map(option=><button type="button" key={option.id} onClick={()=>act('marking-add',{value:option.id})}><div className="CharacterEditor__sprite">{option.images.map((image,i)=><img key={i} src={image.url} alt="" />)}</div>{option.name}</button>)}</div></details>)}
     </>}
     {data.mode === 'company' && <Section title="Компания"><div className="CharacterEditor__companies">{(data.companyOptions||[]).map(company=><article key={company.id}>
       <header><strong>{company.name}</strong><Button selected={company.id===data.company} onClick={()=>act('company',{value:company.id})}>{company.id===data.company?'Выбрана':'Выбрать'}</Button></header>
