@@ -34,7 +34,6 @@ public sealed partial class LatheBoundUserInterface
 
     // The engine saves positions only for windows it created; the native menu keeps that, this is for ours.
     private static readonly Dictionary<EntityUid, Vector2> SavedPositions = new();
-    private static readonly int[] EjectSheets = [1, 5, 10, 30];
 
     private LatheTguiWindow? _tguiWindow;
     private LatheTguiData? _tguiData;
@@ -252,8 +251,9 @@ public sealed partial class LatheBoundUserInterface
                 SendMessage(new LatheSetSkipMessage(data.String("value") == "true"));
                 break;
             case "eject":
+                // Arrays are not used for the check: in C# 14 their Contains binds to MemoryExtensions, which the sandbox refuses.
                 if (data.String("id") is { } material && data.TryInt("sheets", out var sheets) &&
-                    EjectSheets.Contains(sheets))
+                    sheets is 1 or 5 or 10 or 30)
                 {
                     EntMan.RaisePredictiveEvent(new EjectMaterialMessage(EntMan.GetNetEntity(Owner), material, sheets));
                 }

@@ -233,7 +233,10 @@ public sealed class LatheTguiData
         var builder = new System.Text.StringBuilder();
         foreach (var (material, amount) in _materialStorage.GetStoredMaterials(_owner).OrderBy(pair => pair.Key.Id, StringComparer.Ordinal))
             builder.Append(material.Id).Append('=').Append(amount).Append(';');
-        builder.Append(lathe.FinalMaterialUseMultiplier).Append(';').Append(lathe.FinalTimeMultiplier).Append(';');
+        // StringBuilder.Append(float) is not in the sandbox whitelist, so the numbers go in as text.
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+        builder.Append(Math.Round(lathe.FinalMaterialUseMultiplier, 5).ToString(invariant)).Append(';')
+            .Append(Math.Round(lathe.FinalTimeMultiplier, 5).ToString(invariant)).Append(';');
         builder.Append(_entities.TryGetComponent<OreSiloClientComponent>(_owner, out var client) && client.Silo != null).Append(';');
         foreach (var entry in EntityStock())
             builder.Append(entry).Append(';');
