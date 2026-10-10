@@ -12,7 +12,7 @@ namespace Content.Client.Lobby.UI;
 public sealed class LobbyBackground : TextureRect
 {
     private const float Zoom = 1.06f;
-    private const float Travel = 0.025f;
+    private const float Travel = 0.0125f;
     private const float Response = 6f;
 
     private Vector2 _cursorOffset;
@@ -53,7 +53,7 @@ public sealed class LobbyBackground : TextureRect
         var origin = (viewport - drawSize) / 2f + _cursorOffset * viewport * Travel;
 
         // Crop inside the texture instead of drawing beyond the background control.
-        // The zoom leaves at least 3% on each edge for the 2.5% cursor travel.
+        // The zoom leaves at least 3% on each edge for the 1.25% cursor travel.
         var region = new UIBox2(-origin / scale, (viewport - origin) / scale);
         handle.DrawTextureRectRegion(texture, PixelSizeBox, region);
     }
