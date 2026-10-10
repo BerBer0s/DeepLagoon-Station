@@ -20,7 +20,7 @@ public sealed class PreparedQuery
     {
         Normalized = normalized;
         Words = words;
-        CanFuzzy = words.Any(word => word.Length >= FuzzySearch.MinFuzzyWordLength);
+        CanFuzzy = words.Any(FuzzySearch.CanFuzzyWord);
     }
 }
 
@@ -51,7 +51,7 @@ public sealed class PreparedText
 /// exact (whole string), prefix (string starts with the query), word prefix, substring,
 /// the extra text (description), typos.
 ///
-/// Typos: only for query words of 4+ characters, against text words of 4+ characters. One mistake is
+/// Typos: only for query words of 4+ characters without digits, against text words of 4+ characters. One mistake is
 /// allowed for 4-6 characters, two for 7+. A mistake is an insert, a delete, a replace or a swap of neighbours
 /// (optimal string alignment distance). A word is also compared with the same-length start of a longer text
 /// word, so half-typed input still works. Typo matches are shown only when there are fewer than
@@ -218,12 +218,44 @@ public static class FuzzySearch
         Func<T, string?> name,
         Func<T, string?>? extra = null)
     {
-        var prepared = Prepare(query);
-        if (prepared.IsEmpty)
+        var matched = Search(items, query, name, extra);
+        if (matched == null)
             return items.ToList();
 
-        var matched = new List<(T Item, int Rank)>();
-        var rest = new List<T>();
+        return matched.OrderBy(pair => pair.Rank).Select(pair => pair.Item).ToList();
+    }
+
+    /// <summary>
+    /// Same matching as <see cref="Rank{T}"/>, but the matching items keep their incoming order
+    /// (for lists that have their own order and only need a filter).
+    /// </summary>
+    public static List<T> Filter<T>(
+        IEnumerable<T> items,
+        string? query,
+        Func<T, string?> name,
+        Func<T, string?>? extra = null)
+    {
+        var matched = Search(items, query, name, extra);
+        if (matched == null)
+            return items.ToList();
+
+        return matched.OrderBy(pair => pair.Index).Select(pair => pair.Item).ToList();
+    }
+
+    // Null for an empty query: everything matches.
+    private static List<(T Item, int Rank, int Index)>? Search<T>(
+        IEnumerable<T> items,
+        string? query,
+        Func<T, string?> name,
+        Func<T, string?>? extra)
+    {
+        var prepared = Prepare(query);
+        if (prepared.IsEmpty)
+            return null;
+
+        var matched = new List<(T Item, int Rank, int Index)>();
+        var rest = new List<(T Item, int Index)>();
+        var index = 0;
         foreach (var item in items)
         {
             var rank = Match(prepared, name(item), false);
@@ -231,22 +263,50 @@ public static class FuzzySearch
                 rank = MakeRank(TierExtra, 0);
 
             if (rank != null)
-                matched.Add((item, rank.Value));
+                matched.Add((item, rank.Value, index));
             else
-                rest.Add(item);
+                rest.Add((item, index));
+
+            index++;
         }
 
         if (matched.Count < FuzzyBelowCount && prepared.CanFuzzy)
         {
-            foreach (var item in rest)
+            foreach (var (item, itemIndex) in rest)
             {
                 var rank = Match(prepared, name(item));
                 if (rank != null)
-                    matched.Add((item, rank.Value));
+                    matched.Add((item, rank.Value, itemIndex));
             }
         }
 
-        return matched.OrderBy(pair => pair.Rank).Select(pair => pair.Item).ToList();
+        return matched;
+    }
+
+    /// <summary>
+    /// Plain substring search that ignores case and "ё" but forgives nothing; for names of people and other
+    /// texts where a typo match would show the wrong one. An empty query matches everything.
+    /// </summary>
+    public static bool Contains(string? text, string? query)
+    {
+        var normalizedQuery = Normalize(query);
+        return normalizedQuery.Length == 0
+               || Text(text).Normalized.Contains(normalizedQuery, StringComparison.Ordinal);
+    }
+
+    /// <summary>A query word may have typos when it is long enough and has no digits (numbers and codes are exact).</summary>
+    public static bool CanFuzzyWord(string word)
+    {
+        if (word.Length < MinFuzzyWordLength)
+            return false;
+
+        foreach (var c in word)
+        {
+            if (char.IsDigit(c))
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>How many mistakes a query word of this length may have.</summary>
@@ -273,7 +333,7 @@ public static class FuzzySearch
         if (text.Normalized.Contains(word, StringComparison.Ordinal))
             return TierSubstring;
 
-        if (!allowFuzzy || word.Length < MinFuzzyWordLength)
+        if (!allowFuzzy || !CanFuzzyWord(word))
             return -1;
 
         var tolerance = Tolerance(word.Length);

@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using Content.Shared.Humanoid;
 using Robust.Shared.Prototypes;
@@ -115,10 +116,9 @@ public sealed partial class InteractionPanelWindow : DefaultWindow
     {
         ActionList.RemoveAllChildren();
         var query = Search.Text.Trim();
-        var actions = _definitions.Where(a => a.Supports(_self, _humanoid) && a.SupportsSexes(_userSex, _targetSex))
-            .Where(a => _region == "all" || a.Body == _region)
-            .Where(a => !FavoritesOnly.Pressed || _favorites.Contains(a.Id))
-            .Where(a => ActionName(a).Contains(query, StringComparison.CurrentCultureIgnoreCase))
+        var actions = FuzzySearch.Filter(_definitions.Where(a => a.Supports(_self, _humanoid) && a.SupportsSexes(_userSex, _targetSex))
+                .Where(a => _region == "all" || a.Body == _region)
+                .Where(a => !FavoritesOnly.Pressed || _favorites.Contains(a.Id)), query, ActionName)
             .OrderByDescending(a => _favorites.Contains(a.Id)).ToArray();
         CountLabel.Text = Loc.GetString("dl-interaction-panel-count", ("count", actions.Length));
         foreach (var action in actions)

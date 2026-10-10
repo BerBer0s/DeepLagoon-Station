@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
@@ -158,8 +159,9 @@ public sealed partial class CrewMonitoringWindow : FancyWindow
         foreach (var sensor in departmentSensors)
         {
             if (!string.IsNullOrEmpty(SearchLineEdit.Text)
-                && !sensor.Name.Contains(SearchLineEdit.Text, StringComparison.CurrentCultureIgnoreCase)
-                && !sensor.Job.Contains(SearchLineEdit.Text, StringComparison.CurrentCultureIgnoreCase))
+                // DeepLagoon: fuzzy search; names of people, so no typo matching, only case and "ё"
+                && !FuzzySearch.Contains(sensor.Name, SearchLineEdit.Text)
+                && !FuzzySearch.Contains(sensor.Job, SearchLineEdit.Text))
                 continue;
 
             var coordinates = _entManager.GetCoordinates(sensor.Coordinates);
