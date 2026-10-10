@@ -1,4 +1,5 @@
-﻿using System.Linq;
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
+using System.Linq;
 using System.Numerics;
 using Content.Client.Administration.Managers;
 using Content.Client.ContextMenu.UI;
@@ -61,6 +62,8 @@ public sealed partial class MappingState : GameplayStateBase
     private readonly GameplayStateLoadController _loadController;
     private bool _setup;
     private readonly List<MappingPrototype> _allPrototypes = new();
+    private List<MappingPrototype>? _searchOrder; // DeepLagoon: fuzzy search, _allPrototypes sorted by name
+    private FuzzyBatchSearch<MappingPrototype>? _searchBatch; // DeepLagoon: fuzzy search
     private readonly Dictionary<IPrototype, MappingPrototype> _allPrototypesDict = new();
     private readonly Dictionary<Type, Dictionary<string, MappingPrototype>> _idDict = new();
     private readonly List<MappingPrototype> _prototypes = new();
@@ -101,6 +104,7 @@ public sealed partial class MappingState : GameplayStateBase
         context.AddFunction(ContentKeyFunctions.MappingOpenContextMenu);
 
         Screen.DecalSystem = _decal;
+        _searchBatch = new FuzzyBatchSearch<MappingPrototype>(Screen); // DeepLagoon: fuzzy search
         Screen.Prototypes.SearchBar.OnTextChanged += OnSearch;
         Screen.Prototypes.CollapseAllButton.OnPressed += OnCollapseAll;
         Screen.Prototypes.ClearSearchButton.OnPressed += OnClearSearch;
@@ -158,6 +162,7 @@ public sealed partial class MappingState : GameplayStateBase
 
     protected override void Shutdown()
     {
+        _searchBatch?.Cancel(); // DeepLagoon: fuzzy search
         CommandBinds.Unregister<MappingState>();
 
         Screen.Prototypes.SearchBar.OnTextChanged -= OnSearch;
@@ -409,6 +414,8 @@ public sealed partial class MappingState : GameplayStateBase
 
     private void OnSearch(LineEditEventArgs args)
     {
+        _searchBatch?.Cancel(); // DeepLagoon: fuzzy search
+
         if (string.IsNullOrEmpty(args.Text))
         {
             Screen.Prototypes.PrototypeList.Visible = true;
@@ -416,18 +423,19 @@ public sealed partial class MappingState : GameplayStateBase
             return;
         }
 
-        var matches = new List<MappingPrototype>();
-        foreach (var prototype in _allPrototypes)
+        // DeepLagoon: fuzzy search; a big list is matched in chunks over frames and shown once at the end
+        if (_searchOrder == null || _searchOrder.Count != _allPrototypes.Count)
         {
-            if (prototype.Name.Contains(args.Text, OrdinalIgnoreCase))
-                matches.Add(prototype);
+            _searchOrder = new List<MappingPrototype>(_allPrototypes);
+            _searchOrder.Sort(static (a, b) => string.Compare(a.Name, b.Name, OrdinalIgnoreCase));
         }
 
-        matches.Sort(static (a, b) => string.Compare(a.Name, b.Name, OrdinalIgnoreCase));
-
-        Screen.Prototypes.PrototypeList.Visible = false;
-        Screen.Prototypes.SearchList.Visible = true;
-        Screen.Prototypes.Search(matches);
+        _searchBatch!.Start(_searchOrder, args.Text, prototype => prototype.Name, null, matches =>
+        {
+            Screen.Prototypes.PrototypeList.Visible = false;
+            Screen.Prototypes.SearchList.Visible = true;
+            Screen.Prototypes.Search(matches);
+        });
     }
 
     private void OnCollapseAll(ButtonEventArgs args)

@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using System.Numerics;
 using Content.Client.UserInterface.Controls;
@@ -20,6 +21,7 @@ public sealed partial class SmartFridgeMenu : FancyWindow
     public event Action<SmartFridgeListData>? OnRemoveButtonPressed;
 
     private readonly StyleBoxFlat _styleBox = new() { BackgroundColor = new Color(60, 60, 60) };
+    private readonly FuzzyFilter _fuzzy = new(); // DeepLagoon: fuzzy search
 
     public SmartFridgeMenu()
     {
@@ -40,7 +42,7 @@ public sealed partial class SmartFridgeMenu : FancyWindow
         if (string.IsNullOrEmpty(filter))
             return true;
 
-        return entry.Entry.Name.Contains(filter, StringComparison.CurrentCultureIgnoreCase);
+        return _fuzzy.Test(filter, entry.Entry.Name); // DeepLagoon: fuzzy search
     }
 
     private void GenerateButton(ListData data, ListContainerButton button)
@@ -74,6 +76,7 @@ public sealed partial class SmartFridgeMenu : FancyWindow
             }
         }
 
+        _fuzzy.SetCorpus(listData.Select(data => ((SmartFridgeListData) data).Entry.Name)); // DeepLagoon: fuzzy search
         VendingContents.PopulateList(listData);
     }
 

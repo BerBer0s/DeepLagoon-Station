@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using System.Numerics;
 using Content.Shared.Ghost;
@@ -73,7 +74,7 @@ namespace Content.Client.UserInterface.Systems.Ghost.Controls
 
         private bool ButtonIsVisible(Button button)
         {
-            return string.IsNullOrEmpty(_searchText) || button.Text == null || button.Text.Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+            return string.IsNullOrEmpty(_searchText) || button.Text == null || FuzzySearch.Contains(button.Text, _searchText); // DeepLagoon: fuzzy search, names of people, no typo matching
         }
 
         private void UpdateVisibleButtons()

@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using Content.Client.UserInterface.Controls;
 using Content.Shared.CriminalRecords.Systems;
@@ -39,7 +40,7 @@ public sealed partial class WantedListUiFragment : BoxContainer
     {
         var found = !String.IsNullOrWhiteSpace(args.Text)
             ? _wantedRecords.FindAll(r =>
-                r.TargetInfo.Name.Contains(args.Text) ||
+                FuzzySearch.Contains(r.TargetInfo.Name, args.Text) || // DeepLagoon: fuzzy search, was case-sensitive
                 r.Status.ToString().Contains(args.Text, StringComparison.OrdinalIgnoreCase))
             : _wantedRecords;
 

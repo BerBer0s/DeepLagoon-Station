@@ -1,4 +1,8 @@
 # Imported from Simple-Station/Einstein-Engines, master archive.
+# DeepLagoon: the tag was used by the magazines below but never defined (unknown tag assert in debug builds)
+- type: Tag
+  id: MagazineMagnumLeverRifle
+
 # Empty mags
 - type: entity
   id: MagazineMagnumLeverRifle

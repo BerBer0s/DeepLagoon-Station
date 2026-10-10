@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using Content.Client.Popups;
 using Content.Client.UserInterface.Controls;
 using Content.Shared.Access.Systems;
@@ -43,10 +44,13 @@ public sealed partial class HolopadWindow : FancyWindow
     public event Action? SendHolopadActivateProjectorMessageAction;
     public event Action? SendHolopadRequestStationAiMessageAction;
 
+    private readonly FuzzyFilter _contactFilter = new(); // DeepLagoon: fuzzy search
+
     public HolopadWindow()
     {
         RobustXamlLoader.Load(this);
         IoCManager.InjectDependencies(this);
+        _contactFilter.Corpus = () => ContactsList.Children.OfType<HolopadContactButton>().Select(button => button.Text); // DeepLagoon: fuzzy search
 
         _holopadSystem = _entManager.System<SharedHolopadSystem>();
         _telephoneSystem = _entManager.System<SharedTelephoneSystem>();
@@ -245,7 +249,7 @@ public sealed partial class HolopadWindow : FancyWindow
                 continue;
 
             var passesFilter = string.IsNullOrEmpty(SearchLineEdit.Text) ||
-                               contactButton.Text?.Contains(SearchLineEdit.Text, StringComparison.CurrentCultureIgnoreCase) == true;
+                               _contactFilter.Test(SearchLineEdit.Text, contactButton.Text); // DeepLagoon: fuzzy search
 
             contactButton.Visible = passesFilter;
             contactButton.Disabled = (_currentState != TelephoneState.Idle || lockButtons);

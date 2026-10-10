@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using System.Numerics;
 using Content.Client.Actions;
@@ -55,6 +56,7 @@ public sealed partial class ActionUIController : UIController, IOnStateChanged<G
     private readonly DragDropHelper<ActionButton> _menuDragHelper;
     private readonly TextureRect _dragShadow;
     private ActionsWindow? _window;
+    private readonly FuzzyFilter _fuzzy = new(); // DeepLagoon: fuzzy search
 
     private ActionsBar? ActionsBar => UIManager.GetActiveUIWidgetOrNull<ActionsBar>();
     private MenuButton? ActionButton => UIManager.GetActiveUIWidgetOrNull<MenuBar.Widgets.GameTopMenuBar>()?.ActionButton;
@@ -524,6 +526,7 @@ public sealed partial class ActionUIController : UIController, IOnStateChanged<G
             return;
         }
 
+        _fuzzy.SetCorpus(actions.Select(action => EntityManager.GetComponent<MetaDataComponent>(action.Id).EntityName)); // DeepLagoon: fuzzy search
         actions = actions.Where(action =>
         {
             if (filters.Count > 0 && filters.Any(filter => !MatchesFilter(action.Comp, filter)))
@@ -533,14 +536,14 @@ public sealed partial class ActionUIController : UIController, IOnStateChanged<G
                 return true;
 
             var name = EntityManager.GetComponent<MetaDataComponent>(action.Id).EntityName;
-            if (name.Contains(search, StringComparison.OrdinalIgnoreCase))
+            if (_fuzzy.Test(search, name)) // DeepLagoon: fuzzy search
                 return true;
 
             if (action.Comp.Container == null || action.Comp.Container == player)
                 return false;
 
             var providerName = EntityManager.GetComponent<MetaDataComponent>(action.Comp.Container.Value).EntityName;
-            return providerName.Contains(search, StringComparison.OrdinalIgnoreCase);
+            return _fuzzy.Test(search, providerName); // DeepLagoon: fuzzy search
         });
 
         PopulateActions(actions);

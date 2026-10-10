@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using System.Text;
 using Content.Client.Materials;
@@ -130,21 +131,13 @@ public sealed partial class LatheMenu : FancyWindow
                     continue;
             }
 
-            if (SearchBar.Text.Trim().Length != 0)
-            {
-                if (_lathe.GetRecipeName(recipe).ToLowerInvariant().Contains(SearchBar.Text.Trim().ToLowerInvariant()))
-                    recipesToShow.Add(proto);
-            }
-            else
-            {
-                recipesToShow.Add(proto);
-            }
+            recipesToShow.Add(proto); // DeepLagoon: fuzzy search, text matching moved below
         }
 
         if (!int.TryParse(AmountLineEdit.Text, out var quantity) || quantity <= 0)
             quantity = 1;
 
-        var sortedRecipesToShow = recipesToShow.OrderBy(_lathe.GetRecipeName);
+        var sortedRecipesToShow = FuzzySearch.Rank(recipesToShow.OrderBy(_lathe.GetRecipeName), SearchBar.Text, _lathe.GetRecipeName); // DeepLagoon: fuzzy search
         RecipeList.Children.Clear();
         _entityManager.TryGetComponent(Entity, out LatheComponent? lathe);
 
