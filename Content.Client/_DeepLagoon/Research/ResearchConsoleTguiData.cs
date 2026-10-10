@@ -55,8 +55,8 @@ public sealed class ResearchConsoleTguiData
     /// <summary>Marks an icon key of the page as a lathe recipe; any other key is a technology id.</summary>
     public const string RecipeIconPrefix = "recipe:";
 
-    // Shared by every console window, so reopening the console does no image work.
-    private static TguiSpriteImages _images = new();
+    // Shared by every console window and every lathe, so reopening a window does no image work.
+    private static TguiSpriteImages _images => TguiRecipeIcons.Images;
     private static readonly Dictionary<string, string> StaticCache = new();
 
     private readonly IPrototypeManager _prototypes = IoCManager.Resolve<IPrototypeManager>();
@@ -70,7 +70,7 @@ public sealed class ResearchConsoleTguiData
     public static void ClearCache()
     {
         StaticCache.Clear();
-        _images = new TguiSpriteImages();
+        TguiRecipeIcons.Reset();
     }
 
     public string BuildStatic(IReadOnlyCollection<string> technologyIds, string key)
@@ -160,20 +160,7 @@ public sealed class ResearchConsoleTguiData
                 .String("text", Loc.GetString(unlock.UnlockDescription))));
     }
 
-    private IEnumerable<TguiData> RecipeIcon(LatheRecipePrototype recipe)
-    {
-        switch (recipe.Icon)
-        {
-            case SpriteSpecifier.EntityPrototype entity when _prototypes.HasIndex<EntityPrototype>(entity.EntityPrototypeId):
-                return _images.Item(entity.EntityPrototypeId);
-            case { } icon:
-                return [new TguiData().String("url", _images.Frame(icon)).String("color", "#ffffff")];
-        }
-
-        if (recipe.Result is { } result && _prototypes.HasIndex<EntityPrototype>(result))
-            return _images.Item(result);
-        return [];
-    }
+    private static IEnumerable<TguiData> RecipeIcon(LatheRecipePrototype recipe) => TguiRecipeIcons.Layers(recipe);
 
     private IEnumerable<TguiData> Icon(TechnologyPrototype tech)
     {
