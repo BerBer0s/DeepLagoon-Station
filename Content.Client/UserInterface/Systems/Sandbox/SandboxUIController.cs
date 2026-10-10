@@ -15,7 +15,7 @@ using Robust.Client.Input;
 using Robust.Client.Player;
 using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controllers;
-using Robust.Client.UserInterface.Controllers.Implementations;
+using Content.Client._DeepLagoon.Spawn;
 using Robust.Shared.Console;
 using Robust.Shared.Input.Binding;
 using Robust.Shared.Map;
