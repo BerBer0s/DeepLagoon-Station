@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using Content.Shared._DeepLagoon.DiscordLink;
 using Robust.Shared.Timing;
@@ -152,7 +153,8 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         _bar.Value = Math.Max(0, system.GetPoints(_session) - spent);
         var all = _prototypes.EnumeratePrototypes<LoadoutPrototype>().Where(x => x.PersonalItems.Count > 0).ToList();
         var filtered = all.Where(x => _slotFilter == null || FitsSlot(x, _slotFilter)).Where(x => _showUnavailable.Pressed || DonorCategoryOf(x) != DonorCategory.None || selected.ContainsKey(x.ID) || system.CanUse(x, _profile, _job, _session, out _))
-            .Where(x => string.IsNullOrWhiteSpace(_search.Text) || x.ID.Contains(_search.Text, StringComparison.OrdinalIgnoreCase) || _prototypes.Index(x.PersonalItems[0]).Name.Contains(_search.Text, StringComparison.OrdinalIgnoreCase)).ToList();
+            .ToList();
+        filtered = FuzzySearch.Filter(filtered, _search.Text, x => _prototypes.Index(x.PersonalItems[0]).Name, x => x.ID); // DeepLagoon: fuzzy search
         if (!string.IsNullOrWhiteSpace(_search.Text))
         {
             _body.AddChild(MakeList(filtered, role, selected, spent));

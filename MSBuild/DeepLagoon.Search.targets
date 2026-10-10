@@ -1,0 +1,109 @@
+<Project>
+  <!-- Content-owned adapter: fuzzy search in the engine admin spawn windows (EntitySpawningUIController and
+       TileSpawningUIController are sealed engine classes). Generated copies live in obj; no engine source files
+       are written. The text anchors below were taken from RobustToolbox v248.0.0-737-g08a3d120b
+       (08a3d120b7029d03e60b44b23fed2b2659ed3224). When the engine changes these methods the build stops with an
+       error naming the file: compare the engine's BuildEntityList / BuildTileList with the patches and update them. -->
+  <UsingTask TaskName="DeepLagoonPrepareSearch" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <SourceDirectory ParameterType="System.String" Required="true" />
+      <OutputDirectory ParameterType="System.String" Required="true" />
+      <GeneratedSources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="Microsoft.Build.Utilities" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var patches = new[]
+        {
+            // Entity window: with the hook the text is matched and ordered after the list is built.
+            new[] {
+                "EntitySpawningUIController.cs",
+                @"            if (searchStr != null && !DoesEntityMatchSearch(prototype, searchStr))
+            {
+                continue;
+            }",
+                @"            // DeepLagoon: fuzzy search; with the hook the text is matched and ordered after the loop
+            if (searchStr != null && Robust.Client.DeepLagoon.DeepLagoonSearch.Impl == null && !DoesEntityMatchSearch(prototype, searchStr))
+            {
+                continue;
+            }"
+            },
+            new[] {
+                "EntitySpawningUIController.cs",
+                @"        _window.PrototypeList.TotalItemCount = _shownEntities.Count;",
+                @"        // DeepLagoon: fuzzy search; the list is already sorted by name, equal ranks keep that order
+        if (!string.IsNullOrEmpty(searchStr) && Robust.Client.DeepLagoon.DeepLagoonSearch.Impl is { } fuzzy)
+        {
+            var ranked = fuzzy.Rank(_shownEntities, searchStr, prototype => prototype.Name, prototype => prototype.ID, prototype => prototype.EditorSuffix);
+            _shownEntities.Clear();
+            _shownEntities.AddRange(ranked);
+        }
+
+        _window.PrototypeList.TotalItemCount = _shownEntities.Count;"
+            },
+            // Tile window.
+            new[] {
+                "TileSpawningUIController.cs",
+                @"        if (!string.IsNullOrEmpty(searchStr))
+        {
+            tileDefs = tileDefs.Where(s =>",
+                @"        if (!string.IsNullOrEmpty(searchStr) && Robust.Client.DeepLagoon.DeepLagoonSearch.Impl == null) // DeepLagoon: fuzzy search
+        {
+            tileDefs = tileDefs.Where(s =>"
+            },
+            new[] {
+                "TileSpawningUIController.cs",
+                @"        tileDefs = tileDefs.OrderBy(d => Loc.GetString(d.Name));",
+                @"        tileDefs = tileDefs.OrderBy(d => Loc.GetString(d.Name));
+
+        // DeepLagoon: fuzzy search
+        if (!string.IsNullOrEmpty(searchStr) && Robust.Client.DeepLagoon.DeepLagoonSearch.Impl is { } fuzzy)
+            tileDefs = fuzzy.Rank(tileDefs, searchStr, def => Loc.GetString(def.Name), def => def.ID, null);"
+            }
+        };
+        var sources = new Dictionary<string, string>();
+        foreach (var patch in patches)
+        {
+            var sourcePath = Path.Combine(SourceDirectory, patch[0]);
+            string source;
+            if (!sources.TryGetValue(patch[0], out source))
+                source = File.ReadAllText(sourcePath).Replace("\r\n", "\n");
+            var anchor = patch[1].Replace("\r\n", "\n");
+            var first = source.IndexOf(anchor, StringComparison.Ordinal);
+            if (first < 0 || source.IndexOf(anchor, first + anchor.Length, StringComparison.Ordinal) >= 0)
+            {
+                Log.LogError("DeepLagoon search adapter: expected exactly one source anchor in {0}. Review the adapter for this engine version.", sourcePath);
+                return false;
+            }
+            sources[patch[0]] = source.Replace(anchor, patch[2].Replace("\r\n", "\n"));
+        }
+        Directory.CreateDirectory(OutputDirectory);
+        var generated = new List<Microsoft.Build.Framework.ITaskItem>();
+        foreach (var source in sources)
+        {
+            var outputPath = Path.Combine(OutputDirectory, source.Key);
+            if (!File.Exists(outputPath) || File.ReadAllText(outputPath) != source.Value)
+                File.WriteAllText(outputPath, source.Value);
+            generated.Add(new TaskItem(outputPath));
+        }
+        GeneratedSources = generated.ToArray();
+      ]]></Code>
+    </Task>
+  </UsingTask>
+  <Target Name="DeepLagoonAdaptSearch" BeforeTargets="CoreCompile"
+          Condition="'$(MSBuildProjectName)' == 'Robust.Client'">
+    <DeepLagoonPrepareSearch SourceDirectory="$(MSBuildProjectDirectory)/UserInterface/Controllers/Implementations"
+                             OutputDirectory="$(MSBuildProjectDirectory)/$(IntermediateOutputPath)DeepLagoonSearch">
+      <Output TaskParameter="GeneratedSources" ItemName="_DeepLagoonSearchSources" />
+    </DeepLagoonPrepareSearch>
+    <ItemGroup>
+      <Compile Remove="UserInterface\Controllers\Implementations\EntitySpawningUIController.cs;UserInterface\Controllers\Implementations\TileSpawningUIController.cs;UserInterface/Controllers/Implementations/EntitySpawningUIController.cs;UserInterface/Controllers/Implementations/TileSpawningUIController.cs" />
+      <Compile Include="@(_DeepLagoonSearchSources);$(MSBuildThisFileDirectory)DeepLagoonSearchHook.cs" />
+      <FileWrites Include="@(_DeepLagoonSearchSources)" />
+    </ItemGroup>
+  </Target>
+</Project>

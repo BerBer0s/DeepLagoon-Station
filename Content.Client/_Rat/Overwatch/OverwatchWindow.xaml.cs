@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using System.Linq;
 using Content.Client.UserInterface.Controls;
 using Content.Shared._Rat.Overwatch;
@@ -393,7 +394,7 @@ public sealed partial class OverwatchWindow : FancyWindow
             }
 
             if (!string.IsNullOrEmpty(_searchQuery) &&
-                !m.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+                !FuzzySearch.Contains(m.Name, _searchQuery)) // DeepLagoon: fuzzy search, names of people, no typo matching
                 return false;
 
             return true;

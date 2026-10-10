@@ -1,3 +1,4 @@
+using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
 using Content.Shared.Store;
 using JetBrains.Annotations;
 using System.Linq;
@@ -86,8 +87,12 @@ public sealed class StoreBoundUserInterface : BoundUserInterface
         var filteredListings = new HashSet<ListingDataWithCostModifiers>(_listings);
         if (!string.IsNullOrEmpty(_search))
         {
-            filteredListings.RemoveWhere(listingData => !ListingLocalisationHelpers.GetLocalisedNameOrEntityName(listingData, _prototypeManager).Trim().ToLowerInvariant().Contains(_search) &&
-                                                        !ListingLocalisationHelpers.GetLocalisedDescriptionOrEntityDescription(listingData, _prototypeManager).Trim().ToLowerInvariant().Contains(_search));
+            // DeepLagoon: fuzzy search; the menu sorts by priority and category tabs, so only the filter is used
+            filteredListings = new HashSet<ListingDataWithCostModifiers>(FuzzySearch.Rank(
+                filteredListings,
+                _search,
+                listingData => ListingLocalisationHelpers.GetLocalisedNameOrEntityName(listingData, _prototypeManager),
+                listingData => ListingLocalisationHelpers.GetLocalisedDescriptionOrEntityDescription(listingData, _prototypeManager)));
         }
         _menu.PopulateStoreCategoryButtons(filteredListings);
         _menu.UpdateListing(filteredListings.ToList());

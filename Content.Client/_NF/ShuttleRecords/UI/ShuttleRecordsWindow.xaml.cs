@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using Content.Client._DeepLagoon.Search; // DeepLagoon: fuzzy search
+using System.Linq;
 using Content.Client.Stylesheets;
 using Content.Client.UserInterface.Controls;
 using Content.Shared._NF.ShuttleRecords;
@@ -97,11 +98,8 @@ public sealed partial class ShuttleRecordsWindow : FancyWindow
         List<ShuttleRecord> shuttleRecords,
         bool onlyShowActive)
     {
-        return shuttleRecords
-            .Where(shuttleRecord => string.IsNullOrEmpty(_searchText) ||
-                                    shuttleRecord.Name.Contains(_searchText, StringComparison.CurrentCultureIgnoreCase) ||
-                                    (shuttleRecord.Suffix != null && shuttleRecord.Suffix.Contains(_searchText, StringComparison.CurrentCultureIgnoreCase)) ||
-                                     shuttleRecord.OwnerName.Contains(_searchText, StringComparison.CurrentCultureIgnoreCase))
+        // DeepLagoon: fuzzy search for the ship name; the suffix and the owner (a person) match without typos
+        return FuzzySearch.Filter(shuttleRecords, _searchText, shuttleRecord => shuttleRecord.Name, shuttleRecord => shuttleRecord.Suffix + " " + shuttleRecord.OwnerName)
             .Where(shuttleRecord => !onlyShowActive || ShuttleExists(netEntity: shuttleRecord.EntityUid))
             .Select(shuttleRecord =>
                 new ShuttleRecordViewStatePair(
