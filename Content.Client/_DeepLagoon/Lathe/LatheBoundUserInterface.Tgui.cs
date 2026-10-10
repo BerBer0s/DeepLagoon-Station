@@ -230,6 +230,11 @@ public sealed partial class LatheBoundUserInterface
         if (!TguiActionData.TryParse(payload, out var data) || data == null)
             return;
 
+        // The browser holds the keyboard while it has the focus, so after a click on a button the walking keys
+        // would go to the page. A click that does something releases it; typing in a field is not an action.
+        if (action is "queue" or "cancel" or "loop" or "skip" or "eject")
+            ReleaseKeyboard();
+
         switch (action)
         {
             case "queue":
@@ -259,6 +264,21 @@ public sealed partial class LatheBoundUserInterface
             case "icons":
                 SendTguiIcons(data.String("ids"));
                 break;
+        }
+    }
+
+    private void ReleaseKeyboard()
+    {
+        if (_tguiWindow is not { } window)
+            return;
+
+        var ui = IoCManager.Resolve<IUserInterfaceManager>();
+        for (var focused = ui.KeyboardFocused; focused != null; focused = focused.Parent)
+        {
+            if (focused != window.Panel)
+                continue;
+            ui.KeyboardFocused?.ReleaseKeyboardFocus();
+            return;
         }
     }
 

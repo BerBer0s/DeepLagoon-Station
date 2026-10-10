@@ -104,7 +104,11 @@ public sealed class LatheTguiData
     {
         var culture = IoCManager.Resolve<ILocalizationManager>().DefaultCulture?.Name;
         var invariant = System.Globalization.CultureInfo.InvariantCulture;
-        return string.Join(',', state.Recipes.Select(recipe => recipe.Id)) + '|' +
+        // The materials the machine accepts decide which materials the page learns the names and icons of.
+        var accepted = _entities.TryGetComponent<MaterialStorageComponent>(_owner, out var storage) && storage.MaterialWhiteList is { } whitelist
+            ? string.Join(',', whitelist.Select(material => material.Id))
+            : string.Empty;
+        return string.Join(',', state.Recipes.Select(recipe => recipe.Id)) + '|' + accepted + '|' +
             Math.Round(lathe.FinalMaterialUseMultiplier, 5).ToString(invariant) + '|' +
             Math.Round(lathe.TimeMultiplier * lathe.FinalTimeMultiplier, 5).ToString(invariant) + '|' + culture;
     }
