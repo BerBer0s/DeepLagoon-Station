@@ -104,6 +104,29 @@ public sealed class CurrencyDatabaseTests
     }
 
     [Test]
+    public async Task HandledFailureReschedulesWithoutWaitingForCrashLease()
+    {
+        await using var db = new SqliteServerDbContext(_options);
+        await AccountCurrencyOperations.AwardLagoonCoins(db, _user, "retry:1", 1, "admin");
+        var owner = Guid.NewGuid();
+        await AccountCurrencyOperations.ClaimLagoonCoinWebhook(db, owner);
+        var retryAt = DateTime.UtcNow.AddSeconds(30);
+        await AccountCurrencyOperations.RetryLagoonCoinWebhook(db, _user, "retry:1", Guid.NewGuid(), retryAt);
+        var untouched = await db.LagoonCoinOperations.AsNoTracking().SingleAsync();
+        Assert.That(untouched.WebhookLeaseOwner, Is.EqualTo(owner));
+        await AccountCurrencyOperations.RetryLagoonCoinWebhook(db, _user, "retry:1", owner, retryAt);
+        var pending = await db.LagoonCoinOperations.AsNoTracking().SingleAsync();
+        Assert.That(pending.WebhookLeaseOwner, Is.Null);
+        Assert.That(pending.WebhookLeaseUntil, Is.EqualTo(retryAt));
+        Assert.That(await AccountCurrencyOperations.ClaimLagoonCoinWebhook(db, Guid.NewGuid()), Is.Null);
+        await AccountCurrencyOperations.RetryLagoonCoinWebhook(db, _user, "retry:1", owner, DateTime.UtcNow.AddMinutes(-1));
+        var stillPending = await db.LagoonCoinOperations.AsNoTracking().SingleAsync();
+        Assert.That(stillPending.WebhookLeaseUntil, Is.EqualTo(retryAt));
+        await db.LagoonCoinOperations.ExecuteUpdateAsync(s => s.SetProperty(p => p.WebhookLeaseUntil, (DateTime?)DateTime.UtcNow.AddSeconds(-1)));
+        Assert.That(await AccountCurrencyOperations.ClaimLagoonCoinWebhook(db, Guid.NewGuid()), Is.Not.Null);
+    }
+
+    [Test]
     public async Task UpgradeDoesNotReplayPreWebhookHistory()
     {
         await using var db = new SqliteServerDbContext(_options);

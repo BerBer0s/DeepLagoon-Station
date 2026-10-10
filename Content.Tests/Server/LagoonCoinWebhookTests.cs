@@ -29,6 +29,8 @@ public sealed class LagoonCoinWebhookTests
         Assert.That(embed.Description, Is.EqualTo(row.Reason));
         Assert.That(embed.Fields.Single(f => f.Name == "Баланс после операции").Value, Is.EqualTo("105 LC"));
         Assert.That(embed.Fields.Single(f => f.Name == "Операция").Value, Is.EqualTo(key));
+        Assert.That(embed.Fields.Single(f => f.Name == "Игрок").Value, Is.EqualTo("Игрок"));
+        Assert.That(embed.Fields.Single(f => f.Name == "Автор").Value, Is.EqualTo("Автор"));
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(payload));
         Assert.That(json.RootElement.GetProperty("allowed_mentions").GetProperty("parse").GetArrayLength(), Is.Zero);
     }
@@ -43,6 +45,8 @@ public sealed class LagoonCoinWebhookTests
         var db = new Mock<IServerDbManager>();
         db.Setup(d => d.CompleteLagoonCoinWebhookAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        db.Setup(d => d.RetryLagoonCoinWebhookAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         var row = new LagoonCoinOperation { UserId = Guid.NewGuid(), OperationId = "purchase:order-1", Amount = 5, BalanceAfter = 5 };
         var owner = Guid.NewGuid();
         var result = await LagoonCoinWebhookSystem.Send(http, db.Object, "https://discord.com/api/webhooks/1/test",
@@ -52,6 +56,21 @@ public sealed class LagoonCoinWebhookTests
         if (status == HttpStatusCode.TooManyRequests) Assert.That(result.RetryAfter.TotalSeconds, Is.EqualTo(12));
         db.Verify(d => d.CompleteLagoonCoinWebhookAsync(row.UserId, row.OperationId, owner, It.IsAny<CancellationToken>()),
             delivered ? Times.Once() : Times.Never());
+        db.Verify(d => d.RetryLagoonCoinWebhookAsync(row.UserId, row.OperationId, owner, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            delivered ? Times.Never() : Times.Once());
+    }
+
+    [Test]
+    public void DiscordAuditIdsAreNotShownInWebhook()
+    {
+        var row = new LagoonCoinOperation { UserId = Guid.NewGuid(), ActorId = Guid.NewGuid(), OperationId = "discord:123",
+            Amount = 1, Reason = "Discord actor=1554164947804487770; Награда" };
+        var payload = LagoonCoinWebhookFormatter.Format(row, "Test", "Player", "Admin");
+        var json = JsonSerializer.Serialize(payload);
+        Assert.That(payload.Embeds!.Single().Description, Is.EqualTo("Награда"));
+        Assert.That(json, Does.Not.Contain(row.UserId.ToString()));
+        Assert.That(json, Does.Not.Contain(row.ActorId.ToString()));
+        Assert.That(json, Does.Not.Contain("1554164947804487770"));
     }
 
     [Test]

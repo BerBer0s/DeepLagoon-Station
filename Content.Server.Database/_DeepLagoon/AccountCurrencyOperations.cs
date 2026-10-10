@@ -39,6 +39,15 @@ public static class AccountCurrencyOperations
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.WebhookDelivered, true)
                 .SetProperty(p => p.WebhookLeaseOwner, (Guid?)null).SetProperty(p => p.WebhookLeaseUntil, (DateTime?)null), cancel);
     }
+
+    public static async Task RetryLagoonCoinWebhook(ServerDbContext db, Guid user, string key, Guid owner,
+        DateTime retryAt, CancellationToken cancel = default)
+    {
+        await db.LagoonCoinOperations.Where(p => p.UserId == user && p.OperationId == key &&
+                !p.WebhookDelivered && p.WebhookLeaseOwner == owner)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.WebhookLeaseOwner, (Guid?)null)
+                .SetProperty(p => p.WebhookLeaseUntil, (DateTime?)retryAt), cancel);
+    }
     public static async Task<System.Collections.Generic.List<LagoonCoinOperation>> GetLagoonCoinHistory(
         ServerDbContext db, Guid user, int page, CancellationToken cancel = default)
     {

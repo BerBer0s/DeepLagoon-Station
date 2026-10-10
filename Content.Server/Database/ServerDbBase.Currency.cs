@@ -9,6 +9,12 @@ namespace Content.Server.Database;
 
 public abstract partial class ServerDbBase
 {
+    public async Task RetryLagoonCoinWebhookAsync(Guid user, string key, Guid owner, DateTime retryAt, CancellationToken cancel = default)
+    {
+        await using var db = await GetDb(cancel);
+        await AccountCurrencyOperations.RetryLagoonCoinWebhook(db.DbContext, user, key, owner, retryAt, cancel);
+    }
+
     public async Task<LagoonCoinOperation?> ClaimLagoonCoinWebhookAsync(Guid owner, CancellationToken cancel = default)
     {
         await using var db = await GetDb(cancel);

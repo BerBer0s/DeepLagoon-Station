@@ -50,10 +50,11 @@ public sealed class LagoonCoinWebhookSystem : EntitySystem
         while (!cancel.IsCancellationRequested)
         {
             var delay = TimeSpan.FromSeconds(2);
+            LagoonCoinOperation? operation = null;
             try
             {
                 var url = _url;
-                if (url.Length != 0 && await _database.ClaimLagoonCoinWebhookAsync(_owner, cancel) is { } operation)
+                if (url.Length != 0 && (operation = await _database.ClaimLagoonCoinWebhookAsync(_owner, cancel)) != null)
                 {
                     var payload = LagoonCoinWebhookFormatter.Format(operation, _server,
                         await Name(operation.UserId, cancel), await Name(operation.ActorId, cancel));
@@ -62,7 +63,10 @@ public sealed class LagoonCoinWebhookSystem : EntitySystem
                     if (!result.Delivered)
                         Log.Warning($"LC webhook HTTP {result.StatusCode}; journal entry retained for retry.");
                     else
+                    {
+                        Log.Info($"Delivered LC webhook: {operation.OperationId}.");
                         continue;
+                    }
                 }
             }
             catch (OperationCanceledException) when (cancel.IsCancellationRequested) { break; }
@@ -71,6 +75,19 @@ public sealed class LagoonCoinWebhookSystem : EntitySystem
                 // Never include the URL, response body, reason, or exception message containing secrets.
                 Log.Warning($"LC webhook delivery failed: {e.GetType().Name}; journal entry retained for retry.");
                 delay = TimeSpan.FromSeconds(30);
+                if (operation != null)
+                {
+                    try
+                    {
+                        await _database.RetryLagoonCoinWebhookAsync(operation.UserId, operation.OperationId,
+                            _owner, DateTime.UtcNow + delay, cancel);
+                    }
+                    catch (OperationCanceledException) when (cancel.IsCancellationRequested) { break; }
+                    catch (Exception retryError) when (!cancel.IsCancellationRequested)
+                    {
+                        Log.Warning($"Could not reschedule LC webhook: {retryError.GetType().Name}; lease will expire automatically.");
+                    }
+                }
             }
             try { await Task.Delay(delay, cancel); }
             catch (OperationCanceledException) when (cancel.IsCancellationRequested) { break; }
@@ -96,7 +113,9 @@ public sealed class LagoonCoinWebhookSystem : EntitySystem
             if (body.RootElement.TryGetProperty("retry_after", out var retry) && retry.TryGetDouble(out var seconds) && double.IsFinite(seconds))
                 delay = TimeSpan.FromSeconds(Math.Clamp(seconds, 1, 3600));
         }
-        return new DeliveryResult(false, TimeSpan.FromSeconds(Math.Clamp(delay.TotalSeconds, 1, 3600)), (int)response.StatusCode);
+        delay = TimeSpan.FromSeconds(Math.Clamp(delay.TotalSeconds, 1, 3600));
+        await database.RetryLagoonCoinWebhookAsync(operation.UserId, operation.OperationId, owner, DateTime.UtcNow + delay, cancel);
+        return new DeliveryResult(false, delay, (int)response.StatusCode);
     }
 
     public override void Shutdown()

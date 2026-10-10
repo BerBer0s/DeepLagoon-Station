@@ -1,10 +1,12 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Content.Server.Database;
 
 namespace Content.Server.Discord;
 
 public static class LagoonCoinWebhookFormatter
 {
+    private static readonly Regex DiscordActorPrefix = new(@"^Discord actor=[0-9]{15,20}; ", RegexOptions.CultureInvariant);
     public static WebhookPayload Format(LagoonCoinOperation operation, string server, string player, string actor)
     {
         var purchase = operation.OperationId.StartsWith("purchase:", StringComparison.Ordinal);
@@ -27,14 +29,15 @@ public static class LagoonCoinWebhookFormatter
                 {
                     Title = title,
                     Color = operation.Amount < 0 ? 0xED4245 : purchase ? 0xFEE75C : 0x57F287,
-                    Description = operation.Reason,
+                    Description = DiscordActorPrefix.Replace(operation.Reason, ""),
                     Fields = new List<WebhookEmbedField>
                     {
-                        new() { Name = "Игрок", Value = $"{Limit(player, 128)}\n{operation.UserId}" },
+                        new() { Name = "Игрок", Value = Limit(player, 128) },
                         new() { Name = "Изменение", Value = operation.Amount.ToString("+0;-0;0", CultureInfo.InvariantCulture) + " LC", Inline = true },
                         new() { Name = "Баланс после операции", Value = operation.BalanceAfter.ToString(CultureInfo.InvariantCulture) + " LC", Inline = true },
                         new() { Name = "Источник", Value = source },
-                        new() { Name = "Автор", Value = $"{Limit(actor, 128)}\n{operation.ActorId?.ToString() ?? "Система / Discord указан в причине"}" },
+                        new() { Name = "Автор", Value = operation.ActorId == null && DiscordActorPrefix.IsMatch(operation.Reason)
+                            ? "Администрация Discord" : Limit(actor, 128) },
                         new() { Name = "Операция", Value = operation.OperationId }
                     },
                     Footer = new WebhookEmbedFooter { Text = $"{Limit(server, 160)} · {DateTime.SpecifyKind(operation.CreatedAt, DateTimeKind.Utc):yyyy-MM-dd HH:mm:ss} UTC" }
