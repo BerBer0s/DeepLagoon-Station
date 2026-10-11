@@ -6,6 +6,7 @@ using System.Numerics;
 using Content.Client.UserInterface.Controls;
 using Content.Client.Inventory;
 using Content.Shared.Inventory;
+using Content.Shared.Clothing;
 using Content.Shared.Clothing.Components;
 using Robust.Shared.Input;
 using Content.Shared._DeepLagoon.Loadouts;
@@ -358,7 +359,7 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
         var inventory = _entities.System<InventorySystem>();
         if (!inventory.TryGetSlots(preview, out var slots))
             return;
-        var visibleSlots = slots.Where(s => (s.SlotFlags & (SlotFlags.PREVENTEQUIP | SlotFlags.POCKET | SlotFlags.SUITSTORAGE)) == 0)
+        var visibleSlots = FilterPreviewSlots(slots)
             .OrderBy(s => s.StrippingWindowPos.Y).ThenBy(s => s.StrippingWindowPos.X).ToList();
         for (var i = 0; i < visibleSlots.Count; i++)
         {
@@ -408,6 +409,28 @@ public sealed partial class PersonalLoadoutEditor : BoxContainer
     private bool FitsSlot(LoadoutPrototype loadout, SlotDefinition slot)
     {
         return loadout.PersonalItems.Any(id => _prototypes.Index(id).TryGetComponent<ClothingComponent>(out var clothing) && (clothing.Slots & slot.SlotFlags) != 0);
+    }
+
+    private IEnumerable<SlotDefinition> FilterPreviewSlots(IEnumerable<SlotDefinition> slots)
+    {
+        if (_profile == null)
+            return Enumerable.Empty<SlotDefinition>();
+
+        var personalItems = _prototypes.EnumeratePrototypes<LoadoutPrototype>()
+            .Where(item => item.PersonalItems.Count > 0).ToArray();
+        var jobItems = Array.Empty<LoadoutPrototype>();
+        if (_prototypes.TryIndex<RoleLoadoutPrototype>(LoadoutSystem.GetJobPrototype(_job), out var role))
+        {
+            var loadout = _profile.GetLoadoutOrDefault(role.ID, _session, _profile.Species, _entities, _prototypes);
+            jobItems = role.Groups.Select(id => _prototypes.Index(id)).Where(group => !group.Hidden)
+                .SelectMany(group => group.Loadouts.Concat(group.Subgroups.SelectMany(id => _prototypes.Index(id).Loadouts)))
+                .Distinct().Where(id => !loadout.IsHidden(_profile, _session, id, IoCManager.Instance!))
+                .Select(id => _prototypes.Index(id)).ToArray();
+        }
+
+        // Keep empty slots usable when equipment offers a replacement for them.
+        return slots.Where(slot => (slot.SlotFlags & (SlotFlags.PREVENTEQUIP | SlotFlags.POCKET | SlotFlags.SUITSTORAGE)) == 0
+            && (personalItems.Any(item => FitsSlot(item, slot)) || jobItems.Any(item => FitsJobSlot(item, slot))));
     }
 
     private static string SlotLabel(SlotDefinition slot)

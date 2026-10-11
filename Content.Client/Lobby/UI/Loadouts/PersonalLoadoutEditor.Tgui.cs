@@ -26,7 +26,7 @@ public sealed partial class PersonalLoadoutEditor
     {
         var inventory = _entities.System<InventorySystem>();
         if (!_entities.EntityExists(preview) || !inventory.TryGetSlots(preview, out var slots)) yield break;
-        foreach (var slot in slots.Where(s => (s.SlotFlags & (SlotFlags.PREVENTEQUIP | SlotFlags.POCKET | SlotFlags.SUITSTORAGE)) == 0)
+        foreach (var slot in FilterPreviewSlots(slots)
                      .OrderBy(s => s.StrippingWindowPos.Y).ThenBy(s => s.StrippingWindowPos.X))
             yield return new TguiData().String("id", slot.Name).String("name", SlotLabel(slot)).Bool("selected", _slotFilter?.Name == slot.Name).String("background", _images.Frame(new Robust.Shared.Utility.SpriteSpecifier.Texture(new Robust.Shared.Utility.ResPath("Interface/Default/Slots/" + slot.TextureName + ".png"))))
                 .Array("images", inventory.TryGetSlotEntity(preview, slot.Name, out var item) ? _images.EntityImages(item.Value) : Enumerable.Empty<TguiData>());
@@ -36,7 +36,7 @@ public sealed partial class PersonalLoadoutEditor
     {
         var inventory = _entities.System<InventorySystem>();
         if (!inventory.TryGetSlots(preview, out var slots)) return false;
-        var slot = slots.FirstOrDefault(s => s.Name == name && (s.SlotFlags & (SlotFlags.PREVENTEQUIP | SlotFlags.POCKET | SlotFlags.SUITSTORAGE)) == 0);
+        var slot = FilterPreviewSlots(slots).FirstOrDefault(s => s.Name == name);
         if (slot == null) return false;
         _slotFilter = slot;
         _pendingSlotCategory = null;
