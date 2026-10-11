@@ -1,3 +1,4 @@
+import { LazySprite } from '../components/LazySprite';
 import { useEffect, useRef, useState } from 'react';
 import { useBackend } from '../backend';
 import { Button, Dropdown, Section } from '../components';
@@ -33,7 +34,7 @@ const HairCarousel = ({options,selected,color,onSelect}) => {
   const track=useRef(null);
   const turn=direction=>track.current?.scrollBy({left:direction*track.current.clientWidth,behavior:'smooth'});
   return <div className="HairCarousel"><button type="button" aria-label="Предыдущие четыре" onClick={()=>turn(-1)}>◀</button><div className="HairCarousel__track" ref={track}>
-    {options.map(option=><button type="button" key={option.id} aria-pressed={selected===option.id} onClick={()=>onSelect(option.id)}><div className="CharacterEditor__sprite">{(option.images||[]).map((image,i)=><TintedSprite key={i} image={image.url} color={color} />)}</div><span>{option.name}</span></button>)}
+    {options.map(option=><button type="button" key={option.id} aria-pressed={selected===option.id} onClick={()=>onSelect(option.id)}><div className="CharacterEditor__sprite">{option.iconId ? <LazySprite id={option.iconId} color={color} /> : (option.images||[]).map((image,i)=><TintedSprite key={i} image={image.url} color={color} />)}</div><span>{option.name}</span></button>)}
   </div><button type="button" aria-label="Следующие четыре" onClick={()=>turn(1)}>▶</button></div>;
 };
 
@@ -216,7 +217,7 @@ export const CharacterEditor = () => {
         {(marking.colors||[]).map((color,i)=><ColorEditor key={i} label={'Цвет '+(i+1)} value={color.name} disabled={marking.locked} onChange={value=>act('marking-color',{index:marking.index,layer:i,value})} />)}
       </div>)}</Section>
       <DraftInput label="Поиск" value={search} onCommit={setSearch} />
-      {[...new Set((data.markingOptions||[]).map(m=>m.category))].map(category=><details key={category}><summary>{category}</summary><div className="CharacterEditor__tiles">{data.markingOptions.filter(m=>m.category===category&&matchedMarkings.has(m)).map(option=><button type="button" key={option.id} onClick={()=>act('marking-add',{value:option.id})}><div className="CharacterEditor__sprite">{option.images.map((image,i)=><img key={i} src={image.url} alt="" />)}</div>{option.name}</button>)}</div></details>)}
+      {[...new Set((data.markingOptions||[]).map(m=>m.category))].map(category=><details key={category}><summary>{category}</summary><div className="CharacterEditor__tiles">{data.markingOptions.filter(m=>m.category===category&&matchedMarkings.has(m)).map(option=><button type="button" key={option.id} onClick={()=>act('marking-add',{value:option.id})}><div className="CharacterEditor__sprite">{option.iconId ? <LazySprite id={option.iconId} /> : (option.images||[]).map((image,i)=><img key={i} src={image.url} alt="" />)}</div>{option.name}</button>)}</div></details>)}
     </>}
     {data.mode === 'company' && <Section title="Компания"><div className="CharacterEditor__companies">{(data.companyOptions||[]).map(company=><article key={company.id}>
       <header><strong>{company.name}</strong><Button selected={company.id===data.company} onClick={()=>act('company',{value:company.id})}>{company.id===data.company?'Выбрана':'Выбрать'}</Button></header>

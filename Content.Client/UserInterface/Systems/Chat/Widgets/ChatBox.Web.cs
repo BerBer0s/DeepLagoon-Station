@@ -16,6 +16,8 @@ public partial class ChatBox
     private float _emoteRefresh;
     private string _lastEmoteState = "";
     private string? _lastWebHistoryPayload;
+    private string? _cachedWebSettingsSource;
+    private ChatTabsSettings? _cachedWebSettings;
     public GameWebView? WebChat => _webChat;
 
     public void EnableTguiChat()
@@ -45,7 +47,7 @@ public partial class ChatBox
                 HandleEmoteShortcut(type, payload);
                 return;
             }
-            if (type != "panel/state_set" || payload.Length > 8192 || _webPreferences.Preferences == null)
+            if (type != "panel/state_set" || payload.Length > 32768 || _webPreferences.Preferences == null)
                 return;
             var settings = ChatTabsSettings.Deserialize(_webPreferences.Preferences.ChatPanelSettings) ?? new();
             if (settings.Tabs.Count == 0)
@@ -56,6 +58,7 @@ public partial class ChatBox
         };
         LayoutContainer.SetAnchorPreset(_webChat, LayoutContainer.LayoutPreset.Wide);
         ChatBody.AddChild(_webChat);
+        _webChat.Failed += () => ApplyChatMode(true);
         Contents.Visible = false;
         // The controller owns history. Do not keep a second, hidden UI history.
         Contents.Clear();
@@ -89,10 +92,13 @@ public partial class ChatBox
 
     private ChatTabsSettings CurrentWebSettings()
     {
-        var settings = ChatTabsSettings.Deserialize(_webPreferences?.Preferences?.ChatPanelSettings ?? "") ?? new();
+        var source = _webPreferences?.Preferences?.ChatPanelSettings ?? "";
+        if (_cachedWebSettings != null && source == _cachedWebSettingsSource) return _cachedWebSettings;
+        _cachedWebSettingsSource = source;
+        var settings = ChatTabsSettings.Deserialize(source) ?? new();
         if (settings.Tabs.Count == 0)
             settings.Tabs.Add(new ChatTabSettings { Name = Loc.GetString("chat-tabs-all"), Channels = (ChatChannel) uint.MaxValue });
-        return settings;
+        return _cachedWebSettings = settings;
     }
 
     private void HandleEmoteShortcut(string type, string payload)
@@ -141,8 +147,11 @@ public partial class ChatBox
     private void PublishWebHistory(bool force = false)
     {
         if (_useVanillaChat || _webChat?.IsReady != true) return;
-        var payload = "[" + string.Join(',', _controller.History.Where(entry => !entry.Msg.HideChat)
-            .Select(entry => WebChatMessageFormatter.BuildPayload(entry.Msg))) + "]";
+        var messages = new List<ChatMessage>(Math.Min(2500, _controller.History.Count));
+        for (var i = _controller.History.Count - 1; i >= 0 && messages.Count < 2500; i--)
+            if (!_controller.History[i].Msg.HideChat) messages.Add(_controller.History[i].Msg);
+        messages.Reverse();
+        var payload = "[" + string.Join(',', messages.Select(WebChatMessageFormatter.BuildPayload)) + "]";
         if (!force && payload == _lastWebHistoryPayload) return;
         _lastWebHistoryPayload = payload;
         // Replace messages in the existing document. Reloading it flashes the

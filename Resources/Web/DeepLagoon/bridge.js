@@ -7,17 +7,35 @@
   let sequence = 0;
   const page = Date.now().toString(36) + Math.random().toString(36).slice(2);
   let sending = Promise.resolve();
+  const transmit = (type, payload, attempt = 0) => new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = resolve;
+    image.onerror = () => {
+      if (attempt < 3) setTimeout(() => transmit(type, payload, attempt + 1).then(resolve, reject), 50);
+      else reject(new Error('DeepLagoon bridge request failed: ' + type));
+    };
+    image.src = root + 'bridge?' + encodeURIComponent(type) + '&' + encodeURIComponent(payload);
+  });
   const send = message => {
-    if (JSON.stringify(message).length > 12000) return;
+    const payload = JSON.stringify({ ...message.payload, _sequence: sequence++, _page: page });
+    if (payload.length > (message.type === 'panel/state_set' ? 32768 : 8192)) {
+      console.error('DeepLagoon bridge payload exceeds limit:', message.type);
+      return;
+    }
     // Serialize requests so a ready or action cannot overtake earlier messages.
     // Robust's res scheme is not FetchEnabled. An image request uses the existing
     // resource callback without navigating or requiring engine changes.
-    sending = sending.catch(() => {}).then(() => new Promise(resolve => {
-      const image = new Image();
-      image.onload = image.onerror = resolve;
-      image.src = root + 'bridge?' + encodeURIComponent(message.type) + '&' +
-        encodeURIComponent(JSON.stringify({ ...message.payload, _sequence: sequence++, _page: page }));
-    }));
+    sending = sending.catch(error => console.error(error)).then(async () => {
+      if (payload.length <= 6000) {
+        await transmit(message.type, payload);
+        return;
+      }
+      const count = Math.ceil(payload.length / 2000);
+      for (let index = 0; index < count; index++) {
+        await transmit('bridge/chunk', JSON.stringify({ messageType: message.type, index, count,
+          text: payload.slice(index * 2000, (index + 1) * 2000) }));
+      }
+    }).catch(error => console.error(error));
   };
   window.Byond = {
     parseJson: value => typeof value === 'string' ? JSON.parse(value) : value,
@@ -49,17 +67,29 @@
   window.DeepLagoonNativeBackground = {
     publish: payload => send({ type: 'native-background', payload }),
   };
-  // The chat viewport leaves gameplay keys alone. Only actual editable fields
-  // (e.g. settings search) need CEF keyboard focus; the composer has its own window.
-  if (location.pathname.endsWith('/chat.html')) {
+  window.addEventListener('error', event => {
+    if (event.error) {
+      window.__deeplagoonPageFailed = true;
+      send({ type: 'health/error', payload: { kind: 'script' } });
+    }
+  });
+  window.addEventListener('unhandledrejection', () => {
+    window.__deeplagoonPageFailed = true;
+    send({ type: 'health/error', payload: { kind: 'promise' } });
+  });
+  // All local pages return gameplay keys after non-editable clicks.
+  {
     let inputFocused = false;
+    let inputTextFocused = false;
     const syncInputFocus = () => {
       const node = document.activeElement;
-      const active = !!node && (node.isContentEditable ||
+      const text = !!node && (node.isContentEditable ||
         (node.matches?.('input, textarea, select') && !node.disabled && !node.readOnly));
-      if (active === inputFocused) return;
+      const active = text || !!window.__deeplagoonCaptureKeys;
+      if (active === inputFocused && text === inputTextFocused) return;
       inputFocused = active;
-      send({ type: 'chat-input-focus', payload: { active } });
+      inputTextFocused = text;
+      send({ type: 'chat-input-focus', payload: { active, text } });
     };
     // Read activeElement after the focus transition, including input-to-input clicks.
     document.addEventListener('focusin', () => queueMicrotask(syncInputFocus));
@@ -77,6 +107,16 @@
       inputFocused = false;
       send({ type: 'chat-input-focus', payload: { active: false } });
     });
+    window.DeepLagoonHealth = {
+      syncFocus: () => {
+        inputFocused = false;
+        syncInputFocus();
+        if (!inputFocused) send({ type: 'chat-input-focus', payload: { active: false } });
+      },
+      ping: () => {
+        if (window.__tguiAppBooted__ && !window.__deeplagoonPageFailed) send({ type: 'health/pong', payload: {} });
+      },
+    };
   }
   // Remote links, popups and wiki requests are not supported in local TGUI windows.
   window.open = () => null;

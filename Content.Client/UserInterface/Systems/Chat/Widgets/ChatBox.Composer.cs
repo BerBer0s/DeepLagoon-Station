@@ -47,6 +47,12 @@ public partial class ChatBox
             window.Panel.OnClose += CloseComposer;
             window.OnClose += CloseComposer;
             window.Panel.Web.Ready += window.Panel.Web.FocusTextInput;
+            window.Panel.Web.Failed += () =>
+            {
+                CloseComposer();
+                ApplyChatMode(true);
+                ChatInput.Input.GrabKeyboardFocus();
+            };
             window.OpenCentered();
         }
         _composerRevision++;

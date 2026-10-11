@@ -70,7 +70,7 @@ public sealed class TguiSpriteImages
             else image.SaveAsPng(output);
             return _frames[spec] = "data:image/png;base64," + Convert.ToBase64String(output.ToArray());
         }
-        catch (Exception) { return ""; }
+        catch (Exception) { return _frames[spec] = ""; }
     }
 
     public static string PackedFrame(Image<Rgba32> image, RSI rsi, string stateName)

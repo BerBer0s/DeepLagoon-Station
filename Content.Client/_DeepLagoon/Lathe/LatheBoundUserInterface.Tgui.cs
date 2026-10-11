@@ -22,13 +22,6 @@ public sealed partial class LatheBoundUserInterface
     private const int MaxIconRequest = 128;
     private const int MaxQuantity = 999;
 
-    // The embedded browser is closed with the window, but CEF keeps querying the control's view rect
-    // for a moment afterwards; the engine answers a disposed control with an empty rect, which crashes
-    // libcef. Lathes are opened and closed all the time, so the window object outlives its browser.
-    // TEMPORARY: remove together with the same delay in ResearchConsoleTguiBoundUserInterface once the
-    // engine's GetViewRect is fixed.
-    private const int WindowDisposeDelayMs = 3000;
-
     // If the page has not reported in by then (no CEF, a broken bundle), the native menu opens instead.
     private const float ReadyTimeoutSeconds = 8f;
 
@@ -38,6 +31,7 @@ public sealed partial class LatheBoundUserInterface
     private LatheTguiWindow? _tguiWindow;
     private LatheTguiData? _tguiData;
     private bool _classic;
+    private static bool _classicForSession;
     private bool _tguiDirty;
     private bool _awaitingReady;
     private float _readyWaited;
@@ -50,7 +44,7 @@ public sealed partial class LatheBoundUserInterface
 
     private bool OpenTgui()
     {
-        if (_classic)
+        if (_classic || _classicForSession)
             return false;
 
         _tguiData = new LatheTguiData(Owner, EntMan);
@@ -64,6 +58,7 @@ public sealed partial class LatheBoundUserInterface
         window.Panel.OnAction += OnTguiAction;
         // The panel publishes its own state first on every (re)load; static data follows it.
         window.Panel.Web.Ready += SendTguiStatic;
+        window.Panel.Web.Failed += DeferSwitchToClassic;
 
         if (SavedPositions.TryGetValue(Owner, out var position))
             window.Open(position);
@@ -121,14 +116,10 @@ public sealed partial class LatheBoundUserInterface
         SavedPositions[Owner] = window.Position;
 
         window.Close();
-        Timer.Spawn(WindowDisposeDelayMs, () =>
-        {
-            // Disposing releases the browser's text input; BUI-owned windows are disposed the same way.
+        // GameWebView keeps only the CEF control alive during asynchronous close.
 #pragma warning disable CS0618
-            if (!window.Disposed)
-                window.Dispose();
+        if (!window.Disposed) window.Dispose();
 #pragma warning restore CS0618
-        });
     }
 
     private void SwitchToClassic()
@@ -137,6 +128,7 @@ public sealed partial class LatheBoundUserInterface
             return;
 
         _classic = true;
+        _classicForSession = true;
         CloseTguiWindow();
         Open();
         if (State != null)

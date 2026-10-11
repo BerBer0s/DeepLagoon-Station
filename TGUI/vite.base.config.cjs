@@ -75,14 +75,14 @@ const createViteConfig = ({ entry, bundleName, globalName }) => {
       target: 'es2020',
       jsx: 'automatic',
       jsxImportSource: 'react',
-      drop: mode === 'production' ? ['console'] : [],
+      pure: mode === 'production' ? ['console.log', 'console.debug', 'console.info'] : [],
     },
     build: {
       target: 'es2020',
       outDir: path.resolve(workspaceRoot, 'public'),
       emptyOutDir: false,
-      // Single-file IIFE by design (BYOND cannot fetch split chunks),
-      // so the code-splitting advice in the size warning is not actionable.
+      // Packaged res:// documents currently load one IIFE. CEF supports chunks;
+      // splitting requires corresponding resource loading and CSP changes.
       chunkSizeWarningLimit: 3000,
       minify: mode === 'production' ? 'terser' : false,
       terserOptions: {

@@ -120,6 +120,7 @@ public sealed class WikiGuidebookWindow : FancyWindow
     {
         _web.RemoveBeforeBrowseHandler(BeforeBrowse);
         _web.RemoveResourceRequestHandler(ResourceRequest);
+        WebViewLifetime.Close(_web);
         base.Dispose(disposing);
     }
 }

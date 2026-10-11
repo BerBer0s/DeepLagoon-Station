@@ -17,6 +17,186 @@
         var patches = new[]
         {
             new[] {
+                "Cef/ImageBuffer.cs",
+                @"            Buffer = new Image<Rgba32>(width, height);",
+                @"            var previous = Buffer;
+            Buffer = new Image<Rgba32>(width, height);
+            previous.Dispose();"
+            },
+            new[] {
+                "Cef/RobustCefClient.cs",
+                @"        internal RobustCefClient(CefRenderHandler handler, CefRequestHandler requestHandler, CefLoadHandler loadHandler)",
+                @"        private readonly CefLifeSpanHandler _lifeSpanHandler;
+        private sealed class CloseHandler(System.Action closed) : CefLifeSpanHandler
+        {
+            protected override void OnBeforeClose(CefBrowser browser) => closed();
+        }
+        protected override CefLifeSpanHandler GetLifeSpanHandler() => _lifeSpanHandler;
+
+        internal RobustCefClient(CefRenderHandler handler, CefRequestHandler requestHandler, CefLoadHandler loadHandler, System.Action closed)"
+            },
+            new[] {
+                "Cef/RobustCefClient.cs",
+                @"            _loadHandler = loadHandler;",
+                @"            _loadHandler = loadHandler;
+            _lifeSpanHandler = new CloseHandler(closed);"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"        private readonly List<ControlImpl> _activeControls = new();",
+                @"        private readonly List<ControlImpl> _activeControls = new();
+        private int _embeddedBrowsers;"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"                var client = new RobustCefClient(renderer, _requestHandler, new RobustLoadHandler());",
+                @"                var client = new RobustCefClient(renderer, _requestHandler, new RobustLoadHandler(), () =>
+                {
+                    lock (renderer.Buffer) renderer.Buffer.Buffer.Dispose();
+                    System.Threading.Interlocked.Decrement(ref _manager._embeddedBrowsers);
+                });"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"                _manager._activeControls.Add(this);",
+                @"                _manager._activeControls.Add(this);
+                System.Threading.Interlocked.Increment(ref _manager._embeddedBrowsers);"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.cs",
+                @"            CefRuntime.Shutdown();",
+                @"            // CloseBrowser is asynchronous. CEF shutdown requires OnBeforeClose first.
+            var closeWait = System.Diagnostics.Stopwatch.StartNew();
+            while (System.Threading.Volatile.Read(ref _embeddedBrowsers) > 0 || _browserWindows.Count > 0)
+            {
+                CefRuntime.DoMessageLoopWork();
+                if (closeWait.Elapsed.TotalSeconds >= 5)
+                {
+                    _sawmill.Error(""CEF close timed out; skipping unsafe runtime shutdown."");
+                    return;
+                }
+                System.Threading.Thread.Sleep(1);
+            }
+            CefRuntime.Shutdown();"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"            internal volatile bool IsDirty;",
+                @"            internal volatile bool IsDirty;
+            internal UIBox2i DirtyRegion;
+            internal bool FullUpload = true;
+
+            internal void MarkDirty(int width, int height, CefRectangle rect)
+            {
+                var region = UIBox2i.FromDimensions(rect.X, rect.Y, rect.Width, rect.Height);
+                DirtyRegion = !IsDirty ? region : new UIBox2i(
+                    Math.Min(DirtyRegion.Left, region.Left), Math.Min(DirtyRegion.Top, region.Top),
+                    Math.Max(DirtyRegion.Right, region.Right), Math.Max(DirtyRegion.Bottom, region.Bottom));
+                IsDirty = true;
+            }"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"                foreach (var dirtyRect in dirtyRects)
+                {
+                    Buffer.UpdateBuffer(width, height, buffer, dirtyRect);
+                }
+
+                IsDirty = true;",
+                @"                if (type != CefPaintElementType.View) return;
+                lock (Buffer)
+                {
+                    foreach (var dirtyRect in dirtyRects)
+                    {
+                        Buffer.UpdateBuffer(width, height, buffer, dirtyRect);
+                        MarkDirty(width, height, dirtyRect);
+                    }
+                }"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"                // update texture only when CEF has rendered new content
+                if (_data.Renderer.IsDirty)
+                {
+                    _data.Renderer.IsDirty = false;
+
+                    var bufImg = _data.Renderer.Buffer.Buffer;
+
+                    _data.Texture.SetSubImage(
+                        Vector2i.Zero,
+                        bufImg,
+                        new UIBox2i(
+                            0, 0,
+                            Math.Min(Owner.PixelWidth, bufImg.Width),
+                            Math.Min(Owner.PixelHeight, bufImg.Height)));
+                }",
+                @"                var renderer = _data.Renderer;
+                lock (renderer.Buffer)
+                {
+                    if (renderer.IsDirty)
+                    {
+                        var image = renderer.Buffer.Buffer;
+                        var bounds = renderer.FullUpload ? new UIBox2i(0, 0, image.Width, image.Height) : renderer.DirtyRegion;
+                        bounds = new UIBox2i(Math.Max(0, bounds.Left), Math.Max(0, bounds.Top),
+                            Math.Min(Math.Min(image.Width, _data.Texture.Width), bounds.Right),
+                            Math.Min(Math.Min(image.Height, _data.Texture.Height), bounds.Bottom));
+                        if (bounds.Right > bounds.Left && bounds.Bottom > bounds.Top)
+                        {
+                            // The stock engine's Image overload rejects non-zero source origins.
+                            // Copy the dirty rows into a compact span for its supported span overload.
+                            var count = bounds.Width * bounds.Height;
+                            var upload = System.Buffers.ArrayPool<Rgba32>.Shared.Rent(count);
+                            try
+                            {
+                                var pixels = ImageOps.GetPixelSpan(image);
+                                for (var row = 0; row < bounds.Height; row++)
+                                    pixels.Slice((bounds.Top + row) * image.Width + bounds.Left, bounds.Width)
+                                        .CopyTo(upload.AsSpan(row * bounds.Width, bounds.Width));
+                                _data.Texture.SetSubImage<Rgba32>(bounds.TopLeft, bounds.Size, upload.AsSpan(0, count));
+                            }
+                            finally { System.Buffers.ArrayPool<Rgba32>.Shared.Return(upload); }
+                        }
+                        renderer.IsDirty = false;
+                        renderer.FullUpload = false;
+                    }
+                }"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"                    rect = new CefRectangle();",
+                @"                    // CEF requires a non-empty view rect even during asynchronous close.
+                    rect = new CefRectangle(0, 0, 1, 1);"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"            private const int ScrollSpeed = 50;",
+                @"            private const int ScrollSpeed = 50;
+            private Vector2 _wheelRemainder;
+
+            private Vector2i ConsumeWheel(Vector2 delta)
+            {
+                _wheelRemainder += delta * ScrollSpeed;
+                var pixels = new Vector2i((int)_wheelRemainder.X, (int)_wheelRemainder.Y);
+                _wheelRemainder -= new Vector2(pixels.X, pixels.Y);
+                return pixels;
+            }"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"                _data.Browser.GetHost().SendMouseWheelEvent(
+                    mouseEvent,
+                    (int)args.Delta.X * ScrollSpeed,
+                    (int)args.Delta.Y * ScrollSpeed);",
+                @"                var wheel = ConsumeWheel(args.Delta);
+                if (wheel != Vector2i.Zero)
+                    _data.Browser.GetHost().SendMouseWheelEvent(mouseEvent, wheel.X, wheel.Y);"
+            },
+            new[] {
+                "Cef/WebViewManagerCef.Control.cs",
+                @"                            WindowsKeyCode = '\b',",
+                @"                            WindowsKeyCode = '\r',"
+            },
+            new[] {
                 "WebViewControl.cs",
                 @"        protected internal override void Draw(DrawingHandleScreen handle)",
                 @"        protected internal override void UIScaleChanged()
@@ -45,6 +225,7 @@
                 {
                     _data.Texture.Dispose();
                     _data.Texture = _clyde.CreateBlankTexture<Rgba32>(size);
+                    _data.Renderer.FullUpload = true;
                 }
                 host.WasResized();
                 host.Invalidate(CefPaintElementType.View);"
@@ -111,7 +292,7 @@
       <Output TaskParameter="GeneratedSources" ItemName="_DeepLagoonWebViewSources" />
     </DeepLagoonPrepareWebView>
     <ItemGroup>
-      <Compile Remove="WebViewControl.cs;Cef\WebViewManagerCef.Control.cs;Cef/WebViewManagerCef.Control.cs" />
+      <Compile Remove="WebViewControl.cs;Cef\WebViewManagerCef.Control.cs;Cef/WebViewManagerCef.Control.cs;Cef/ImageBuffer.cs;Cef\ImageBuffer.cs;Cef/RobustCefClient.cs;Cef\RobustCefClient.cs;Cef/WebViewManagerCef.cs;Cef\WebViewManagerCef.cs" />
       <Compile Include="@(_DeepLagoonWebViewSources)" />
       <FileWrites Include="@(_DeepLagoonWebViewSources)" />
     </ItemGroup>

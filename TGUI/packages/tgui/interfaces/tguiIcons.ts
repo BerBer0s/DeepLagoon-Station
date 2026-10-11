@@ -26,6 +26,7 @@ const NO_LAYERS: IconLayer[] = [];
 const layersById = new Map<string, IconLayer[]>();
 const listenersById = new Map<string, Set<() => void>>();
 const requested = new Set<string>();
+const attempts = new Map<string, number>();
 
 let pending: string[] = [];
 let flushScheduled = false;
@@ -42,6 +43,8 @@ const onStoreChange = () => {
   lastBatch = data.iconBatch;
   for (const icon of data.iconBatch?.icons ?? []) {
     layersById.set(icon.id, icon.layers);
+    requested.delete(icon.id);
+    attempts.delete(icon.id);
     listenersById.get(icon.id)?.forEach((listener) => listener());
   }
 };
@@ -59,15 +62,24 @@ const flush = () => {
     const ids = pending.slice(0, MAX_IDS_PER_REQUEST);
     pending = pending.slice(MAX_IDS_PER_REQUEST);
     sendAct('icons', { ids: ids.join(',') });
+    setTimeout(() => {
+      for (const id of ids) {
+        if (layersById.has(id)) continue;
+        requested.delete(id);
+        if (listenersById.get(id)?.size) requestIcon(id);
+      }
+    }, 5000);
   }
 };
 
 const requestIcon = (id: string) => {
+  if (!id) return;
   attach();
-  if (requested.has(id)) {
+  if (requested.has(id) || layersById.has(id) || (attempts.get(id) ?? 0) >= 3) {
     return;
   }
   requested.add(id);
+  attempts.set(id, (attempts.get(id) ?? 0) + 1);
   pending.push(id);
   if (!flushScheduled) {
     flushScheduled = true;
@@ -88,6 +100,7 @@ export const useIcon = (id: string): IconLayer[] => {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
+        if (!listeners.size) listenersById.delete(id);
       };
     },
     [id],

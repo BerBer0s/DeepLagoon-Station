@@ -86,6 +86,11 @@ public sealed partial class GridEditorSystem : EntitySystem
                 .Object("data", new TguiData().Number("closeRequested", ++_closeVersion)).ToString());
             _window.Panel.OnAction += Action;
             _window.Panel.OnClose += Close;
+            _window.Panel.Web.Ready += () =>
+            {
+                PublishLibrary();
+                Search(_searchQuery, _searchCategory, _searchPage);
+            };
             _window.OpenCentered();
             _window.Panel.Web.FocusInput();
         }
@@ -235,25 +240,15 @@ public sealed partial class GridEditorSystem : EntitySystem
         if (shuttingDown) window.Panel.Web.PrepareForShutdown();
         else window.Panel.Web.ReleaseTextInput();
         window.ForceClose();
-        if (shuttingDown)
-        {
 #pragma warning disable CS0618
-            if (!window.Disposed) window.Dispose();
+        if (!window.Disposed) window.Dispose();
 #pragma warning restore CS0618
-            return;
-        }
-        Timer.Spawn(3000, () =>
-        {
-#pragma warning disable CS0618
-            if (!window.Disposed) window.Dispose();
-#pragma warning restore CS0618
-        });
     }
 }
 
 public sealed class GridEditorWindow : FancyWindow
 {
-    public readonly TguiPanel Panel = new();
+    public readonly TguiPanel Panel = new(captureKeyboard: true);
     public event Action? CloseRequested;
     public override void Close() => CloseRequested?.Invoke();
     public void ForceClose() => base.Close();

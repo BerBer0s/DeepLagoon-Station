@@ -50,6 +50,8 @@ export const backendSuspendSuccess = () => ({
 const initialState = {
   config: {},
   data: {},
+  staticData: {},
+  partialData: {},
   shared: {},
   outgoingPayloadQueues: {} as Record<string, string[]>,
   // Start as suspended
@@ -67,9 +69,19 @@ export const backendReducer = (state = initialState, action) => {
       ...payload.config,
     };
     // Merge data
-    const data = {
-      ...state.data,
+    const newInterface = payload.config?.interface && payload.config.interface !== state.config?.interface;
+    const staticData = {
+      ...(newInterface ? {} : state.staticData),
       ...payload.static_data,
+    };
+    const partialData = {
+      ...(newInterface ? {} : state.partialData),
+      ...(!payload.replaceData ? payload.data : {}),
+    };
+    const data = {
+      ...(payload.replaceData || newInterface ? {} : state.data),
+      ...(payload.replaceData ? staticData : payload.static_data),
+      ...(payload.replaceData ? partialData : {}),
       ...payload.data,
     };
     // Merge shared states
@@ -90,6 +102,8 @@ export const backendReducer = (state = initialState, action) => {
       ...state,
       config,
       data,
+      staticData,
+      partialData,
       shared,
       suspended: false,
     };
@@ -118,6 +132,8 @@ export const backendReducer = (state = initialState, action) => {
     return {
       ...state,
       data: {},
+      staticData: {},
+      partialData: {},
       shared: {},
       config: {
         ...state.config,

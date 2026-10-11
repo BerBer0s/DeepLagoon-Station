@@ -27,13 +27,21 @@ public sealed class TguiPanel : Control
     private string? _chatSettings;
     private float _appearanceRefresh;
     private readonly bool _inheritChatAppearance;
+    private readonly BoxContainer _failure = new() { Orientation = BoxContainer.LayoutOrientation.Vertical, Visible = false };
 
-    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true)
+    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true, bool captureKeyboard = false)
     {
         _inheritChatAppearance = inheritChatAppearance;
-        Web = new GameWebView(suspendWhenHidden: suspendWhenHidden);
+        Web = new GameWebView(suspendWhenHidden: suspendWhenHidden, captureKeyboard: captureKeyboard);
         HorizontalExpand = VerticalExpand = true;
         AddChild(Web);
+        _failure.AddChild(new Label { Text = "Не удалось запустить TGUI. Повторите загрузку интерфейса." });
+        var retry = new Button { Text = "Повторить" };
+        retry.OnPressed += _ => { _failure.Visible = false; Web.Reload(); };
+        _failure.AddChild(retry);
+        AddChild(_failure);
+        Web.Failed += () => _failure.Visible = true;
+        Web.Ready += () => _failure.Visible = false;
         Web.Ready += Publish;
         Web.Message += (type, payload) =>
         {
@@ -145,7 +153,7 @@ public sealed class TguiPanel : Control
                         UserInterfaceManager.ControlFocused = null;
                         break;
                     }
-                    Web.FocusTextInput();
+                    Web.SyncInputFocus();
                 }
             });
         }
@@ -189,9 +197,11 @@ public sealed class TguiPanel : Control
     private void Publish()
     {
         if (_interface.Length == 0 || !Web.IsReady) return;
-        Web.Send("update", "{\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
+        var data = _data.Trim();
+        if (data.Length < 2 || data[0] != '{' || data[^1] != '}') data = "{}";
+        Web.Send("update", "{\"replaceData\":true,\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
             ",\"title\":" + GameWebView.Quote(_title) +
-            ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":" + _data[..^1] +
-            (_data.Trim() == "{}" ? "" : ",") + "\"chatState\":" + GameWebView.Quote(_chatState) + "}}");
+            ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":" + data[..^1] +
+            (string.IsNullOrWhiteSpace(data[1..^1]) ? "" : ",") + "\"chatState\":" + GameWebView.Quote(_chatState) + "}}");
     }
 }

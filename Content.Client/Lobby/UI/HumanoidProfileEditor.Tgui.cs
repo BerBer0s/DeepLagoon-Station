@@ -40,6 +40,8 @@ public sealed partial class HumanoidProfileEditor
     private readonly Control _editorSettingsTab = new();
     private CharacterEditorAppearance _editorAppearance = new();
     private readonly Dictionary<string, string> _companyWebImages = new();
+    private readonly Dictionary<Control, bool> _nativeTabVisibility = new();
+    private Control? _nativeSpriteParent;
 
     private void InitializeTguiEditor()
     {
@@ -48,10 +50,15 @@ public sealed partial class HumanoidProfileEditor
         _profileWeb = new TguiPanel(suspendWhenHidden: true, inheritChatAppearance: false) { Name = "CharacterTgui" };
         _profileWeb.OnAction += (action, payload) => HandleTguiProfileAction(action, payload);
         _personalLoadoutEditor.TguiMode = true;
+        _nativeSpriteParent = SpriteView.Parent;
         // One browser owns every editor control and the shared animated background.
         // SpriteView remains the engine renderer, transparently above that background.
         for (var tab = 0; tab < TabContainer.ChildCount; tab++)
-            foreach (var child in TabContainer.GetChild(tab).Children) child.Visible = false;
+            foreach (var child in TabContainer.GetChild(tab).Children)
+            {
+                _nativeTabVisibility[child] = child.Visible;
+                child.Visible = false;
+            }
         IdentityNative.Visible = ProfileHighlight.Visible = ShowClothes.Visible = false;
         PreviewColumn.Visible = false;
         SpriteView.Orphan();
@@ -60,8 +67,30 @@ public sealed partial class HumanoidProfileEditor
         TabContainer.Visible = false;
         _tguiHost = new TguiEditorHost(TabContainer, _profileWeb, SpriteView);
         EditorColumn.AddChild(_tguiHost);
+        _profileWeb.Web.Failed += RestoreNativeEditor;
         TabContainer.OnTabChanged += SelectTguiTab;
         SelectTguiTab(TabContainer.CurrentTab);
+    }
+
+    private void RestoreNativeEditor()
+    {
+        if (_tguiHost == null || _profileWeb == null) return;
+        _profileWeb.Visible = false;
+        TabContainer.Orphan();
+        SpriteView.Orphan();
+        _tguiHost.Orphan();
+        EditorColumn.AddChild(TabContainer);
+        _nativeSpriteParent?.AddChild(SpriteView);
+        TabContainer.Visible = true;
+        foreach (var (control, visible) in _nativeTabVisibility) control.Visible = visible;
+        IdentityNative.Visible = ProfileHighlight.Visible = ShowClothes.Visible = PreviewColumn.Visible = true;
+        _personalLoadoutEditor.TguiMode = false;
+        TabContainer.OnTabChanged -= SelectTguiTab;
+#pragma warning disable CS0618
+        _tguiHost.Dispose();
+#pragma warning restore CS0618
+        _tguiHost = null;
+        _profileWeb = null;
     }
 
     private string TguiTabMode(int tab)
@@ -89,7 +118,6 @@ public sealed partial class HumanoidProfileEditor
         _tguiRefresh -= args.DeltaSeconds;
         if (_tguiRefresh > 0 || _profileWeb == null || !_profileWeb.VisibleInTree) return;
         _tguiRefresh = 0.2f;
-        if (_profileWeb.Web.IsReady) _personalLoadoutEditor.WarmTguiImages();
         var bonus = _entManager.System<Content.Shared._DeepLagoon.DiscordLink.SharedDiscordBoostSystem>().GetLoadoutPointBonus(_playerManager.LocalSession);
         if (!ReferenceEquals(Profile, _publishedTguiProfile) || IsDirty != _publishedTguiDirty || ShowClothes.Pressed != _publishedTguiClothes || bonus != _publishedSupporterBonus)
             PublishTguiProfile();
@@ -143,7 +171,7 @@ public sealed partial class HumanoidProfileEditor
             data.Array("markingOptions", _markingManager.Markings.Values.Where(m => m.MarkingCategory is not (MarkingCategories.Hair or MarkingCategories.FacialHair)
                 && _markingManager.CanBeApplied(p.Species, p.Sex, m, _prototypeManager))
                 .Select(m => Choice(m.ID, Loc.GetString($"marking-{m.ID}")).String("category", Loc.GetString($"markings-category-{m.MarkingCategory}"))
-                    .Array("images", m.Sprites.Select(sprite => new TguiData().String("url", _tguiImages.Frame(sprite))))));
+                    .String("iconId", "marking/" + m.ID)));
         }
         var species = _prototypeManager.Index(p.Species);
         data.String("name", p.Name).Number("age", p.Age).String("species", p.Species.Id)
@@ -241,7 +269,7 @@ public sealed partial class HumanoidProfileEditor
                      .Where(m => _markingManager.CanBeApplied(Profile.Species, Profile.Sex, m, _prototypeManager))
                      .OrderBy(m => Loc.GetString($"marking-{m.ID}")))
             if (marking.ID != (beard ? HairStyles.DefaultFacialHairStyle : HairStyles.DefaultHairStyle))
-                yield return Choice(marking.ID, Loc.GetString($"marking-{marking.ID}")).Array("images", marking.Sprites.Select(sprite => new TguiData().String("url", _tguiImages.Frame(sprite))));
+                yield return Choice(marking.ID, Loc.GetString($"marking-{marking.ID}")).String("iconId", "marking/" + marking.ID);
     }
 
     private TguiData JobData(JobPrototype job)
@@ -281,6 +309,24 @@ public sealed partial class HumanoidProfileEditor
     public bool HandleTguiProfileAction(string action, string payload)
     {
         if (!TguiActionData.TryParse(payload, out var args)) return false;
+        if (action == "icons")
+        {
+            if (args!.String("ids") is not { } ids || _profileWeb == null || Profile == null) return false;
+            var icons = new List<TguiData>();
+            foreach (var id in ids.Split(',').Distinct().Take(100))
+            {
+                if (id.StartsWith("marking/", StringComparison.Ordinal) &&
+                    _markingManager.Markings.TryGetValue(id[8..], out var marking))
+                    icons.Add(new TguiData().String("id", id).Array("layers", marking.Sprites.Select(sprite =>
+                        new TguiData().String("url", _tguiImages.Frame(sprite)).String("color", "#ffffff"))));
+                else if (id.StartsWith("item/", StringComparison.Ordinal) && _prototypeManager.TryIndex<EntityPrototype>(id[5..], out _))
+                    icons.Add(new TguiData().String("id", id).Array("layers", _tguiImages.Item(id[5..])));
+                else
+                    icons.Add(new TguiData().String("id", id).Array("layers", Enumerable.Empty<TguiData>()));
+            }
+            _profileWeb.Web.Send("update", new TguiData().Object("data", new TguiData().Object("iconBatch", new TguiData().Array("icons", icons))).ToString());
+            return true;
+        }
         if (action.StartsWith("setup/", StringComparison.Ordinal)) { var accepted = SetupAction?.Invoke(action[6..], args!) ?? false; PublishTguiProfile(); return accepted; }
         if (Profile == null) return false;
         var value = args!.String("value") ?? "";
