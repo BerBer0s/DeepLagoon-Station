@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import './PlayerColorPicker.scss';
+
+export const ColorTransferContext = createContext(null);
 
 export const rgbToHsv = hex => {
   const [r,g,b] = [1,3,5].map(i => (parseInt(hex.slice(i,i+2),16)||0)/255);
@@ -43,7 +45,18 @@ export const PlayerColorPicker = ({value='#ffffff', onChange, channels=false}) =
 };
 export const ColorSquare = ({label,value,disabled,onChange,hint}) => {
   const [open,setOpen]=useState(false);
-  return <div className="ColorSquare"><button type="button" disabled={disabled} aria-label={label} title={label} aria-expanded={open} style={{backgroundColor:value}} onClick={()=>setOpen(!open)} /> <span>{label}</span>
+  const transfer = useContext(ColorTransferContext);
+  const picking = transfer?.phase === 'pick';
+  const applying = transfer?.phase === 'apply';
+  const title = picking ? 'Скопировать цвет: ' + (label || value)
+    : applying ? 'Вставить цвет: ' + (label || value) : label;
+  const click = () => {
+    if (picking || applying) {
+      setOpen(false);
+      transfer.useSquare(value, onChange);
+    } else setOpen(!open);
+  };
+  return <div className={'ColorSquare' + (picking || applying ? ' ColorSquare--transfer' : '')}><button type="button" disabled={disabled && !picking} aria-label={title} title={title} aria-expanded={open} style={{backgroundColor:value}} onClick={click} /> <span>{label}</span>
     {hint && <small>{hint}</small>}
     {open && !disabled && <div className="ColorSquare__popover"><PlayerColorPicker value={value} onChange={onChange} /><button type="button" onClick={()=>setOpen(false)}>Закрыть</button></div>}
   </div>;

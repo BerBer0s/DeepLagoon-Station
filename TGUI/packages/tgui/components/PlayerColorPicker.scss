@@ -5,5 +5,6 @@
   &__rgb {display:flex;gap:8px;label {min-width:0;gap:4px;}input {width:55px;flex:0 0 55px;appearance:textfield;}input::-webkit-inner-spin-button {appearance:none;}}
 }
 .ColorSquare {position:relative;margin:8px 0; > button {width:32px;height:32px;border:2px solid #aaa;cursor:pointer;vertical-align:middle;} > button:disabled {opacity:.4;cursor:default;}
+  &--transfer > button:not(:disabled) {cursor:crosshair;outline:2px dashed var(--editor-accent,#83bbfa);outline-offset:2px;}
   &__popover {padding:12px;border:1px solid #788799;background:var(--player-surface,#25252d);margin:8px 0;max-width:300px;}
 }

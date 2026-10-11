@@ -54,7 +54,7 @@ export const CharacterEditorSettings = ({ settings: values, act }) => {
       {select('Свечение текста', 'textGlow', TEXT_GLOW_OPTIONS)}
       {[['chatBgColor', 'Цвет фона', '#171c24'], ['chatTextColor', 'Цвет текста', '#dddddd'], ['chatAccentColor', 'Цвет акцента', '#a7d2ff'],
         ...(settings.textGlow !== 'none' ? [['textGlowColor', 'Цвет свечения', '#a7d2ff']] : [])].map(([key, label, fallback]) =>
-        <div key={key} className="CharacterEditor__colorLine"><span>{label}</span><ColorSquare value={settings[key] || fallback} onChange={value => change(key, value.startsWith('#') ? value : '#' + value)} />
+        <div key={key} className="CharacterEditor__colorLine"><ColorSquare label={label} value={settings[key] || fallback} onChange={value => change(key, value.startsWith('#') ? value : '#' + value)} />
           <Button onClick={() => change(key, '')}>Сбросить</Button></div>)}
     </div></Section>
     <Section title="Поведение интерфейса">

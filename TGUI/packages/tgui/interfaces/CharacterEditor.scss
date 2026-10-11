@@ -158,6 +158,7 @@
   &__header &__windowTitle {position:static !important;min-width:0;font-size:1.4em;}
   &__headerActions {display:flex;flex-shrink:0;align-items:center;gap:6px;}
   &__headerActions .Button {display:inline-flex;align-items:center;justify-content:center;min-height:36px;margin:0;padding:6px 12px;}
+  &__pipetteColor {display:inline-block;width:14px;height:14px;margin-right:6px;border:1px solid #ddd;border-radius:2px;vertical-align:middle;}
   &__nameRow {display:flex;align-items:flex-end;gap:8px;margin-bottom:8px;}
   &__nameRow > &__field {flex:1;margin-bottom:0;}
   &__nameRow > .Button {display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;height:var(--editor-control-height);min-width:var(--editor-control-height);margin:0;padding:6px;}
@@ -166,4 +167,8 @@
   .CharacterEditor__header {flex-wrap:wrap;gap:6px;}
   .CharacterEditor__header .CharacterEditor__windowTitle {flex-basis:100%;}
   .CharacterEditor:has(> .CharacterEditor__header) {padding-top:100px;}
+}
+@media (max-width: 479px) {
+  .CharacterEditor__pipetteLabel {display:none;}
+  .CharacterEditor__headerActions .Button {padding-inline:8px;}
 }

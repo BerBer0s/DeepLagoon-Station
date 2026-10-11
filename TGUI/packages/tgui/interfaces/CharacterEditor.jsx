@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useBackend } from '../backend';
 import { Button, Dropdown, Section } from '../components';
 import './CharacterEditor.scss';
-import { ColorSquare } from '../components/PlayerColorPicker';
+import { ColorSquare, ColorTransferContext } from '../components/PlayerColorPicker';
 import { playerTheme, TintedSprite } from '../components/PlayerTheme';
 import { CharacterText } from '../components/CharacterText';
 import { CharacterTextEditor } from '../components/CharacterTextEditor';
@@ -61,6 +61,28 @@ export const CharacterEditor = () => {
   const [search, setSearch] = useState('');
   const [charactersOpen,setCharactersOpen]=useState(false),[statsOpen,setStatsOpen]=useState(false),[deleteSlot,setDeleteSlot]=useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [colorTransfer, setColorTransfer] = useState({ phase: 'off', color: null });
+  useEffect(() => {
+    const cancel = event => {
+      if (event.key === 'Escape') setColorTransfer(current => ({ ...current, phase: 'off' }));
+    };
+    document.addEventListener('keydown', cancel);
+    return () => document.removeEventListener('keydown', cancel);
+  }, []);
+  useEffect(() => setColorTransfer({ phase: 'off', color: null }), [data.available, data.setup?.selected]);
+  const transfer = {
+    ...colorTransfer,
+    useSquare: (value, onChange) => {
+      if (colorTransfer.phase === 'pick') setColorTransfer({ phase: 'apply', color: value });
+      else if (colorTransfer.phase === 'apply') {
+        onChange(colorTransfer.color);
+        setColorTransfer(current => ({ ...current, phase: 'off' }));
+      }
+    },
+  };
+  const pipetteHint = colorTransfer.phase === 'pick' ? 'Нажмите квадрат, цвет которого нужно скопировать. Esc — отмена.'
+    : colorTransfer.phase === 'apply' ? 'Перейдите на нужную вкладку и нажмите квадрат, в который нужно вставить цвет. Esc — отмена.'
+    : 'Пипетка: скопировать цвет одного квадрата в другой, в том числе на другой вкладке.';
   const change = action => value => act(action, { value });
   if (!data.available) return <div className="CharacterEditor"><header className="CharacterEditor__header">
     <div className="CharacterEditor__windowTitle">Редактор персонажа</div>
@@ -71,12 +93,17 @@ export const CharacterEditor = () => {
   const matchedJobs = new Set(fuzzyFilter((data.departments || []).flatMap(department => department.jobs), search, job => job.name));
   const matchedMarkings = new Set(fuzzyFilter(data.markingOptions || [], search, option => option.name));
   const theme = playerTheme(JSON.stringify({ settings: appearance }));
-  return <div ref={backgroundRoot} className={'CharacterEditor Chat ' + theme.className + ' CharacterEditor--' + data.mode +
+  return <ColorTransferContext.Provider value={transfer}><div ref={backgroundRoot} className={'CharacterEditor Chat ' + theme.className + ' CharacterEditor--' + data.mode +
     (appearance.smoothScroll ? ' CharacterEditor--smooth' : '') + (appearance.hoverEffect ? ' CharacterEditor--hover' : '')}
     style={{ ...theme.style, ...editorAppearance(appearance) }}>
     <header className="CharacterEditor__header">
       <div className="CharacterEditor__windowTitle">Редактор персонажа</div>
       <div className="CharacterEditor__headerActions">
+        <Button icon="eye-dropper" role="button" aria-pressed={colorTransfer.phase !== 'off'} selected={colorTransfer.phase !== 'off'} tooltip={pipetteHint} aria-label={pipetteHint}
+          onClick={() => setColorTransfer(current => ({ ...current, phase: current.phase === 'off' ? 'pick' : 'off' }))}>
+          {colorTransfer.color && <span className="CharacterEditor__pipetteColor" style={{ backgroundColor: colorTransfer.color }} />}
+          <span className="CharacterEditor__pipetteLabel" aria-live="polite">{colorTransfer.phase === 'pick' ? 'Взять цвет' : colorTransfer.phase === 'apply' ? 'Вставить цвет' : 'Пипетка'}</span>
+        </Button>
         <Button disabled={!data.dirty} color="good" onClick={()=>act('save')}>Сохранить</Button>
         <Button disabled={!data.dirty} onClick={()=>act('reset')}>Сбросить</Button>
         {data.setup && <Button icon="times" onClick={()=>act('setup/close')}>Закрыть</Button>}
@@ -197,5 +224,5 @@ export const CharacterEditor = () => {
       <Button disabled={!company.wikiUrl} onClick={()=>act('company-wiki',{value:company.id})}>Страница компании на вики</Button>{!company.wikiUrl&&<small>Страница пока не добавлена.</small>}</details>
     </article>)}</div></Section>}
     </main>
-  </div>;
+  </div></ColorTransferContext.Provider>;
 };
