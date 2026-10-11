@@ -17,6 +17,93 @@ namespace Content.IntegrationTests.Tests._DeepLagoon;
 public sealed class PsionicsMoodTests
 {
     [Test]
+    public async Task PsionicRecipesProduceOilCrystalsAndDust()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true });
+        var map = await pair.CreateTestMap();
+        Content.Shared.Chemistry.Components.Solution oil = null!;
+        Content.Shared.Chemistry.Components.Solution crystal = null!;
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            var solutions = entities.System<Content.Shared.Chemistry.EntitySystems.SharedSolutionContainerSystem>();
+            var beaker = entities.SpawnEntity("Beaker", map.GridCoords);
+            Assert.That(solutions.TryGetSolution(beaker, "beaker", out var oilEntity, out oil), Is.True);
+            solutions.TryAddReagent(oilEntity!.Value, "SpaceDrugs", Content.Shared.FixedPoint.FixedPoint2.New(10));
+            solutions.TryAddReagent(oilEntity.Value, "Cognizine", Content.Shared.FixedPoint.FixedPoint2.New(10));
+            solutions.TryAddReagent(oilEntity.Value, "Plasma", Content.Shared.FixedPoint.FixedPoint2.New(5));
+            var crystalBeaker = entities.SpawnEntity("Beaker", map.GridCoords);
+            Assert.That(solutions.TryGetSolution(crystalBeaker, "beaker", out var crystalEntity, out crystal), Is.True);
+            foreach (var id in new[] { "Ash", "Water", "Blood", "Ectoplasm", "Plasma" })
+                solutions.TryAddReagent(crystalEntity!.Value, id, Content.Shared.FixedPoint.FixedPoint2.New(5));
+            solutions.SetTemperature(crystalEntity!.Value, 400f);
+            solutions.UpdateChemicals(crystalEntity.Value);
+            var bowl = entities.SpawnEntity("FoodOusianaDustBowl", map.GridCoords);
+            Assert.That(solutions.TryGetSolution(bowl, "food", out _, out var dust), Is.True);
+            Assert.That(dust!.GetTotalPrototypeQuantity("OusianaDust"), Is.EqualTo(Content.Shared.FixedPoint.FixedPoint2.New(5)));
+        });
+        await pair.Server.WaitRunTicks(2);
+        await pair.Server.WaitAssertion(() =>
+        {
+            Assert.That(oil.GetTotalPrototypeQuantity("LotophagoiOil"), Is.EqualTo(Content.Shared.FixedPoint.FixedPoint2.New(10)));
+            Assert.That(oil.GetTotalPrototypeQuantity("Plasma"), Is.EqualTo(Content.Shared.FixedPoint.FixedPoint2.New(5)), "Catalyst must not be consumed");
+            Assert.That(oil.GetTotalPrototypeQuantity("SpaceDrugs", "Cognizine"), Is.EqualTo(Content.Shared.FixedPoint.FixedPoint2.Zero));
+            Assert.That(crystal.GetTotalPrototypeQuantity("Plasma"), Is.EqualTo(Content.Shared.FixedPoint.FixedPoint2.New(5)));
+            Assert.That(crystal.GetTotalPrototypeQuantity("Ash", "Water", "Blood", "Ectoplasm"), Is.EqualTo(Content.Shared.FixedPoint.FixedPoint2.Zero));
+            var query = pair.Server.EntMan.EntityQueryEnumerator<MetaDataComponent>();
+            var found = false;
+            while (query.MoveNext(out _, out var metadata))
+                found |= metadata.EntityPrototype?.ID == "MaterialNormality1";
+            Assert.That(found, Is.True, "Heating the recipe must produce a normality crystal");
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
+    public async Task RoundstartChanceDoesNotRestrictLaterRerolls()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true });
+        var map = await pair.CreateTestMap();
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            var config = pair.Server.ResolveDependency<IConfigurationManager>();
+            var system = entities.System<Content.Server.Psionics.PsionicsSystem>();
+            Assert.That(config.GetCVar(CCVars.PsionicRoundstartChance), Is.EqualTo(0.01f));
+            var human = entities.SpawnEntity("MobHuman", map.GridCoords);
+            var psionic = entities.GetComponent<PsionicComponent>(human);
+            config.SetCVar(CCVars.PsionicRoundstartChance, 0f);
+            system.RollRoundstartPsionics(human, psionic);
+            Assert.That(psionic.ActivePowers, Is.Empty);
+            Assert.That(psionic.Potentia, Is.Zero);
+            Assert.That(psionic.CanReroll, Is.True);
+            config.SetCVar(CCVars.PsionicRoundstartChance, 1f);
+            system.RollRoundstartPsionics(human, psionic);
+            Assert.That(psionic.ActivePowers.Count, Is.EqualTo(1));
+            Assert.That(psionic.NextPowerCost, Is.EqualTo(psionic.BaselinePowerCost * MathF.Pow(2, psionic.PowerSlotsTaken)));
+            Assert.That(psionic.Potentia, Is.Zero);
+            Assert.That(psionic.CanReroll, Is.True);
+            var other = entities.SpawnEntity("MobHuman", map.GridCoords);
+            var otherPsionic = entities.GetComponent<PsionicComponent>(other);
+            config.SetCVar(CCVars.PsionicRollsEnabled, false);
+            system.RollRoundstartPsionics(other, otherPsionic);
+            Assert.That(otherPsionic.ActivePowers, Is.Empty);
+            config.SetCVar(CCVars.PsionicRollsEnabled, true);
+            config.SetCVar(CCVars.PsionicRoundstartChance, 0f);
+            otherPsionic.Potentia = otherPsionic.NextPowerCost;
+            system.RerollPsionics(other, otherPsionic);
+            Assert.That(otherPsionic.ActivePowers.Count, Is.EqualTo(1), "Later rolls must work even when roundstart is disabled");
+            Assert.That(otherPsionic.CanReroll, Is.False);
+            var familiar = entities.SpawnEntity("MobBatRemilia", map.GridCoords);
+            Assert.That(entities.GetComponent<PsionicComponent>(familiar).ActivePowers, Is.Not.Empty, "Innate powers must remain available");
+            entities.DeleteEntity(familiar);
+            entities.DeleteEntity(other);
+            entities.DeleteEntity(human);
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
     public async Task NoosphericZapCreatesLightningAndParalyzesTarget()
     {
         await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true });

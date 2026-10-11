@@ -43,7 +43,7 @@ dl-interaction-panel-favorites = Избранное
 dl-interaction-panel-favorite-toggle = Добавить в избранное / убрать
 dl-interaction-panel-count = Найдено: { $count }
 dl-interaction-panel-empty = В этой области нет подходящих действий.
-dl-interaction-panel-ready = Выберите область на кукле или найдите действие.
+dl-interaction-panel-ready = Выберите действие или область тела.
 dl-interaction-panel-speed = Интервал повтора
 dl-interaction-panel-interval = { $seconds } с
 dl-interaction-panel-stop = Стоп
@@ -156,6 +156,22 @@ dl-interaction-panel-review = Название: { $name }
 
     Сохранённое действие появится в вашем списке. Создание, изменения и использование видны администрации.
 dl-interaction-panel-mana-reset = { $mob } опустошил свою ману до нуля.
+
+dl-interaction-panel-compact-target = Цель взаимодействия
+dl-interaction-panel-compact-expand = Развернуть все группы
+dl-interaction-panel-compact-collapse = Свернуть все группы
+dl-interaction-panel-compact-available = доступно
+dl-interaction-panel-compact-available-only = Только доступные действия
+dl-interaction-panel-compact-found = действий найдено
+dl-interaction-panel-compact-close = Закрыть панель
+dl-interaction-panel-compact-preview = Предпросмотр сообщения
+dl-interaction-panel-compact-delete-confirm = Удалить это действие из библиотеки?
+dl-interaction-panel-compact-cancel = Отмена
+dl-interaction-panel-compact-locked = Недоступно: проверьте предпочтения участников и условия действия.
+dl-interaction-panel-compact-all = всего
+dl-interaction-panel-compact-help = Как пользоваться
+dl-interaction-panel-compact-seconds = с
+dl-interaction-panel-compact-body-hint = Нажмите на часть тела. Повторное нажатие снимает фильтр.
 
 dl-interaction-panel-category-neutral = Нейтральные
 dl-interaction-panel-category-erotic = { dl-interaction-panel-category-erp }

@@ -70,7 +70,7 @@ public sealed class PsionicsSystem : EntitySystem
             return;
 
         foreach (var roller in _rollers)
-            RollPsionics(roller.uid, roller.component, true);
+            RollRoundstartPsionics(roller.uid, roller.component);
         _rollers.Clear();
     }
     public override void Initialize()
@@ -106,26 +106,31 @@ public sealed class PsionicsSystem : EntitySystem
             || !TryComp(uid, out PsionicComponent? component))
             return;
 
-        CheckPowerCost(uid, component);
+        CheckPowerCost(component);
         GenerateAvailablePowers(component);
         _rollers.Enqueue((component, uid));
     }
 
-    /// <summary>
-    ///     On MapInit, PsionicComponent isn't going to contain any powers.
-    ///     So before we send a Latent Psychic into the roundstart roll queue, we need to calculate their power cost in advance.
-    /// </summary>
-    private void CheckPowerCost(EntityUid uid, PsionicComponent component)
+    private static void CheckPowerCost(PsionicComponent component)
     {
-        if (!TryComp<InnatePsionicPowersComponent>(uid, out var innate))
+        component.NextPowerCost = Math.Abs(component.BaselinePowerCost * MathF.Pow(2, component.PowerSlotsTaken));
+    }
+
+    /// <summary>
+    ///     The initial spawn attempt has a separate, fixed probability and grants at most one power.
+    ///     It does not build potentia or spend the reagent reroll.
+    /// </summary>
+    public void RollRoundstartPsionics(EntityUid uid, PsionicComponent component)
+    {
+        if (!Exists(uid) || !_cfg.GetCVar(CCVars.PsionicRollsEnabled) || !component.Roller)
             return;
 
-        var powerCount = 0;
-        foreach (var powerId in innate.PowersToAdd)
-            if (_protoMan.TryIndex(powerId, out var power))
-                powerCount += power.PowerSlotCost;
+        var chance = Math.Clamp(_cfg.GetCVar(CCVars.PsionicRoundstartChance), 0f, 1f);
+        if (!(chance > 0f) || !_random.Prob(chance))
+            return;
 
-        component.NextPowerCost = 100 * MathF.Pow(2, powerCount);
+        _psionicAbilitiesSystem.AddRandomPsionicPower(uid);
+        CheckPowerCost(component);
     }
 
     /// <summary>

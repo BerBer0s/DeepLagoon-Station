@@ -1,0 +1,35 @@
+- type: entity
+  name: ousiana dust bowl
+  parent: FoodBowlBase # really dry soup i guess
+  id: FoodOusianaDustBowl
+  description: A combination of diametrically opposed forces,
+  components:
+  - type: Food
+    useSound: "/Audio/Effects/Footsteps/snowstep4.ogg"
+  - type: FlavorProfile
+    flavors:
+      - supernova
+  - type: Sprite
+    layers:
+      - state: bowl
+      - state: ousiana
+        sprite: _DL/Psionics/ousiana_bowl.rsi
+  - type: SolutionContainerManager
+    solutions:
+      food:
+        maxVol: 20
+        reagents:
+          - ReagentId: OusianaDust
+            Quantity: 5
+  - type: Tag
+    tags:
+      - Soup
+  - type: Construction
+    graph: OusianaDustBowl
+    node: ousianadustbowl
+  - type: MeleeWeapon
+    soundNoDamage:
+      path: "/Audio/Effects/Footsteps/snowstep4.ogg"
+    damage:
+      types:
+        Blunt: 0

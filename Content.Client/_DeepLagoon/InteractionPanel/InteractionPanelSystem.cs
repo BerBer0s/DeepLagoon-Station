@@ -66,8 +66,8 @@ public sealed partial class InteractionPanelSystem : EntitySystem
             if (!_replacingPanel) RaiseNetworkEvent(new InteractionPanelCloseEvent(args.Target));
             if (_panel == window) _panel = null;
         };
-        window.Editor.SaveRequested += action => RaiseNetworkEvent(new InteractionPanelCustomSaveEvent(action));
-        window.Editor.DeleteRequested += id => RaiseNetworkEvent(new InteractionPanelCustomDeleteEvent(id));
+        window.SaveRequested += action => RaiseNetworkEvent(new InteractionPanelCustomSaveEvent(action));
+        window.DeleteRequested += id => RaiseNetworkEvent(new InteractionPanelCustomDeleteEvent(id));
         window.OpenCentered();
         RaiseNetworkEvent(new InteractionPanelLibraryRequestEvent());
     }

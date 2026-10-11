@@ -259,3 +259,5 @@ Resources/Textures/_EE/Mobs/Species/Shadow/parts.rsi/torso_m.png
 Resources/Textures/_Goobstation/Interface/Alerts/knockdown.rsi/icon.png
 Resources/Textures/_Goobstation/Interface/Alerts/knockdown.rsi/meta.json
 Resources/Audio/DeltaV/Effects/clang2.ogg
+Resources/Textures/_DL/Psionics/ousiana_bowl.rsi/meta.json
+Resources/Textures/_DL/Psionics/ousiana_bowl.rsi/ousiana.png

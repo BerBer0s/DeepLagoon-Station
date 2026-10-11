@@ -31,6 +31,13 @@ public sealed partial class CCVars
         CVarDef.Create("psionics.rolls_enabled", true, CVar.SERVERONLY);
 
     /// <summary>
+    ///     Probability of gaining one random power on the initial spawn attempt (0 to 1).
+    ///     Subsequent reagent and event rolls use the normal potentia rules.
+    /// </summary>
+    public static readonly CVarDef<float> PsionicRoundstartChance =
+        CVarDef.Create("psionics.roundstart_chance", 0.01f, CVar.SERVERONLY);
+
+    /// <summary>
     ///     When mindbroken, permanently eject the player from their own body, and turn their character into an NPC.
     ///     Congratulations, now they *actually* aren't a person anymore.
     ///     For people who complained that it wasn't obvious enough from the text that Mindbreaking is a form of Murder.
