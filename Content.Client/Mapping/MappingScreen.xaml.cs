@@ -11,6 +11,7 @@ using Robust.Client.UserInterface.Controls;
 using Robust.Client.UserInterface.CustomControls;
 using Robust.Client.UserInterface.XAML;
 using Robust.Shared.Prototypes;
+using Robust.Shared.Console;
 using static Robust.Client.UserInterface.Controls.BaseButton;
 
 namespace Content.Client.Mapping;
@@ -98,6 +99,7 @@ public sealed partial class MappingScreen : InGameScreen
         Delete.Texture.TexturePath = "/Textures/Interface/eraser.svg.png";
         Flip.Texture.TexturePath = "/Textures/Interface/VerbIcons/rotate_cw.svg.192dpi.png";
         Flip.OnPressed += args => FlipSides();
+        GridEditor.OnPressed += _ => IoCManager.Resolve<IConsoleHost>().ExecuteCommand("grideditor");
     }
 
     public void FlipSides()

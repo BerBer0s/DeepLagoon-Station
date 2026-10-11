@@ -37,6 +37,14 @@ public sealed class GameWebView : Control
 
     public bool HasInputFocus => _view.HasKeyboardFocus();
 
+    public void SendGridEditorKey(string code, bool down, bool control, bool shift, bool alt)
+    {
+        if (!_ready || _disposed) return;
+        var detail = new TguiData().String("code", code).Bool("down", down).Bool("ctrlKey", control)
+            .Bool("shiftKey", shift).Bool("altKey", alt).ToString();
+        _view.ExecuteJavaScript("window.dispatchEvent(new CustomEvent('grid-editor-key',{detail:" + detail + "}));");
+    }
+
     public void SetWindowDragging(bool dragging)
     {
         if (!_ready || _disposed) return;
@@ -68,6 +76,16 @@ public sealed class GameWebView : Control
     {
         if (_explicitTextInput && HasInputFocus) _view.Root?.Window?.TextInputStop();
         _explicitTextInput = false;
+    }
+
+    public void PrepareForShutdown()
+    {
+        // CEF has already stopped when entity systems shut down. UI teardown
+        // (including ending a window drag) must not execute more JavaScript.
+        ReleaseTextInput();
+        _ready = false;
+        _outgoing.Clear();
+        while (_incoming.TryDequeue(out _)) { }
     }
 
     public GameWebView(bool chat = false, bool suspendWhenHidden = false)

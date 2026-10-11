@@ -18,6 +18,22 @@ public sealed class TguiSpriteImages
 {
     private readonly Dictionary<SpriteSpecifier, string> _frames = new();
     private readonly Dictionary<string, List<TguiData>> _items = new();
+    private readonly Dictionary<ResPath, string> _tileFrames = new();
+
+    /// <summary>Tile sprites can be variant strips. Catalogue icons use the first 32×32 frame.</summary>
+    public string TileFrame(ResPath path)
+    {
+        if (_tileFrames.TryGetValue(path, out var cached)) return cached;
+        try
+        {
+            using var input = IoCManager.Resolve<IResourceCache>().ContentFileRead(new ResPath("/Textures") / path);
+            using var image = Image.Load<Rgba32>(input);
+            using var frame = image.Clone(context => context.Crop(new Rectangle(0, 0, Math.Min(32, image.Width), Math.Min(32, image.Height))));
+            using var output = new MemoryStream(); frame.SaveAsPng(output);
+            return _tileFrames[path] = "data:image/png;base64," + Convert.ToBase64String(output.ToArray());
+        }
+        catch (Exception) { return _tileFrames[path] = ""; }
+    }
 
     public string Frame(SpriteSpecifier spec)
     {

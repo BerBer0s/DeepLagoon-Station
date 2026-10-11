@@ -79,6 +79,7 @@
                     <mapping:MappingActionsButton Name="Delete" Access="Public"
                                                   ToolTip="Delete (Hold 6)" />
                     <mapping:MappingActionsButton Name="Flip" Access="Public" ToggleMode="False"/>
+                    <Button Name="GridEditor" Text="Редактор grid" ToolTip="План grid: полы, стены, объекты и декали" />
                 </BoxContainer>
             </PanelContainer>
         </LayoutContainer>
