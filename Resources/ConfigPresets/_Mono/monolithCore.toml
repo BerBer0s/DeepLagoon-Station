@@ -4,15 +4,15 @@ lobbyduration = 180
 lobbyenabled = true
 
 [chat]
-motd = "Welcome to Monolith! Your story takes place in the Colossus Sector. Be sure to join our Discord!"
+motd = "Welcome to DeepLagoon Station! Your story takes place in the Colossus Sector. Community website: https://deep-lagoon-ss14.ru/"
 
 [console]
 login_host_user = "GoobStation"
 
 [infolinks]
-discord = "https://discord.gg/mxY4h2JuUw"
-github = "https://github.com/Monolith-Station/Monolith"
-appeal = "https://discord.gg/mxY4h2JuUw"
+discord = "https://deep-lagoon-ss14.ru/"
+github = "https://github.com/DeepLagoon/DeepLagoon-Station"
+appeal = "https://deep-lagoon-ss14.ru/"
 
 [admin]
 new_player_join_sound = true

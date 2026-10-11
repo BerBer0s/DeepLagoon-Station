@@ -20,7 +20,7 @@ guide-entry-gridclaimer = Присвоение обломков
 
 guide-entry-armorexplanation = Механики брони
 
-guide-entry-monolith-rules = Правила Monolith
+guide-entry-monolith-rules = Правила DeepLagoon Station
 
 guide-entry-creatures = Создания сектора
 

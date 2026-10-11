@@ -1,6 +1,6 @@
 # Imported from ru-RU-additional; existing Russian keys are preserved.
 
-guide-entry-nf14 = Введение в Фронтир
+guide-entry-nf14 = Введение в DeepLagoon Station
 
 guide-entry-bank = Центральный банк ТСФ
 

@@ -1,5 +1,5 @@
 # Base entries
-guide-entry-nf14 = Monolith Basics
+guide-entry-nf14 = DeepLagoon Station Basics
 guide-entry-basics = Starting Guide
 guide-entry-bank = Colossus Central Bank
 guide-entry-safety-deposit-box = Safety Deposit Box System

@@ -1,5 +1,5 @@
-defaultWindowTitle: Monolith
-windowIconSet: /Textures/_Mono/Logo/icon
-splashLogo: /Textures/_Mono/Logo/logo.png
+defaultWindowTitle: DeepLagoon Station
+windowIconSet: /Textures/_DeepLagoon/Logo/icon
+splashLogo: /Textures/_DeepLagoon/Logo/loading-splash.png
 modules:
   - Robust.Client.WebView

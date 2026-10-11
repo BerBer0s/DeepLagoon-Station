@@ -37,7 +37,7 @@ shuttle-ftl-recharge = FTL drives still spooling down!
 shuttle-ftl-too-many = Too many shuttles already on expedition!
 
 changelog-tab-title-Upstream = Upstream Changelog
-multiauth-already-connected = Already connected to Monolith Official servers.
+multiauth-already-connected = Already connected to DeepLagoon Station servers.
 
 public-transit-shuttle-name = Bus
 public-transit-departure = Now departing for {$destination}. Estimated travel time: {$flytime} seconds.

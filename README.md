@@ -1,14 +1,14 @@
-<p align="center"> <img alt="Frontier Station 14" width="880" height="300" src="https://raw.githubusercontent.com/Monolith-Station/Monolith/89d435f0d2c54c4b0e6c3b1bf4493c9c908a6ac7/Resources/Textures/_Mono/Logo/logo.png?raw=true" /></p>
+<p align="center"><img alt="DeepLagoon Station" width="320" src="Resources/Textures/_DeepLagoon/Logo/logo.png" /></p>
 
-Monolith is a fork of [Frontier Station 14](https://github.com/new-frontiers-14/frontier-station-14) that runs on the [Robust Toolbox](https://github.com/space-wizards/RobustToolbox) engine written in C#.
+DeepLagoon Station is a fork of [Frontier Station 14](https://github.com/new-frontiers-14/frontier-station-14) that runs on the [Robust Toolbox](https://github.com/space-wizards/RobustToolbox) engine written in C#.
 
-This is the primary repo for Monolith.
+This is the primary repo for DeepLagoon Station.
 
-If you want to host or create content for Monolith, this is the repo you need. It contains both RobustToolbox and the content pack for development of new content packs.
+If you want to host or create content for DeepLagoon Station, this is the repo you need. It contains both RobustToolbox and the content pack for development of new content packs.
 
 ## Links
 
-[Discord](https://discord.gg/mxY4h2JuUw) | [Steam](https://store.steampowered.com/app/1255460/Space_Station_14/)
+[Community](https://deep-lagoon-ss14.ru/) | [GitHub](https://github.com/DeepLagoon/DeepLagoon-Station) | [Steam](https://store.steampowered.com/app/1255460/Space_Station_14/)
 
 ## Contributing
 

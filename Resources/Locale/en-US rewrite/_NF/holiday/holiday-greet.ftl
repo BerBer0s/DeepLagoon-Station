@@ -1,7 +1,7 @@
 ## Holiday Names
 
-holiday-name-frontier-birthday = Birthday of Monolith
+holiday-name-frontier-birthday = DeepLagoon Station Community Celebration
 
 holiday-custom-frontier-birthday =
-    It's Monolith's birthday!
-    Thanks for helping make Monolith what it is.
+    It is time to celebrate the DeepLagoon Station community!
+    Thanks for helping make DeepLagoon Station what it is.
