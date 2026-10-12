@@ -17,6 +17,8 @@
   &__canvas { width: 100%; aspect-ratio: 1; touch-action: none; cursor: crosshair; border: 1px solid #4d6577;
     background: repeating-conic-gradient(#17212a 0% 25%, #1e2b36 0% 50%) 0 / 20px 20px; }
   &__canvas--blocked { cursor: not-allowed; }
+  &__drawing { min-width: 0; }
+  &__viewportTools { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
   &__placement { display: flex; flex-direction: column; gap: 8px; p { margin: 0; } small { color: #aabdc9; } }
   fieldset { display: flex; flex-direction: column; gap: 9px; border: 0; padding: 0; margin: 0; }
   fieldset label { display: flex; flex-direction: column; gap: 3px; }

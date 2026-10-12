@@ -67,21 +67,22 @@ public sealed class TattooEditorData
             if (sprite.LayerMapTryGet(part, out var index) && sprite[index].ActualRsi is { } rsi
                 && rsi.TryGetState(sprite[index].RsiState, out var state))
             {
+                var anatomyLayers = entities.System<Content.Client._DeepLagoon.BodyCustomization.BodyCustomizationVisualizerSystem>().LayerIndices(target, sprite, part);
                 for (var direction = 0; direction < 4; direction++)
                 {
-                    var key = TattooBodyPreview.Key(sprite, new[] { index }, direction);
+                    var key = TattooBodyPreview.Key(sprite, new[] { index }.Concat(anatomyLayers), direction);
                     if (!_frames.TryGetValue(key, out var png))
                     {
-                        try { using var frame = TattooBodyPreview.ReadSkin(sprite, index, direction); png = TattooSpriteFrames.Png(frame); }
+                        try { using var frame = TattooBodyPreview.ReadSkin(sprite, index, direction, anatomyLayers); png = TattooSpriteFrames.Png(frame); }
                         catch (Exception) { png = ""; }
                         if (_frames.Count >= 128) _frames.Clear();
                         _frames[key] = png;
                     }
                     var markingLayers = TattooBodyPreview.MarkingLayers(humanoid, sprite, prototypes, part, visibleOnly: true);
-                    var previewKey = TattooBodyPreview.Key(sprite, new[] { index }.Concat(markingLayers), direction);
+                    var previewKey = TattooBodyPreview.Key(sprite, new[] { index }.Concat(markingLayers).Concat(anatomyLayers), direction);
                     if (!_bodyPreviews.TryGetValue(previewKey, out var preview))
                     {
-                        try { using var frame = TattooBodyPreview.Render(sprite, index, markingLayers, direction); preview = TattooSpriteFrames.Png(frame); }
+                        try { using var frame = TattooBodyPreview.Render(sprite, index, markingLayers, direction, anatomyLayers); preview = TattooSpriteFrames.Png(frame); }
                         catch (Exception) { preview = ""; }
                         if (_bodyPreviews.Count >= 128) _bodyPreviews.Clear();
                         _bodyPreviews[previewKey] = preview;
@@ -130,6 +131,16 @@ public sealed class TattooEditorData
                     mirroredStroke.Points = mirroredStroke.Points.Select(p => new TattooPoint(1 - p.X, p.Y)).ToList();
                 return true;
             case "tattoo-bake":
+                // Placement of an unfinished drawing is committed together with its flattened ink.
+                if (args.String("x") != null)
+                {
+                    if (!args.TryFloat("x", out var bakedX) || !args.TryFloat("y", out var bakedY)
+                        || !args.TryFloat("scale", out var bakedScale) || !args.TryFloat("rotation", out var bakedRotation)
+                        || !args.TryFloat("opacity", out var bakedOpacity)) return false;
+                    tattoo.X = bakedX; tattoo.Y = bakedY; tattoo.Scale = bakedScale;
+                    tattoo.Rotation = bakedRotation; tattoo.Opacity = bakedOpacity;
+                    if (!tattoo.IsValid()) return false;
+                }
                 var normal = args.String("normal") ?? "";
                 var luminous = args.String("glow") ?? "";
                 if (!TattooBitmap.ValidPng(normal) || !TattooBitmap.ValidPng(luminous)

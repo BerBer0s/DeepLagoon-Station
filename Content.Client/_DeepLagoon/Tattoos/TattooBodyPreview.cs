@@ -13,7 +13,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Content.Client._DeepLagoon.Tattoos;
 
-/// <summary>Snapshots actual skin/marking layers, without clothing or tattoo layers.</summary>
+/// <summary>Snapshots actual skin, markings and cosmetic anatomy, without clothing or ink.</summary>
 public static class TattooBodyPreview
 {
     public static int[] MarkingLayers(HumanoidAppearanceComponent humanoid, SpriteComponent sprite,
@@ -37,31 +37,55 @@ public static class TattooBodyPreview
             return $"{l.ActualRsi?.Path}/{l.State}/{l.AnimationFrame}/{l.Color.ToHex()}/{l.Scale}/{l.Offset}/{l.Rotation}/{l.DirOffset}";
         }));
 
-    public static Image<Rgba32> Render(SpriteComponent sprite, int bodyIndex, IEnumerable<int> markingIndices, int direction)
+    public static Image<Rgba32> Render(SpriteComponent sprite, int bodyIndex, IEnumerable<int> markingIndices, int direction,
+        IEnumerable<int>? anatomyIndices = null)
     {
         var body = (SpriteComponent.Layer)sprite[bodyIndex];
         var state = body.ActualState ?? throw new InvalidOperationException("The body layer has no RSI state.");
         var result = new Image<Rgba32>(state.Size.X, state.Size.Y);
         var bodyDirection = DirectionFor(body, direction);
         body.GetLayerDrawMatrix(unchecked((RsiDirection)bodyDirection), out var bodyMatrix);
-        Composite(result, body, bodyDirection, bodyMatrix, sprite);
-        foreach (var index in markingIndices)
+        var anatomy = anatomyIndices?.ToArray() ?? [];
+        foreach (var index in new[] { bodyIndex }.Concat(markingIndices).Concat(anatomy).Distinct().Order())
         {
             var layer = (SpriteComponent.Layer)sprite[index];
             if (layer.ActualState == null) continue;
             Composite(result, layer, DirectionFor(layer, direction), bodyMatrix, sprite);
         }
-        // Markings may extend beyond a limb; the drawing surface is always its actual skin contour.
-        using var skin = ReadSkin(sprite, bodyIndex, direction);
+        // The contour includes selected anatomy, while unrelated markings remain clipped.
+        using var skin = ReadSkin(sprite, bodyIndex, direction, anatomy);
         var dst = result.GetPixelSpan(); var mask = skin.GetPixelSpan();
         for (var i = 0; i < dst.Length; i++) if (mask[i].A == 0) dst[i] = default;
         return result;
     }
 
-    public static Image<Rgba32> ReadSkin(SpriteComponent sprite, int bodyIndex, int direction)
+    public static Image<Rgba32> ReadSkin(SpriteComponent sprite, int bodyIndex, int direction, IEnumerable<int>? anatomyIndices = null)
     {
         var layer = (SpriteComponent.Layer)sprite[bodyIndex]; var state = layer.ActualState!;
-        return TattooSpriteFrames.Read(state, DirectionFor(layer, direction), Math.Clamp(layer.AnimationFrame, 0, state.DelayCount - 1));
+        var skin = TattooSpriteFrames.Read(state, DirectionFor(layer, direction), Math.Clamp(layer.AnimationFrame, 0, state.DelayCount - 1));
+        if (anatomyIndices != null)
+        {
+            layer.GetLayerDrawMatrix(unchecked((RsiDirection)DirectionFor(layer, direction)), out var matrix);
+            foreach (var index in anatomyIndices)
+            {
+                var anatomy = (SpriteComponent.Layer)sprite[index];
+                if (anatomy.ActualState != null) Composite(skin, anatomy, DirectionFor(anatomy, direction), matrix, sprite);
+            }
+        }
+        return skin;
+    }
+
+    public static Image<Rgba32> ReadAnatomy(SpriteComponent sprite, int bodyIndex, int direction, IEnumerable<int> anatomyIndices)
+    {
+        var body = (SpriteComponent.Layer)sprite[bodyIndex]; var state = body.ActualState!;
+        var mask = new Image<Rgba32>(state.Size.X, state.Size.Y);
+        body.GetLayerDrawMatrix(unchecked((RsiDirection)DirectionFor(body, direction)), out var matrix);
+        foreach (var index in anatomyIndices)
+        {
+            var layer = (SpriteComponent.Layer)sprite[index];
+            if (layer.ActualState != null) Composite(mask, layer, DirectionFor(layer, direction), matrix, sprite);
+        }
+        return mask;
     }
 
     private static int DirectionFor(SpriteComponent.Layer layer, int direction)

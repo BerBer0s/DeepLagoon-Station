@@ -170,6 +170,7 @@ public abstract partial class SharedHumanoidAppearanceSystem : EntitySystem
         targetHumanoid.CustomBaseLayers = new(sourceHumanoid.CustomBaseLayers);
         targetHumanoid.MarkingSet = new(sourceHumanoid.MarkingSet);
         targetHumanoid.Tattoos = Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(sourceHumanoid.Tattoos);
+        targetHumanoid.BodyFeatures = Content.Shared._DeepLagoon.BodyCustomization.BodyCustomizationCatalog.Sanitize(sourceHumanoid.BodyFeatures);
 
         targetHumanoid.Gender = sourceHumanoid.Gender;
         if (TryComp<GrammarComponent>(target, out var grammar))
@@ -403,6 +404,7 @@ public abstract partial class SharedHumanoidAppearanceSystem : EntitySystem
         SetSex(uid, profile.Sex, false, humanoid);
         humanoid.EyeColor = profile.Appearance.EyeColor;
         humanoid.Tattoos = Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(profile.Appearance.Tattoos);
+        humanoid.BodyFeatures = Content.Shared._DeepLagoon.BodyCustomization.BodyCustomizationCatalog.Sanitize(profile.Appearance.BodyFeatures);
 
         SetSkinColor(uid, profile.Appearance.SkinColor, false);
 

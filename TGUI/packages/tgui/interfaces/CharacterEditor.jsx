@@ -63,6 +63,7 @@ export const CharacterEditor = () => {
   const [search, setSearch] = useState('');
   const [charactersOpen,setCharactersOpen]=useState(false),[statsOpen,setStatsOpen]=useState(false),[deleteSlot,setDeleteSlot]=useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [tattooPanelOpen, setTattooPanelOpen] = useState(false);
   const [colorTransfer, setColorTransfer] = useState({ phase: 'off', color: null });
   useEffect(() => {
     const cancel = event => {
@@ -162,6 +163,34 @@ export const CharacterEditor = () => {
         </Field>)}
       </div>
       <ColorEditor label="Цвет кожи" value={data.skinColor} onChange={change('skin-color')} />
+      <details className="CharacterEditor__bodyFeatures">
+        <summary>Части тела</summary>
+        <small>Настройки независимы от пола. Размер выбирает спрайт. Изменения сохраняются кнопкой «Сохранить».</small>
+        {(data.bodyFeatures || []).map(feature => {
+          const set = field => value => act('body-feature', { part: feature.part, field, value });
+          return <details key={feature.part}>
+            <summary>{feature.name}{feature.enabled ? ' ✓' : ''}</summary>
+            <Button selected={feature.enabled} onClick={() => set('enabled')(String(!feature.enabled))}>
+              {feature.enabled ? 'Добавлено' : 'Добавить'}
+            </Button>
+            {feature.enabled && <div className="CharacterEditor__grid">
+              {feature.part !== 'anus' && <Select label="Форма" value={feature.shape} options={feature.shapes} onChange={set('shape')} />}
+              <Select label="Размер" value={feature.size} options={feature.sizes} onChange={set('size')} disabled={feature.sizes.length < 2} />
+              <Select label="Отображение" value={feature.visibility} options={[{id: '0', name: 'Скрыто'}, {id: '1', name: 'Под одеждой'}, {id: '2', name: 'Поверх одежды'}]} onChange={value => set('visibility')(Number(value))} />
+              <Button selected={feature.matchSkin} onClick={() => set('matchSkin')(String(!feature.matchSkin))}>Цвет кожи</Button>
+              <ColorEditor label="Цвет части" value={feature.matchSkin ? data.skinColor : feature.color} disabled={feature.matchSkin} onChange={set('color')} />
+              {feature.part === 'breasts' && <>
+                <Button selected={feature.secondaryEnabled} disabled={!feature.secondaryAvailable} onClick={() => set('secondaryEnabled')(String(!feature.secondaryEnabled))}>Цветные соски</Button>
+                {feature.secondaryEnabled && <ColorEditor label="Цвет сосков" value={feature.secondaryColor} disabled={!feature.secondaryAvailable} onChange={set('secondaryColor')} />}
+                {!feature.secondaryAvailable && <small>Второй цвет доступен для обычной формы груди размеров A–O и HUGE.</small>}
+              </>}
+            </div>}
+            {feature.part === 'vagina' && <Button selected={feature.womb} onClick={() => set('womb')(String(!feature.womb))}>
+              Матка: {feature.womb ? 'есть' : 'нет'}
+            </Button>}
+          </details>;
+        })}
+      </details>
       <div className="CharacterEditor__hair">
         {data.hairOptions?.length <= 1 && data.beardOptions?.length <= 1 && <small>Для этой расы нет обычных причёсок и бороды. Доступные украшения головы настраиваются во вкладке «Особенности».</small>}
         {['hair', 'beard'].map((key, index) => {
@@ -212,12 +241,12 @@ export const CharacterEditor = () => {
       {[['flavor','Описание персонажа',data.flavorText],['ooc','OOC заметки',data.oocNotes]].map(([key,label,value])=><Section key={key} title={label}><CharacterTextEditor label={label} value={value||''} maxLength={data.maxFlavorLength} onChange={change(key)} /><details><summary>Предпросмотр форматирования</summary><div className="CharacterText"><CharacterText text={value}/></div></details></Section>)}
     </>}
     {data.mode === 'markings' && <>
-      <details className="CharacterEditor__tattoos">
+      <details className="CharacterEditor__tattoos" open={tattooPanelOpen} onToggle={event => setTattooPanelOpen(event.currentTarget.open)}>
         <summary>Татуировки ({data.tattooEditor?.tattoos?.length || 0})</summary>
         <Section>
           <Button role="button" color="bad" disabled={!data.tattooEditor?.tattoos?.length || data.tattooEditor?.fileBusy} onClick={() => act('tattoo-clear')}>Очистить все татуировки</Button>
           <p>Создавайте и рисуйте татуировки прямо здесь — тату-машинка и предметы в руках не нужны.</p>
-          <TattooEditor data={data.tattooEditor} act={act} />
+          <TattooEditor data={data.tattooEditor} act={act} active={tattooPanelOpen} />
         </Section>
       </details>
       <Section title="Выбранные особенности">{(data.markings||[]).map(marking=><div key={marking.index}>

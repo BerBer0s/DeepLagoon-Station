@@ -173,6 +173,7 @@ public sealed partial class HumanoidProfileEditor
         data.Bool("extendedHeadshot", _entManager.System<Content.Shared._DeepLagoon.DiscordLink.SharedDiscordBoostSystem>().GetSupporterTier(_playerManager.LocalSession) >= 2);
         if (SetupState != null) data.Object("setup", SetupState());
         if (Profile is not { } p) return data;
+        if (mode == "appearance") data.Array("bodyFeatures", BodyCustomizationData());
         data.Array("previewSlots", _personalLoadoutEditor.CreateTguiSlots(PreviewDummy));
         data.Array("tabs", Enumerable.Range(0, TabContainer.ChildCount).Select(i => new TguiData().Number("id", i)
             .String("name", TguiTabMode(i) switch { "settings" => "Настройки", "appearance" => "Основное", "jobs" => "Профессии", "traits" => "Черты", "company" => "Компания", "markings" => "Внешность", "equipment" => "Снаряжение", "saved" => "Сохранённые предметы", _ => "Описание" })
@@ -403,6 +404,7 @@ public sealed partial class HumanoidProfileEditor
         }
         switch (action)
         {
+            case "body-feature": return HandleBodyCustomizationAction(args);
             case "headshot-library":
                 ToggleHeadshotLibrary(); break;
             case "headshot-library-close":

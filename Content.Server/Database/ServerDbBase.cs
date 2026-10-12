@@ -290,7 +290,8 @@ namespace Content.Server.Database
                     markings,
                     height,
                     width,
-                    Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(JsonSerializer.Deserialize<List<Content.Shared._DeepLagoon.Tattoos.Tattoo>>(profile.TattoosJson))
+                    Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(JsonSerializer.Deserialize<List<Content.Shared._DeepLagoon.Tattoos.Tattoo>>(profile.TattoosJson)),
+                    Content.Shared._DeepLagoon.BodyCustomization.BodyCustomizationCatalog.Sanitize(JsonSerializer.Deserialize<List<Content.Shared._DeepLagoon.BodyCustomization.BodyFeature>>(profile.BodyFeaturesJson))
                 ),
                 spawnPriority,
                 jobs,
@@ -344,6 +345,7 @@ namespace Content.Server.Database
             profile.SpawnPriority = (int)humanoid.SpawnPriority;
             profile.Markings = markings;
             profile.TattoosJson = JsonSerializer.Serialize(Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(appearance.Tattoos));
+            profile.BodyFeaturesJson = JsonSerializer.Serialize(Content.Shared._DeepLagoon.BodyCustomization.BodyCustomizationCatalog.Sanitize(appearance.BodyFeatures));
             profile.Slot = slot;
             profile.PreferenceUnavailable = (DbPreferenceUnavailableMode)humanoid.PreferenceUnavailable;
             profile.Company = humanoid.Company;

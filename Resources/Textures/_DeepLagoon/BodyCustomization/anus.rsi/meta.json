@@ -1,0 +1,335 @@
+{
+  "version": 1,
+  "size": {
+    "x": 32,
+    "y": 32
+  },
+  "license": "CC-BY-SA-3.0",
+  "copyright": "tgstation / Citadel / SPLURT / BlueMoon contributors. Converted from https://github.com/BlueMoon-Labs/MOLOT-BlueMoon-Station/blob/12a81b8c253116c4b7d835327a1abeeb95601dee/modular_splurt/icons/obj/genitals/anus_onmob.dmi.",
+  "states": [
+    {
+      "name": "anus_donut_0_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_donut_1_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_donut_2_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_donut_3_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_donut_4_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_donut_5_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_donut_6_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_donut_7_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_donut_8_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_0_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_1_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_2_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_3_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_4_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_5_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_6_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_7_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    },
+    {
+      "name": "anus_squished_8_0_FRONT",
+      "directions": 4,
+      "delays": [
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ],
+        [
+          0.1
+        ]
+      ]
+    }
+  ]
+}

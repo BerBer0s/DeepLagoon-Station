@@ -105,6 +105,71 @@ public sealed class TattooIntegrationTests
     }
 
     [Test]
+    public async Task InkStaysAboveAnatomyAfterSizeVisibilityAndSkinChanges()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, InLobby = true });
+        await pair.Client.WaitAssertion(() =>
+        {
+            var entities = pair.Client.EntMan;
+            var uid = entities.SpawnEntity("MobHumanDummy", MapCoordinates.Nullspace);
+            try
+            {
+                var profile = HumanoidCharacterProfile.DefaultWithSpecies("Human");
+                var chestInk = Drawing();
+                var armInk = Drawing(); armInk.BodyPart = HumanoidVisualLayers.LArm;
+                profile.Appearance.Tattoos.AddRange([chestInk, armInk]);
+                foreach (var part in new[] { "breasts", "belly", "butt" })
+                {
+                    var feature = Content.Shared._DeepLagoon.BodyCustomization.BodyCustomizationCatalog.Default(part);
+                    feature.Enabled = true;
+                    feature.Size = part == "breasts" ? "g" : "4";
+                    profile.Appearance.BodyFeatures.Add(feature);
+                }
+                var appearance = entities.System<Content.Client.Humanoid.HumanoidAppearanceSystem>();
+                var anatomy = entities.System<Content.Client._DeepLagoon.BodyCustomization.BodyCustomizationVisualizerSystem>();
+                var sprite = entities.GetComponent<SpriteComponent>(uid);
+                void CheckInk(int mode)
+                {
+                    foreach (var tattoo in new[] { chestInk, armInk })
+                    foreach (var glow in new[] { false, true })
+                    {
+                        var key = $"dl-tattoo/{tattoo.Id}/{glow}";
+                        Assert.That(sprite.LayerMapTryGet(key, out var index), Is.True);
+                        Assert.That(index, Is.GreaterThan(anatomy.LastLayerIndex(uid, sprite)));
+                        Assert.That(sprite.LayerMapTryGet(key + "/sampler-guard", out var guard), Is.True);
+                        Assert.That(guard, Is.EqualTo(index - 1));
+                    }
+                    sprite.LayerMapTryGet($"dl-tattoo/{chestInk.Id}/True", out var chestLayer);
+                    sprite.LayerMapTryGet(mode == 1 ? "jumpsuit" : "outerClothing", out var clothes);
+                    Assert.That(mode == 1 ? chestLayer < clothes : chestLayer > clothes, Is.True);
+                }
+                foreach (var mode in new[] { 1, 2, 1 })
+                {
+                    foreach (var feature in profile.Appearance.BodyFeatures) feature.Visibility = mode;
+                    appearance.LoadProfile(uid, profile);
+                    CheckInk(mode);
+                    sprite.LayerMapTryGet(HumanoidVisualLayers.LHand, out var hand);
+                    sprite.LayerMapTryGet("gloves", out var gloves);
+                    Assert.That(hand, Is.LessThan(gloves));
+                    if (mode == 2) Assert.That(hand, Is.GreaterThan(anatomy.LastLayerIndex(uid, sprite)));
+                    else { sprite.LayerMapTryGet("jumpsuit", out var uniform); Assert.That(hand, Is.GreaterThan(uniform)); }
+                    var count = sprite.AllLayers.Count();
+                    appearance.LoadProfile(uid, profile);
+                    CheckInk(mode);
+                    Assert.That(sprite.AllLayers.Count(), Is.EqualTo(count));
+                    profile.Appearance.BodyFeatures.Single(f => f.Part == "belly").Size = "6";
+                    appearance.LoadProfile(uid, profile);
+                    CheckInk(mode);
+                    appearance.SetSkinColor(uid, Robust.Shared.Maths.Color.White, verify: false);
+                    CheckInk(mode);
+                }
+            }
+            finally { entities.DeleteEntity(uid); }
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
     public async Task MachineRequiresHeldToolOpenSkinAndCurrentRevision()
     {
         await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, Connected = true });
@@ -193,6 +258,63 @@ public sealed class TattooIntegrationTests
             entities.EventBus.RaiseLocalEvent(machine, new TattooMachineApplyMessage([Drawing()], 2) { Actor = artist, UiKey = TattooMachineUiKey.Key });
             Assert.That(entities.GetComponent<HumanoidAppearanceComponent>(target).Tattoos, Has.Count.EqualTo(1));
             entities.DeleteEntity(machine); entities.DeleteEntity(target); entities.DeleteEntity(artist);
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
+    public async Task DrawingSurfaceIncludesTorsoAnatomyAndItsSecondaryColorOnlyInTorso()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, InLobby = true });
+        await pair.Client.WaitAssertion(() =>
+        {
+            var entities = pair.Client.EntMan;
+            var uid = entities.SpawnEntity("MobHumanDummy", MapCoordinates.Nullspace);
+            try
+            {
+                var profile = HumanoidCharacterProfile.DefaultWithSpecies("Human");
+                var appearance = entities.System<Content.Client.Humanoid.HumanoidAppearanceSystem>();
+                var editor = new TattooEditorData();
+                appearance.LoadProfile(uid, profile);
+                string[] Frames(string part, string channel)
+                {
+                    using var state = JsonDocument.Parse(editor.Build(uid, profile.Appearance.Tattoos).ToString());
+                    return state.RootElement.GetProperty("parts").EnumerateArray().Single(p => p.GetProperty("id").GetString() == part)
+                        .GetProperty("frames").EnumerateArray().Select(f => f.GetProperty(channel).GetString()!).ToArray();
+                }
+                static int Pixels(string png)
+                {
+                    using var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(Convert.FromBase64String(png.Split(',')[1]));
+                    var count = 0;
+                    for (var y = 0; y < image.Height; y++) for (var x = 0; x < image.Width; x++) if (image[x, y].A > 0) count++;
+                    return count;
+                }
+                var baseMasks = Frames("Chest", "image");
+                var head = Frames("Head", "previewImage");
+                var belly = Content.Shared._DeepLagoon.BodyCustomization.BodyCustomizationCatalog.Default("belly");
+                belly.Enabled = true; belly.Size = "6";
+                var breasts = Content.Shared._DeepLagoon.BodyCustomization.BodyCustomizationCatalog.Default("breasts");
+                breasts.Enabled = true; breasts.Size = "g"; breasts.SecondaryEnabled = true; breasts.SecondaryColor = "#FF0000";
+                profile.Appearance.BodyFeatures.AddRange([belly, breasts]);
+                appearance.LoadProfile(uid, profile);
+                var expanded = Frames("Chest", "image");
+                Assert.That(expanded.Where((png, direction) => Pixels(png) > Pixels(baseMasks[direction])), Is.Not.Empty,
+                    "Anatomy outside the original torso must be part of the drawing contour.");
+                Assert.That(Frames("Head", "previewImage"), Is.EqualTo(head));
+                var previews = Frames("Chest", "previewImage");
+                Assert.That(previews.All(p => p.StartsWith("data:image/png;base64,")), Is.True);
+                var hasSecondary = false;
+                foreach (var png in previews)
+                {
+                    using var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(Convert.FromBase64String(png.Split(',')[1]));
+                    for (var y = 0; y < image.Height; y++) for (var x = 0; x < image.Width; x++)
+                        if (image[x, y].A > 0 && image[x, y].R > 50 && image[x, y].G == 0 && image[x, y].B == 0) hasSecondary = true;
+                }
+                Assert.That(hasSecondary, Is.True);
+                profile.Appearance.BodyFeatures.Clear(); appearance.LoadProfile(uid, profile);
+                Assert.That(Frames("Chest", "image"), Is.EqualTo(baseMasks));
+            }
+            finally { entities.DeleteEntity(uid); }
         });
         await pair.CleanReturnAsync();
     }

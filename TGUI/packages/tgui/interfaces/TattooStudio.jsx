@@ -3,6 +3,7 @@ import { useBackend } from '../backend';
 import { ColorSquare } from '../components/PlayerColorPicker';
 import { simplifyPoints } from './tattooStrokeUtils';
 import { makeCanvas, makeLayer, paint, flatten, cloneLayers, loadBitmap, encodeBitmap } from './tattooBitmapUtils';
+import { initialView, canvasPoint, zoomAt } from './tattooViewportUtils';
 import './TattooStudio.scss';
 
 const views = ['Спереди', 'Сзади', 'Справа', 'Слева'];
@@ -10,7 +11,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const defaults = { x: .5, y: .5, scale: 1, rotation: 0, opacity: 1 };
 const decode = value => value.split(';').map(p => p.split(',').map(Number));
 
-export const TattooEditor = ({ data = {}, act }) => {
+export const TattooEditor = ({ data = {}, act, active: editorActive = true }) => {
   const tattoos = data.tattoos || [], parts = data.parts || [];
   const [selected, setSelected] = useState(tattoos.at(-1)?.id || '');
   const [part, setPart] = useState(tattoos.at(-1)?.part || parts[0]?.id || 'Chest');
@@ -19,9 +20,13 @@ export const TattooEditor = ({ data = {}, act }) => {
   const [mode, setMode] = useState('brush'), [transform, setTransform] = useState(defaults);
   const [draft, setDraft] = useState(null), [version, refresh] = useState(0), [status, setStatus] = useState('');
   const [editing, setEditing] = useState(false), [loading, setLoading] = useState(false), [saving, setSaving] = useState(false);
+  const [view, setView] = useState(initialView);
+  const viewRef = useRef(view); viewRef.current = view;
+  const opened = useRef(false), autoEditId = useRef('');
   const canvas = useRef(null), mask = useRef(null), bodyPreview = useRef(null), gesture = useRef(null), expectedNew = useRef(false);
   const work = useRef(null), images = useRef(new Map()), mounted = useRef(true);
   const tattoo = tattoos.find(t => t.id === selected && t.part === part && t.direction === direction);
+  const currentTattooId = useRef(tattoo?.id); currentTattooId.current = tattoo?.id;
   const body = parts.find(p => p.id === part);
   const blocked = !!data.disabled || !!data.pending || !!data.fileBusy || loading || saving || !!(data.machine && body?.covered);
   const image = body?.frames?.find(f => f.direction === direction)?.image;
@@ -71,6 +76,8 @@ export const TattooEditor = ({ data = {}, act }) => {
   useEffect(() => {
     const ctx = canvas.current?.getContext('2d'); if (!ctx) return;
     ctx.clearRect(0, 0, 512, 512); if (!mask.current) return;
+    ctx.save(); ctx.translate(256 + view.x * 512, 256 + view.y * 512);
+    ctx.scale(view.zoom, view.zoom); ctx.translate(-256, -256);
     const skin = makeCanvas(), skinCtx = skin.getContext('2d'); skinCtx.imageSmoothingEnabled = false;
     if (bodyPreview.current) skinCtx.drawImage(bodyPreview.current, 0, 0, 256, 256);
     else {
@@ -96,7 +103,8 @@ export const TattooEditor = ({ data = {}, act }) => {
         ctx.imageSmoothingEnabled = true; ctx.drawImage(placed, 0, 0);
       }
     }
-  }, [tattoos, part, direction, selected, transform, draft, version, body?.color]);
+    ctx.restore();
+  }, [tattoos, part, direction, selected, transform, draft, version, body?.color, view]);
 
   const choose = t => { if (editing || blocked) return; setSelected(t.id); setPart(t.part); setDirection(t.direction); act('tattoo-preview-direction', { direction: t.direction }); };
   const startEditing = async () => {
@@ -106,11 +114,37 @@ export const TattooEditor = ({ data = {}, act }) => {
       const layer = makeLayer('Исходный рисунок');
       await Promise.all([loadBitmap(layer.normal, tattoo.normalBitmap), loadBitmap(layer.glow, tattoo.glowBitmap)]);
       (tattoo.strokes || []).forEach(s => [layer.normal, layer.glow].forEach((c, i) => paint(c.getContext('2d'), { ...s, points: decode(s.points) }, !!i)));
-      if (!mounted.current) return;
+      if (!mounted.current || currentTattooId.current !== id) return;
       work.current = { id, layers: [layer], active: 0, undo: [], redo: [] }; setMode('brush'); setEditing(true); update();
     } catch { setStatus('Не удалось открыть рисунок.'); }
     finally { if (mounted.current) setLoading(false); }
   };
+  useEffect(() => {
+    if (!editorActive) { opened.current = false; autoEditId.current = ''; return; }
+    if (blocked || !body || !image) return;
+    if (!opened.current) {
+      opened.current = true;
+      if (!tattoo && tattoos.length === 0 && tattoos.length < (data.maxTattoos || 8)) {
+        expectedNew.current = true; act('tattoo-add', { part, direction }); return;
+      }
+    }
+    if (tattoo && !editing && autoEditId.current !== tattoo.id) {
+      autoEditId.current = tattoo.id; startEditing();
+    }
+  }, [editorActive, blocked, tattoo?.id, editing, image, body?.id]);
+  useEffect(() => {
+    const element = canvas.current;
+    const wheel = event => {
+      event.preventDefault();
+      if (gesture.current) return;
+      const bounds = element.getBoundingClientRect();
+      const point = [(event.clientX - bounds.left) / bounds.width, (event.clientY - bounds.top) / bounds.height];
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 512 : 1);
+      setView(current => zoomAt(current, point, Math.exp(-delta * .0015)));
+    };
+    element.addEventListener('wheel', wheel, { passive: false });
+    return () => element.removeEventListener('wheel', wheel);
+  }, []);
   const checkpoint = () => {
     const w = work.current; w.undo.push({ layers: cloneLayers(w.layers), active: w.active });
     if (w.undo.length > 16) w.undo.shift(); w.redo = [];
@@ -128,27 +162,38 @@ export const TattooEditor = ({ data = {}, act }) => {
       setStatus('Изображение превышает допустимый объём. Упростите рисунок.'); return;
     }
     work.current.savedNormal = n; work.current.savedGlow = g; setSaving(true); setStatus('Запекание…');
-    const payload = JSON.stringify({ id: tattoo.id, normal: n, glow: g });
+    const payload = JSON.stringify({ id: tattoo.id, normal: n, glow: g, ...transform });
     const count = Math.ceil(payload.length / 4000);
     for (let index = 0; index < count; index++) act('tattoo-bake-chunk', { id: tattoo.id, index, count, text: payload.slice(index * 4000, (index + 1) * 4000) });
   };
   const commit = value => { if (tattoo && !blocked && !editing) act('tattoo-transform', { id: tattoo.id, ...value }); };
-  const position = e => { const b = e.currentTarget.getBoundingClientRect(); return [(e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height]; };
+  const screenPosition = e => { const b = e.currentTarget.getBoundingClientRect(); return [(e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height]; };
+  const position = e => canvasPoint(screenPosition(e), viewRef.current);
   const designPoint = p => {
     const angle = -transform.rotation * Math.PI / 180, x = p[0] - transform.x, y = p[1] - transform.y;
     return [clamp((x * Math.cos(angle) - y * Math.sin(angle)) / transform.scale * (tattoo.mirrored ? -1 : 1) + .5, 0, 1),
       clamp((x * Math.sin(angle) + y * Math.cos(angle)) / transform.scale + .5, 0, 1)];
   };
   const begin = e => {
-    if (!tattoo || blocked || e.button !== 0 || !mask.current || (mode !== 'move' && !editing) || (editing && mode === 'move')) return;
+    if (!mask.current) return;
+    if (e.button === 1 || e.button === 2 || e.altKey) {
+      e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId);
+      gesture.current = { pointerId: e.pointerId, kind: 'pan', start: screenPosition(e), view: viewRef.current }; return;
+    }
+    if (!tattoo || blocked || e.button !== 0 || (mode !== 'move' && !editing)) return;
     const layer = work.current?.layers[work.current.active]; if (editing && !layer?.visible) return;
     e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); const p = position(e);
-    gesture.current = { pointerId: e.pointerId, start: p, transform, points: [designPoint(p)] };
-    if (editing) setDraft({ color: color + 'FF', width: width / 512, glow, erase: mode === 'erase', points: gesture.current.points });
+    gesture.current = { pointerId: e.pointerId, kind: mode === 'move' ? 'move' : 'stroke', start: p, transform, points: [designPoint(p)] };
+    if (editing && mode !== 'move') setDraft({ color: color + 'FF', width: width / 512, glow, erase: mode === 'erase', points: gesture.current.points });
   };
   const move = e => {
-    const g = gesture.current; if (!g || g.pointerId !== e.pointerId) return; const p = position(e);
-    if (mode === 'move') setTransform({ ...g.transform, x: clamp(g.transform.x + p[0] - g.start[0], -1, 2), y: clamp(g.transform.y + p[1] - g.start[1], -1, 2) });
+    const g = gesture.current; if (!g || g.pointerId !== e.pointerId) return;
+    if (g.kind === 'pan') {
+      const p = screenPosition(e);
+      setView({ ...g.view, x: g.view.x + p[0] - g.start[0], y: g.view.y + p[1] - g.start[1] }); return;
+    }
+    const p = position(e);
+    if (g.kind === 'move') setTransform({ ...g.transform, x: clamp(g.transform.x + p[0] - g.start[0], -1, 2), y: clamp(g.transform.y + p[1] - g.start[1], -1, 2) });
     else {
       const point = designPoint(p), last = g.points.at(-1); if (Math.hypot(point[0] - last[0], point[1] - last[1]) < .002) return;
       if (g.points.length >= 2048) g.points = simplifyPoints(g.points, 1024); g.points.push(point);
@@ -159,8 +204,8 @@ export const TattooEditor = ({ data = {}, act }) => {
     const g = gesture.current; if (!g || g.pointerId !== e.pointerId) return; gesture.current = null;
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     if (!cancelled) {
-      if (mode === 'move') commit(transform);
-      else { checkpoint(); const layer = work.current.layers[work.current.active];
+      if (g.kind === 'move') commit(transform);
+      else if (g.kind === 'stroke') { checkpoint(); const layer = work.current.layers[work.current.active];
         [layer.normal, layer.glow].forEach((c, i) => paint(c.getContext('2d'), { color: color + 'FF', width: width / 512, glow, erase: mode === 'erase', points: g.points }, !!i)); update(); }
     }
     setDraft(null);
@@ -180,9 +225,10 @@ export const TattooEditor = ({ data = {}, act }) => {
       <button type="button" disabled={!tattoo || editing || blocked} onClick={() => act('tattoo-import', { id: tattoo.id })}>Загрузить PNG</button>
       {!editing ? <button type="button" disabled={!tattoo || blocked} onClick={startEditing}>Редактировать рисунок</button> : <>
         <button type="button" disabled={blocked} onClick={finish}>Завершить рисунок</button>
-        <button type="button" disabled={blocked} onClick={() => { work.current = null; setEditing(false); setDraft(null); gesture.current = null; update(); }}>Отбросить изменения</button>
+        <button type="button" disabled={blocked} onClick={() => { work.current = null; setEditing(false); setDraft(null); gesture.current = null;
+          setTransform({ x: tattoo.x, y: tattoo.y, scale: tattoo.scale, rotation: tattoo.rotation, opacity: tattoo.opacity }); update(); }}>Отбросить изменения</button>
       </>}
-      {[['brush', 'Кисть'], ['erase', 'Ластик'], ['move', 'Переместить']].map(([tool, title]) => <button type="button" key={tool} disabled={blocked || (tool === 'move' ? editing : !editing)} aria-pressed={mode === tool} onClick={() => setMode(tool)}>{title}</button>)}
+      {[['brush', 'Кисть'], ['erase', 'Ластик'], ['move', 'Переместить']].map(([tool, title]) => <button type="button" key={tool} disabled={blocked || !tattoo || (tool !== 'move' && !editing)} aria-pressed={mode === tool} onClick={() => setMode(tool)}>{title}</button>)}
       <ColorSquare label="Цвет чернил" value={color} onChange={setColor} />
       <label>Кисть <input aria-label="Толщина кисти" type="range" min="2" max="64" value={width} onChange={e => setWidth(Number(e.target.value))} /> {width}</label>
       <label><input type="checkbox" checked={glow} onChange={e => setGlow(e.target.checked)} /> Светящиеся чернила</label>
@@ -194,8 +240,12 @@ export const TattooEditor = ({ data = {}, act }) => {
       <p>Не смотря на неограниченные возможности импорта татуировок, они должны соблюдать атмосферу и логику игры. За нарушение атмосферы вы будете наказаны</p>
     </div>
     <div className="TattooStudio__workspace">
-      <canvas ref={canvas} width="512" height="512" aria-label="Рисование татуировки на выбранной части тела" className={blocked ? 'TattooStudio__canvas TattooStudio__canvas--blocked' : 'TattooStudio__canvas'}
-        onPointerDown={begin} onPointerMove={move} onPointerUp={end} onPointerCancel={e => end(e, true)} />
+      <div className="TattooStudio__drawing">
+        <div className="TattooStudio__viewportTools"><span>Приближение: {Math.round(view.zoom * 100)}%</span><button type="button" onClick={() => setView(initialView)}>Сбросить вид</button></div>
+        <canvas ref={canvas} width="512" height="512" aria-label="Рисование татуировки на выбранной части тела" className={blocked ? 'TattooStudio__canvas TattooStudio__canvas--blocked' : 'TattooStudio__canvas'}
+          onContextMenu={event => event.preventDefault()} onPointerDown={begin} onPointerMove={move} onPointerUp={end} onPointerCancel={e => end(e, true)} />
+        <small>Колёсико — приближение. Средняя/правая кнопка или Alt + перетаскивание — перемещение вида. «Переместить» — перенос рисунка.</small>
+      </div>
       <div className="TattooStudio__placement">
         <p>{editing ? 'Слои и история существуют только до завершения рисунка. Завершите рисунок перед сохранением персонажа или закрытием окна.' : tattoo ? 'Редактируйте рисунок или загрузите PNG вместо него. Экспорт сохраняет оба вида чернил; размещение на теле настраивается отдельно.' : 'Создайте татуировку на выбранной области и ракурсе, затем рисуйте или загрузите PNG.'}</p>
         {w && <fieldset disabled={blocked}>
@@ -208,13 +258,13 @@ export const TattooEditor = ({ data = {}, act }) => {
           {[[-1, 'Слой ниже'], [1, 'Слой выше']].map(([offset, title]) => <button type="button" key={title} disabled={w.active + offset < 0 || w.active + offset >= w.layers.length} onClick={() => changeLayer(() => { const target = w.active + offset; [w.layers[w.active], w.layers[target]] = [w.layers[target], w.layers[w.active]]; w.active = target; })}>{title}</button>)}
           <small>Без лимита мазков. Отмена: последние 16 действий текущей сессии.</small>
         </fieldset>}
-        <fieldset disabled={blocked || editing || !tattoo}>
+        <fieldset disabled={blocked || !tattoo}>
           {[['scale', 'Масштаб', .05, 4, .01], ['rotation', 'Поворот', -180, 180, 1], ['opacity', 'Непрозрачность чернил', 0, 1, .01]].map(([field, title, min, max, step]) => <label key={field}>{title}: {Math.round(transform[field] * (field === 'rotation' ? 1 : 100))}{field === 'rotation' ? '°' : '%'}
             <input aria-label={title} type="range" min={min} max={max} step={step} value={transform[field]} onChange={e => setTransform(p => ({ ...p, [field]: Number(e.target.value) }))} onPointerUp={() => commit(transform)} onKeyUp={() => commit(transform)} onBlur={() => commit(transform)} /></label>)}
           <button type="button" onClick={() => { setTransform(defaults); commit(defaults); }}>Сбросить размещение</button>
-          <button type="button" onClick={() => act('tattoo-mirror', { id: tattoo.id })}>Отразить по горизонтали</button>
-          <button type="button" disabled={tattoos.length >= (data.maxTattoos || 8)} onClick={() => { expectedNew.current = true; act('tattoo-copy', { id: tattoo.id, direction: (direction + 1) % 4 }); }}>Копировать на следующий ракурс</button>
-          <button type="button" onClick={() => act('tattoo-remove', { id: tattoo.id })}>Удалить татуировку</button>
+          <button type="button" disabled={editing} onClick={() => act('tattoo-mirror', { id: tattoo.id })}>Отразить по горизонтали</button>
+          <button type="button" disabled={editing || tattoos.length >= (data.maxTattoos || 8)} onClick={() => { expectedNew.current = true; act('tattoo-copy', { id: tattoo.id, direction: (direction + 1) % 4 }); }}>Копировать на следующий ракурс</button>
+          <button type="button" disabled={editing} onClick={() => act('tattoo-remove', { id: tattoo.id })}>Удалить татуировку</button>
         </fieldset>
         <small>Свечение видно в темноте. Одежда перекрывает оба вида чернил.</small>
         {(data.status || status || blocked) && <p role="status">{data.disabled ? 'Нанесение татуировок выключено в настройках.' : data.status || status || (data.pending ? 'Нанесение…' : 'Область закрыта одеждой.')}</p>}

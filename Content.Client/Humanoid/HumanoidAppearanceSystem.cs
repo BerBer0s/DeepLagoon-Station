@@ -29,8 +29,11 @@ public sealed partial class HumanoidAppearanceSystem : SharedHumanoidAppearanceS
 
     private void UpdateSprite(HumanoidAppearanceComponent component, SpriteComponent sprite)
     {
+        // Markings must be rebuilt against native anchors before exposed anatomy raises the hands.
+        EntityManager.System<Content.Client._DeepLagoon.BodyCustomization.BodyCustomizationVisualizerSystem>().RestoreLayerOrder(sprite.Owner, sprite);
         UpdateLayers(component, sprite);
         ApplyMarkingSet(component, sprite);
+        EntityManager.System<Content.Client._DeepLagoon.BodyCustomization.BodyCustomizationVisualizerSystem>().Refresh(sprite.Owner, component, sprite);
         EntityManager.System<Content.Client._DeepLagoon.Tattoos.TattooVisualizerSystem>().Refresh(sprite.Owner, component, sprite);
 
         sprite[sprite.LayerMapReserveBlank(HumanoidVisualLayers.Eyes)].Color = component.EyeColor;
@@ -203,6 +206,7 @@ public sealed partial class HumanoidAppearanceSystem : SharedHumanoidAppearanceS
         humanoid.SkinColor = profile.Appearance.SkinColor;
         humanoid.EyeColor = profile.Appearance.EyeColor;
         humanoid.Tattoos = Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(profile.Appearance.Tattoos);
+        humanoid.BodyFeatures = Content.Shared._DeepLagoon.BodyCustomization.BodyCustomizationCatalog.Sanitize(profile.Appearance.BodyFeatures);
         humanoid.Height = profile.Appearance.Height;
         humanoid.Width = profile.Appearance.Width;
 
@@ -357,6 +361,8 @@ public sealed partial class HumanoidAppearanceSystem : SharedHumanoidAppearanceS
             var index = sprite.LayerMapReserveBlank(layer);
             sprite[index].Color = skinColor.WithAlpha(spriteInfo.LayerAlpha);
         }
+        EntityManager.System<Content.Client._DeepLagoon.BodyCustomization.BodyCustomizationVisualizerSystem>().Refresh(uid, humanoid, sprite);
+        EntityManager.System<Content.Client._DeepLagoon.Tattoos.TattooVisualizerSystem>().Refresh(uid, humanoid, sprite);
     }
 
     public override void SetLayerVisibility(
@@ -382,6 +388,7 @@ public sealed partial class HumanoidAppearanceSystem : SharedHumanoidAppearanceS
 
         spriteLayer.Visible = visible;
         EntityManager.System<Content.Client._DeepLagoon.Tattoos.TattooVisualizerSystem>().UpdateVisibility(ent.Owner, ent.Comp, sprite);
+        EntityManager.System<Content.Client._DeepLagoon.BodyCustomization.BodyCustomizationVisualizerSystem>().UpdateVisibility(ent.Owner, ent.Comp, sprite);
 
         // I fucking hate this. I'll get around to refactoring sprite layers eventually I swear
         // Just a week away...

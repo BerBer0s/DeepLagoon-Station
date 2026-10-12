@@ -997,6 +997,11 @@ namespace Content.Server.Database.Migrations.Postgres
                         .HasColumnType("text")
                         .HasColumnName("hair_name");
 
+                    b.Property<string>("BodyFeaturesJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body_features_json");
+
                     b.Property<string>("TattoosJson")
                         .IsRequired()
                         .HasColumnType("text")

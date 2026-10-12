@@ -22,6 +22,22 @@ public sealed class TattooTests
     }
 
     [Test]
+    public void FinishingCommitsLocalPlacementTogetherWithInkAndRejectsInvalidPlacement()
+    {
+        var original = Drawing();
+        var normal = Bitmap();
+        Assert.That(TguiActionData.TryParse(JsonSerializer.Serialize(new { id = original.Id, normal, glow = "", x = .65f, y = .3f, scale = 1.4f, rotation = 20f, opacity = .8f }), out var args), Is.True);
+        Assert.That(TattooEditorData.TryApply("tattoo-bake", args!, [original], out var next, out _), Is.True);
+        Assert.That(next.Single().X, Is.EqualTo(.65f));
+        Assert.That(next.Single().Scale, Is.EqualTo(1.4f));
+        Assert.That(next.Single().NormalBitmap, Is.EqualTo(normal));
+        Assert.That(original.X, Is.EqualTo(.5f));
+        Assert.That(TguiActionData.TryParse(JsonSerializer.Serialize(new { id = original.Id, normal, glow = "", x = 100f, y = .3f, scale = 1.4f, rotation = 20f, opacity = .8f }), out args), Is.True);
+        Assert.That(TattooEditorData.TryApply("tattoo-bake", args!, [original], out _, out _), Is.False);
+        Assert.That(original.X, Is.EqualTo(.5f));
+    }
+
+    [Test]
     public void FinishingFlattensHistoryAndKeepsBothInkChannelsAndPlacement()
     {
         var original = Drawing(); original.Scale = .7f;

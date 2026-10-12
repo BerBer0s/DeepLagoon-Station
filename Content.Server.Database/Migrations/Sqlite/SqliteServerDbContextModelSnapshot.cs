@@ -949,6 +949,11 @@ namespace Content.Server.Database.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("hair_name");
 
+                    b.Property<string>("BodyFeaturesJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("body_features_json");
+
                     b.Property<string>("TattoosJson")
                         .IsRequired()
                         .HasColumnType("TEXT")

@@ -454,6 +454,7 @@ namespace Content.Server.Database
         public string OocNotes { get; set; } = string.Empty;
         public string HeadshotId { get; set; } = string.Empty;
         public string TattoosJson { get; set; } = "[]";
+        public string BodyFeaturesJson { get; set; } = "[]";
         public int Age { get; set; }
         public int BankBalance { get; set; }
         public string Sex { get; set; } = null!;

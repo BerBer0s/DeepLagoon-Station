@@ -17,7 +17,7 @@ using Color = Robust.Shared.Maths.Color;
 
 namespace Content.Client._DeepLagoon.Tattoos;
 
-/// <summary>Ordinary sprite layers, below clothing. Luminous ink uses the same masks and visibility.</summary>
+/// <summary>Ink draws over markings and cosmetic anatomy. Luminous ink uses the same masks and visibility.</summary>
 public sealed class TattooVisualizerSystem : EntitySystem
 {
     [Dependency] private readonly SpriteSystem _sprites = default!;
@@ -60,11 +60,14 @@ public sealed class TattooVisualizerSystem : EntitySystem
     {
         var tattoos = Tattoo.Sanitize(humanoid.Tattoos);
         var key = Fingerprint(tattoos) + string.Join(';', tattoos.Select(t =>
-            sprite.LayerMapTryGet(t.BodyPart, out var index) ? $"{sprite[index].ActualRsi?.Path}/{sprite[index].RsiState}" : "missing"));
-        var markingEnds = tattoos.Select(t => t.BodyPart).Distinct().ToDictionary(part => part,
-            part => TattooBodyPreview.MarkingLayers(humanoid, sprite, _prototypes, part).DefaultIfEmpty(-1).Max());
+            sprite.LayerMapTryGet(t.BodyPart, out var index) ? $"{sprite[index].ActualRsi?.Path}/{sprite[index].RsiState}" : "missing"))
+            + "/anatomy/" + string.Join(';', humanoid.BodyFeatures.Select(f => $"{f.Part}/{f.Enabled}/{f.Shape}/{f.Size}/{f.Visibility}/{f.SecondaryEnabled}/{f.SecondaryColor}"));
+        var anatomy = EntityManager.System<Content.Client._DeepLagoon.BodyCustomization.BodyCustomizationVisualizerSystem>();
+        var anatomyEnd = anatomy.LastLayerIndex(uid, sprite);
+        var lowerBounds = tattoos.Select(t => t.BodyPart).Distinct().ToDictionary(part => part,
+            part => Math.Max(anatomyEnd, TattooBodyPreview.MarkingLayers(humanoid, sprite, _prototypes, part).DefaultIfEmpty(-1).Max()));
         if (_visuals.TryGetValue(uid, out var cached) && cached.Key == key
-            && cached.Layers.All(l => sprite.LayerMapTryGet(l.Key, out var index) && index > markingEnds[l.Part]))
+            && cached.Layers.All(l => sprite.LayerMapTryGet(l.Key, out var index) && index > lowerBounds[l.Part]))
         {
             UpdateVisibility(uid, humanoid, sprite);
             return;
@@ -94,10 +97,19 @@ public sealed class TattooVisualizerSystem : EntitySystem
                     using var canvas = new Image<Rgba32>(state.Size.X, state.Size.Y, new Rgba32(255, 255, 255, 255));
                     using var ink = TattooRasterizer.Render(tattoo, glow, canvas);
                     var texture = Upload(ink, visuals);
+                    var anatomyLayers = anatomy.LayerIndices(uid, sprite, tattoo.BodyPart);
+                    var anatomyTexture = texture;
+                    if (anatomyLayers.Length > 0)
+                    {
+                        using var anatomyMask = TattooBodyPreview.ReadAnatomy(sprite, target, tattoo.Direction, anatomyLayers);
+                        anatomyTexture = Upload(anatomyMask, visuals);
+                    }
                     var shaderId = glow ? "DeepLagoonTattooGlow" : "DeepLagoonTattooInk";
                     var shader = _prototypes.Index<ShaderPrototype>(shaderId).InstanceUnique();
                     visuals.Shaders.Add(shader);
                     shader.SetParameter("inkTexture", texture);
+                    shader.SetParameter("anatomyMask", anatomyTexture);
+                    shader.SetParameter("anatomyMaskEnabled", anatomyLayers.Length > 0 ? 1f : 0f);
                     var min = new Vector2[32];
                     var max = new Vector2[32];
                     for (var frame = 0; frame < state.DelayCount; frame++)
@@ -114,8 +126,10 @@ public sealed class TattooVisualizerSystem : EntitySystem
                     shader.SetParameter("inkOpacity", 1f);
                     var layerKey = "dl-tattoo/" + tattoo.Id + "/" + glow;
                     sprite.LayerMapTryGet(tattoo.BodyPart, out target);
-                    // All markings of this body part are below ink; its equipment stays above it.
-                    var insertion = Math.Max(target + 1, TattooBodyPreview.MarkingLayers(humanoid, sprite, _prototypes, tattoo.BodyPart).DefaultIfEmpty(-1).Max() + 1);
+                    // Recompute live indices: removing cached ink shifts anatomy and markings.
+                    // Parts configured above clothing also keep their ink above those clothes.
+                    var insertion = Math.Max(target + 1, Math.Max(anatomy.LastLayerIndex(uid, sprite),
+                        TattooBodyPreview.MarkingLayers(humanoid, sprite, _prototypes, tattoo.BodyPart).DefaultIfEmpty(-1).Max()) + 1);
                     foreach (var (previousKey, previousPart) in visuals.Layers)
                         if (previousPart == tattoo.BodyPart && sprite.LayerMapTryGet(previousKey, out var previousIndex))
                             insertion = Math.Max(insertion, previousIndex + 1);

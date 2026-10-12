@@ -1,6 +1,8 @@
 light_mode unshaded;
 
 uniform sampler2D inkTexture;
+uniform sampler2D anatomyMask;
+uniform highp float anatomyMaskEnabled;
 uniform highp float inkOpacity;
 uniform highp vec2[32] directionMin;
 uniform highp vec2[32] directionMax;
@@ -19,5 +21,5 @@ void fragment() {
             UV.x <= directionMax[i].x && UV.y <= directionMax[i].y) visible = 1.0;
     }
     COLOR = texture2D(inkTexture, inkUV);
-    COLOR.a *= zTexture(UV).a * visible * inkOpacity;
+    COLOR.a *= max(zTexture(UV).a, texture2D(anatomyMask, inkUV).a * anatomyMaskEnabled) * visible * inkOpacity;
 }
