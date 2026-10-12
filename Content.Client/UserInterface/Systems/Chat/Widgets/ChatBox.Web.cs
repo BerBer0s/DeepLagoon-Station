@@ -16,6 +16,10 @@ public partial class ChatBox
     private float _emoteRefresh;
     private string _lastEmoteState = "";
     private string? _lastWebHistoryPayload;
+    // DeepLagoon: tgui fix (Н8). The page shows at most MAX_VISIBLE_MESSAGES (tgui-panel/chat/constants.js);
+    // each message is formatted once and its payload reused for every later history publish.
+    private const int WebHistoryLimit = 2500;
+    private Dictionary<ChatMessage, string> _webPayloads = new(ReferenceEqualityComparer.Instance);
     public GameWebView? WebChat => _webChat;
 
     public void EnableTguiChat()
@@ -134,15 +138,20 @@ public partial class ChatBox
     {
         if (_useVanillaChat || _webChat?.IsReady != true || _repopulatingWeb || message.HideChat)
             return;
-        _webChat.Send("chat/message", WebChatMessageFormatter.BuildPayload(message));
+        if (_webPayloads.Count >= WebHistoryLimit * 2) _webPayloads.Clear(); // DeepLagoon: tgui fix (Н8)
+        _webChat.Send("chat/message", _webPayloads[message] = WebChatMessageFormatter.BuildPayload(message));
         _lastWebHistoryPayload = null;
     }
 
     private void PublishWebHistory(bool force = false)
     {
         if (_useVanillaChat || _webChat?.IsReady != true) return;
-        var payload = "[" + string.Join(',', _controller.History.Where(entry => !entry.Msg.HideChat)
-            .Select(entry => WebChatMessageFormatter.BuildPayload(entry.Msg))) + "]";
+        // DeepLagoon: tgui fix (Н8). Only the messages the page keeps, with cached payloads.
+        var shown = _controller.History.Where(entry => !entry.Msg.HideChat).Select(entry => entry.Msg).ToList();
+        var payloads = new Dictionary<ChatMessage, string>(ReferenceEqualityComparer.Instance);
+        var payload = "[" + string.Join(',', shown.Skip(Math.Max(0, shown.Count - WebHistoryLimit)).Select(message =>
+            payloads[message] = _webPayloads.GetValueOrDefault(message) ?? WebChatMessageFormatter.BuildPayload(message))) + "]";
+        _webPayloads = payloads;
         if (!force && payload == _lastWebHistoryPayload) return;
         _lastWebHistoryPayload = payload;
         // Replace messages in the existing document. Reloading it flashes the
