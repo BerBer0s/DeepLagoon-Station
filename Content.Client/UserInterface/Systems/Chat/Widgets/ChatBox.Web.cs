@@ -15,6 +15,9 @@ public partial class ChatBox
     private IClientPreferencesManager? _webPreferences;
     private float _emoteRefresh;
     private string _lastEmoteState = "";
+    // DeepLagoon: tgui fix. Saved chat settings and their pinned emotes, parsed only when the settings change.
+    private string? _emoteSettingsSource;
+    private List<string> _emotePinned = new();
     private string? _lastWebHistoryPayload;
     // DeepLagoon: tgui fix (Н8). The page shows at most MAX_VISIBLE_MESSAGES (tgui-panel/chat/constants.js);
     // each message is formatted once and its payload reused for every later history publish.
@@ -119,10 +122,15 @@ public partial class ChatBox
     {
         if (_webChat?.IsReady != true) return;
         var available = _entManager.System<EmoteShortcutSystem>().Available();
-        var settings = CurrentWebSettings();
+        var source = _webPreferences?.Preferences?.ChatPanelSettings ?? ""; // DeepLagoon: tgui fix
+        if (!string.Equals(source, _emoteSettingsSource, StringComparison.Ordinal))
+        {
+            _emoteSettingsSource = source;
+            _emotePinned = CurrentWebSettings().PinnedEmotes.ToList();
+        }
         var json = "{\"available\":[" + string.Join(',', available.Select(emote =>
             "{\"id\":" + GameWebView.Quote(emote.ID) + ",\"name\":" + GameWebView.Quote(Loc.GetString(emote.Name)) + "}")) +
-            "],\"pinned\":[" + string.Join(',', settings.PinnedEmotes.Select(GameWebView.Quote)) + "]}";
+            "],\"pinned\":[" + string.Join(',', _emotePinned.Select(GameWebView.Quote)) + "]}";
         if (json == _lastEmoteState) return;
         _lastEmoteState = json;
         _webChat.Send("deeplagoon/emotes", json);
