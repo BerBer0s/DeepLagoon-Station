@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using Content.Shared._DeepLagoon.WebUI;
 using Robust.Shared.Configuration;
+using Robust.Client.Input;
 using Robust.Client.UserInterface;
 using Robust.Client.WebView;
 using Robust.Shared.Timing;
@@ -33,6 +34,12 @@ public sealed class GameWebView : Control
     private bool _disposed;
     private bool _messageDispatchPending;
     private bool _explicitTextInput;
+    // Interface pages report whether a text field has DOM focus (bridge.js, "input-focus").
+    private bool _pageEditing;
+    // FocusTextInput requests, and their count when the edited field got focus (see "input-focus").
+    private int _textInputRequests;
+    private int _editingRequests;
+    private IInputManager? _input;
     private readonly bool _suspendWhenHidden;
     private readonly bool _chat;
     private readonly NativeChatBackground _background;
@@ -44,6 +51,12 @@ public sealed class GameWebView : Control
     public void FocusInput() => _view.GrabKeyboardFocus();
 
     public bool HasInputFocus => _view.HasKeyboardFocus();
+
+    /// <summary>Text input was asked for explicitly (chat, composer, a page's "focus" action).</summary>
+    public bool HasTextInput => _explicitTextInput;
+
+    /// <summary>A text field of the page has DOM focus.</summary>
+    public bool IsEditing => _pageEditing;
 
     public void SendGridEditorKey(string code, bool down, bool control, bool shift, bool alt)
     {
@@ -64,6 +77,7 @@ public sealed class GameWebView : Control
     {
         FocusInput();
         _explicitTextInput = true;
+        _textInputRequests++;
         _view.Root?.Window?.TextInputStart();
         if (_ready)
             _view.ExecuteJavaScript("window.focus(); window.dispatchEvent(new Event('deeplagoon/focus-input'));");
@@ -246,11 +260,23 @@ public sealed class GameWebView : Control
                     _view.Arrange(UIBox2.FromDimensions(System.Numerics.Vector2.Zero, Size + System.Numerics.Vector2.One));
                     InvalidateArrange();
                     _ready = true;
+                    _pageEditing = false;
                     if (_background != null)
                         _view.ExecuteJavaScript("window.__deeplagoonNativeBackground = true; window.dispatchEvent(new Event('deeplagoon/native-background'));");
                     while (_outgoing.TryDequeue(out var queued))
                         Dispatch(queued);
                     Ready?.Invoke();
+                    break;
+                case "input-focus":
+                    if (_chat || !TguiActionData.TryParse(payload, out var editing)) break;
+                    var active = editing!.String("active") == "true";
+                    if (active && !_pageEditing)
+                        _editingRequests = _textInputRequests;
+                    // Text input asked for while this field was focused ends with the field; a newer request
+                    // (a click elsewhere in the page that asked for the keyboard) stays.
+                    else if (!active && _pageEditing && _textInputRequests == _editingRequests)
+                        ReleaseTextInput();
+                    _pageEditing = active;
                     break;
                 case "native-background":
                     _background?.Configure(payload);
@@ -278,11 +304,40 @@ public sealed class GameWebView : Control
         }
     }
 
+    protected override void EnteredTree()
+    {
+        base.EnteredTree();
+        _input = IoCManager.Resolve<IInputManager>();
+        _input.FirstChanceOnKeyEvent += OnFirstChanceKey;
+    }
+
+    // Stock WebView keeps every key while it has keyboard focus (its RawKeyEvent returns true), so one
+    // click into a window took WASD away from the game until the player clicked the world. First-chance
+    // handlers run before that raw dispatch: while no text field is edited and no text input was asked
+    // for, a key the page does not use itself releases the focus here and goes on to the game binds.
+    // The page keeps TGUI's own keys (hotkeys.ts): Esc, Enter, Space, Tab, arrows, F5, modifiers, Ctrl combos.
+    private void OnFirstChanceKey(KeyEventArgs args, KeyEventType type)
+    {
+        if (args.Handled || type != KeyEventType.Down || _explicitTextInput || _pageEditing ||
+            IsPageKey(args) || !_view.HasKeyboardFocus())
+            return;
+        _view.ReleaseKeyboardFocus();
+    }
+
+    private static bool IsPageKey(KeyEventArgs args) => args.Control || args.Key.IsMouseKey() || args.Key is
+        Keyboard.Key.Escape or Keyboard.Key.Return or Keyboard.Key.NumpadEnter or Keyboard.Key.Space or
+        Keyboard.Key.Tab or Keyboard.Key.Up or Keyboard.Key.Down or Keyboard.Key.Left or Keyboard.Key.Right or
+        Keyboard.Key.F5 or Keyboard.Key.Control or Keyboard.Key.Shift or Keyboard.Key.Alt or
+        Keyboard.Key.LSystem or Keyboard.Key.RSystem;
+
     protected override void ExitedTree()
     {
         base.ExitedTree();
+        if (_input != null) _input.FirstChanceOnKeyEvent -= OnFirstChanceKey;
+        _input = null;
         if (_suspendWhenHidden && !_disposed) SuspendBrowser();
         _ready = false;
+        _pageEditing = false;
         _background?.Reset();
         _outgoing.Clear();
         while (_incoming.TryDequeue(out _)) { }
@@ -294,6 +349,7 @@ public sealed class GameWebView : Control
         if (!_suspendWhenHidden || VisibleInTree || _view.Parent == null) return;
         SuspendBrowser();
         _ready = false;
+        _pageEditing = false;
         _background?.Reset();
         _outgoing.Clear();
         while (_incoming.TryDequeue(out _)) { }

@@ -93,6 +93,23 @@
       inputFocused = false;
       send({ type: 'chat-input-focus', payload: { active: false } });
     });
+  } else {
+    // Interface pages: the host keeps the keyboard for the page while a text field is edited and
+    // otherwise gives keys the page does not use (WASD...) back to the game (GameWebView).
+    let editing = false;
+    const syncEditing = () => {
+      const node = document.activeElement;
+      const active = !!node && (node.isContentEditable || (!!node.matches?.(
+        'textarea, select, input:not([type]), input[type=text], input[type=search], input[type=number], ' +
+        'input[type=email], input[type=password], input[type=url], input[type=tel]') &&
+        !node.disabled && !node.readOnly));
+      if (active === editing) return;
+      editing = active;
+      send({ type: 'input-focus', payload: { active } });
+    };
+    // Read activeElement after the focus transition, including field-to-field clicks.
+    document.addEventListener('focusin', () => queueMicrotask(syncEditing));
+    document.addEventListener('focusout', () => queueMicrotask(syncEditing));
   }
   // Remote links, popups and wiki requests are not supported in local TGUI windows.
   window.open = () => null;

@@ -23,6 +23,9 @@ public sealed class TguiPanel : Control
     private ScreenCoordinates _dragPointer;
     private Vector2 _dragOrigin;
     private bool _dragging;
+    // How the browser took keyboard input when the drag began, to give it back after the drag.
+    private bool _dragHadTextInput;
+    private bool _dragHadEditing;
     private string _chatAppearance = "{}";
     private string? _chatSettings;
     private float _appearanceRefresh;
@@ -104,6 +107,9 @@ public sealed class TguiPanel : Control
         _dragPointer = pointer;
         _dragOrigin = window.Position;
         _dragging = false;
+        // First-chance: this runs before the press reaches CEF and can blur the page's field.
+        _dragHadTextInput = Web.HasInputFocus && Web.HasTextInput;
+        _dragHadEditing = Web.HasInputFocus && Web.IsEditing;
     }
 
     private void UpdateWindowDrag(ScreenCoordinates pointer)
@@ -131,9 +137,12 @@ public sealed class TguiPanel : Control
         if (_dragging)
         {
             Web.SetWindowDragging(false);
+            var hadTextInput = _dragHadTextInput;
+            var hadEditing = _dragHadEditing;
             // Mouse-up bindings and CEF can change focus after the first-chance
-            // handler. Restore both native keyboard/text input and DOM focus
-            // after that processing, without stealing it from another window.
+            // handler. Restore the keyboard after that processing, without stealing
+            // it from another window, and only as the browser had it before the drag:
+            // a drag must not take WASD away or start text input on its own.
             UserInterfaceManager.DeferAction(() =>
             {
                 if (!Disposed && VisibleInTree && window is { Disposed: false, Parent: not null } &&
@@ -145,7 +154,8 @@ public sealed class TguiPanel : Control
                         UserInterfaceManager.ControlFocused = null;
                         break;
                     }
-                    Web.FocusTextInput();
+                    if (hadTextInput) Web.FocusTextInput();
+                    else if (hadEditing) Web.FocusInput();
                 }
             });
         }
