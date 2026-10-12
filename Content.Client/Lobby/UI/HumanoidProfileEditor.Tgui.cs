@@ -40,6 +40,10 @@ public sealed partial class HumanoidProfileEditor
     private readonly Control _editorSettingsTab = new();
     private CharacterEditorAppearance _editorAppearance = new();
     private readonly Dictionary<string, string> _companyWebImages = new();
+    // DeepLagoon: tgui fix. Actions only mark the state; it is built and sent once per frame (FrameUpdate).
+    private bool _tguiPublishPending;
+    // DeepLagoon: tgui fix. Option lists with images depend only on species and sex, not on every color step.
+    private readonly Dictionary<(string Species, Sex Sex, string List), string> _tguiOptions = new();
 
     private void InitializeTguiEditor()
     {
@@ -86,6 +90,11 @@ public sealed partial class HumanoidProfileEditor
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
+        if (_tguiPublishPending) // DeepLagoon: tgui fix
+        {
+            _tguiPublishPending = false;
+            PublishTguiProfile();
+        }
         _tguiRefresh -= args.DeltaSeconds;
         if (_tguiRefresh > 0 || _profileWeb == null || !_profileWeb.VisibleInTree) return;
         _tguiRefresh = 0.2f;
@@ -140,10 +149,10 @@ public sealed partial class HumanoidProfileEditor
                 new TguiData().Number("index", index).String("name", Loc.GetString($"marking-{marking.MarkingId}"))
                     .Bool("locked", !_markingManager.TryGetMarking(marking, out var proto) || proto.ForcedColoring || _markingManager.MustMatchSkin(p.Species, proto.BodyPart, out _, _prototypeManager))
                     .Array("colors", marking.MarkingColors.Select(color => Choice("", color.ToHexNoAlpha())))));
-            data.Array("markingOptions", _markingManager.Markings.Values.Where(m => m.MarkingCategory is not (MarkingCategories.Hair or MarkingCategories.FacialHair)
+            data.Json("markingOptions", TguiOptions("markings", () => _markingManager.Markings.Values.Where(m => m.MarkingCategory is not (MarkingCategories.Hair or MarkingCategories.FacialHair)
                 && _markingManager.CanBeApplied(p.Species, p.Sex, m, _prototypeManager))
                 .Select(m => Choice(m.ID, Loc.GetString($"marking-{m.ID}")).String("category", Loc.GetString($"markings-category-{m.MarkingCategory}"))
-                    .Array("images", m.Sprites.Select(sprite => new TguiData().String("url", _tguiImages.Frame(sprite))))));
+                    .Array("images", m.Sprites.Select(sprite => new TguiData().String("url", _tguiImages.Frame(sprite)))))));
         }
         var species = _prototypeManager.Index(p.Species);
         data.String("name", p.Name).Number("age", p.Age).String("species", p.Species.Id)
@@ -164,7 +173,7 @@ public sealed partial class HumanoidProfileEditor
                 .Array("sexOptions", species.Sexes.Select(s => Choice(((int) s).ToString(), Loc.GetString($"humanoid-profile-editor-sex-{s.ToString().ToLowerInvariant()}-text"))))
                 .Array("genderOptions", Enum.GetValues<Gender>().Select(g => Choice(((int) g).ToString(), Loc.GetString($"humanoid-profile-editor-pronouns-{g.ToString().ToLowerInvariant()}-text"))))
                 .Array("spawnOptions", Enum.GetValues<SpawnPriorityPreference>().Select(s => Choice(((int) s).ToString(), Loc.GetString($"humanoid-profile-editor-preference-spawn-priority-{s.ToString().ToLowerInvariant()}"))))
-                .Array("hairOptions", HairChoices(false)).Array("beardOptions", HairChoices(true));
+                .Json("hairOptions", TguiOptions("hair", () => HairChoices(false))).Json("beardOptions", TguiOptions("beard", () => HairChoices(true)));
         }
         else if (mode == "jobs")
         {
@@ -200,6 +209,15 @@ public sealed partial class HumanoidProfileEditor
     }
 
     private static TguiData Choice(string id, string name) => new TguiData().String("id", id).String("name", name);
+
+    // DeepLagoon: tgui fix. Serialized option list for the current species and sex.
+    private string TguiOptions(string list, Func<IEnumerable<TguiData>> build)
+    {
+        var key = (Profile!.Species.Id, Profile.Sex, list);
+        if (!_tguiOptions.TryGetValue(key, out var json))
+            _tguiOptions[key] = json = "[" + string.Join(',', build()) + "]";
+        return json;
+    }
 
     private void EnsureHeadshotPreview(int slot, string id)
     {
@@ -281,7 +299,7 @@ public sealed partial class HumanoidProfileEditor
     public bool HandleTguiProfileAction(string action, string payload)
     {
         if (!TguiActionData.TryParse(payload, out var args)) return false;
-        if (action.StartsWith("setup/", StringComparison.Ordinal)) { var accepted = SetupAction?.Invoke(action[6..], args!) ?? false; PublishTguiProfile(); return accepted; }
+        if (action.StartsWith("setup/", StringComparison.Ordinal)) { var accepted = SetupAction?.Invoke(action[6..], args!) ?? false; _tguiPublishPending = true; return accepted; } // DeepLagoon: tgui fix
         if (Profile == null) return false;
         var value = args!.String("value") ?? "";
         var species = _prototypeManager.Index(Profile.Species);
@@ -289,7 +307,7 @@ public sealed partial class HumanoidProfileEditor
         if (action.StartsWith("equipment/", StringComparison.Ordinal))
         {
             var result = _personalLoadoutEditor.HandleTguiAction(action[10..], args);
-            PublishTguiProfile();
+            _tguiPublishPending = true; // DeepLagoon: tgui fix
             return result;
         }
         switch (action)
@@ -375,13 +393,13 @@ public sealed partial class HumanoidProfileEditor
                 break;
             case "species":
                 if (!_species.Any(s => s.ID == value)) return false;
-                SetSpecies(value); UpdateAgeEdit(); UpdateHairPickers(); UpdateSkinColor(); break;
+                SetSpecies(value); UpdateAgeEdit(); UpdateSkinColor(); break; // DeepLagoon: tgui fix, no hidden native pickers
             case "age":
                 if (!args.TryInt("value", out var age) || age < species.MinAge || age > species.MaxAge) return false;
                 SetAge(age); UpdateAgeEdit(); break;
             case "sex":
                 if (!args.TryInt("value", out var sex) || !species.Sexes.Contains((Sex) sex)) return false;
-                SetSex((Sex) sex); UpdateSexControls(); UpdateHairPickers(); break;
+                SetSex((Sex) sex); UpdateSexControls(); break; // DeepLagoon: tgui fix, no hidden native pickers
             case "gender":
                 if (!args.TryInt("value", out var gender) || !Enum.IsDefined((Gender) gender)) return false;
                 SetGender((Gender) gender); UpdateGenderControls(); break;
@@ -399,7 +417,7 @@ public sealed partial class HumanoidProfileEditor
                 if (value != empty && (!_markingManager.Markings.TryGetValue(value, out var marking) || marking.MarkingCategory != category ||
                     !_markingManager.CanBeApplied(Profile.Species, Profile.Sex, marking, _prototypeManager))) return false;
                 Profile = Profile.WithCharacterAppearance(beard ? Profile.Appearance.WithFacialHairStyleName(value) : Profile.Appearance.WithHairStyleName(value));
-                UpdateHairPickers(); UpdateCMarkingsHair(); UpdateCMarkingsFacialHair(); ReloadProfilePreview(); break;
+                ReloadProfilePreview(); break; // DeepLagoon: tgui fix, no hidden native pickers
             case "hair-color": case "beard-color": case "eye-color": case "skin-color":
                 if (value.Length != 7 || value[0] != '#') return false;
                 Color color;
@@ -409,7 +427,7 @@ public sealed partial class HumanoidProfileEditor
                     var layer = action == "hair-color" ? HumanoidVisualLayers.Hair : HumanoidVisualLayers.FacialHair;
                     if (_markingManager.MustMatchSkin(Profile.Species, layer, out _, _prototypeManager)) return false;
                     Profile = Profile.WithCharacterAppearance(action == "hair-color" ? Profile.Appearance.WithHairColor(color) : Profile.Appearance.WithFacialHairColor(color));
-                    UpdateHairPickers(); UpdateCMarkingsHair(); UpdateCMarkingsFacialHair(); ReloadProfilePreview();
+                    ReloadProfilePreview(); // DeepLagoon: tgui fix, no hidden native pickers
                 }
                 else if (action == "eye-color")
                 {
@@ -457,7 +475,7 @@ public sealed partial class HumanoidProfileEditor
                 if (guideProto.Guides is { } guides) OnOpenGuidebook?.Invoke(guides); break;
             default: valid = false; break;
         }
-        if (valid) PublishTguiProfile();
+        if (valid) _tguiPublishPending = true; // DeepLagoon: tgui fix
         return valid;
     }
 
@@ -504,8 +522,7 @@ public sealed partial class HumanoidProfileEditor
         var updated = new MarkingSet(list, points, _markingManager, _prototypeManager);
         updated.EnsureSpecies(Profile.Species, Profile.Appearance.SkinColor, _markingManager, _prototypeManager);
         updated.EnsureSexes(Profile.Sex, _markingManager);
-        OnMarkingChange(updated);
-        UpdateMarkings();
+        OnMarkingChange(updated); // DeepLagoon: tgui fix, no hidden native marking picker rebuild
         return true;
     }
 }
