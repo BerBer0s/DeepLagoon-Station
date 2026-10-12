@@ -43,6 +43,20 @@
             "stopAtEntry": false
         },
         {
+            "name": "Client (Diagnostic: no CEF, 60 FPS)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/Content.Client/Content.Client.dll",
+            "args": [
+                "--cvar", "web.headless=true",
+                "--cvar", "ui.vanilla_chat=true",
+                "--cvar", "display.vsync=false",
+                "--cvar", "display.max_fps=60"
+            ],
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
             "name": "Server",
             "type": "coreclr",
             "request": "launch",

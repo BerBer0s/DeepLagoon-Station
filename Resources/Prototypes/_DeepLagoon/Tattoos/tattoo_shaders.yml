@@ -1,0 +1,9 @@
+- type: shader
+  id: DeepLagoonTattooInk
+  kind: source
+  path: /Textures/_DeepLagoon/Shaders/tattoo_ink.swsl
+
+- type: shader
+  id: DeepLagoonTattooGlow
+  kind: source
+  path: /Textures/_DeepLagoon/Shaders/tattoo_glow.swsl

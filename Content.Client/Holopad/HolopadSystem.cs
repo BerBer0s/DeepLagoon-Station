@@ -15,11 +15,15 @@ public sealed partial class HolopadSystem : SharedHolopadSystem
     [Dependency] private IPrototypeManager _prototypeManager = default!;
     [Dependency] private IGameTiming _timing = default!;
 
+    // CopyFrom can replace PostShader with a target shader clone; keep ownership separate.
+    private readonly Dictionary<EntityUid, (string Name, ShaderInstance Shader)> _hologramShaders = new();
+
     public override void Initialize()
     {
         base.Initialize();
 
         SubscribeLocalEvent<HolopadHologramComponent, ComponentStartup>(OnComponentStartup);
+        SubscribeLocalEvent<HolopadHologramComponent, ComponentShutdown>(OnComponentShutdown);
         SubscribeLocalEvent<HolopadHologramComponent, BeforePostShaderRenderEvent>(OnShaderRender);
         SubscribeAllEvent<TypingChangedEvent>(OnTypingChanged);
     }
@@ -27,6 +31,17 @@ public sealed partial class HolopadSystem : SharedHolopadSystem
     private void OnComponentStartup(Entity<HolopadHologramComponent> entity, ref ComponentStartup ev)
     {
         UpdateHologramSprite(entity, entity.Comp.LinkedEntity);
+    }
+
+    private void OnComponentShutdown(Entity<HolopadHologramComponent> entity, ref ComponentShutdown ev)
+    {
+        if (!_hologramShaders.Remove(entity.Owner, out var cached))
+            return;
+
+        if (TryComp<SpriteComponent>(entity, out var sprite) && sprite.PostShader == cached.Shader)
+            sprite.PostShader = null;
+
+        cached.Shader.Dispose();
     }
 
     private void OnShaderRender(Entity<HolopadHologramComponent> entity, ref BeforePostShaderRenderEvent ev)
@@ -104,7 +119,8 @@ public sealed partial class HolopadSystem : SharedHolopadSystem
         hologramSprite.EnableDirectionOverride = true;
 
         // Remove shading from all layers (except displacement maps)
-        for (int i = 0; i < hologramSprite.AllLayers.Count(); i++)
+        var layerCount = hologramSprite.AllLayers.Count();
+        for (int i = 0; i < layerCount; i++)
         {
             if (hologramSprite.TryGetLayer(i, out var layer) && layer.ShaderPrototype != "DisplacedStencilDraw")
                 hologramSprite.LayerSetShader(i, "unshaded");
@@ -116,9 +132,29 @@ public sealed partial class HolopadSystem : SharedHolopadSystem
     private void UpdateHologramShader(EntityUid uid, SpriteComponent sprite, HolopadHologramComponent holopadHologram)
     {
         // Find the texture height of the largest layer
-        float texHeight = sprite.AllLayers.Max(x => x.PixelSize.Y);
+        var texHeight = 0f;
+        foreach (var layer in sprite.AllLayers)
+            texHeight = Math.Max(texHeight, layer.PixelSize.Y);
 
-        var instance = _prototypeManager.Index<ShaderPrototype>(holopadHologram.ShaderName).InstanceUnique();
+        if (!_hologramShaders.TryGetValue(uid, out var cached) || cached.Name != holopadHologram.ShaderName)
+        {
+            if (cached.Shader != null)
+            {
+                if (sprite.PostShader == cached.Shader)
+                    sprite.PostShader = null;
+                cached.Shader.Dispose();
+            }
+
+            cached = (holopadHologram.ShaderName,
+                _prototypeManager.Index<ShaderPrototype>(holopadHologram.ShaderName).InstanceUnique());
+            _hologramShaders[uid] = cached;
+        }
+
+        // Dispose the mutable target shader clone that CopyFrom created and we replace.
+        if (sprite.PostShader is { Mutable: true } copied && copied != cached.Shader)
+            copied.Dispose();
+
+        var instance = cached.Shader;
         instance.SetParameter("color1", new Vector3(holopadHologram.Color1.R, holopadHologram.Color1.G, holopadHologram.Color1.B));
         instance.SetParameter("color2", new Vector3(holopadHologram.Color2.R, holopadHologram.Color2.G, holopadHologram.Color2.B));
         instance.SetParameter("alpha", holopadHologram.Alpha);

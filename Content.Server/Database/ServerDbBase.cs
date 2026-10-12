@@ -289,7 +289,8 @@ namespace Content.Server.Database
                     Color.FromHex(profile.SkinColor),
                     markings,
                     height,
-                    width
+                    width,
+                    Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(JsonSerializer.Deserialize<List<Content.Shared._DeepLagoon.Tattoos.Tattoo>>(profile.TattoosJson))
                 ),
                 spawnPriority,
                 jobs,
@@ -342,6 +343,7 @@ namespace Content.Server.Database
             profile.Width = appearance.Width;
             profile.SpawnPriority = (int)humanoid.SpawnPriority;
             profile.Markings = markings;
+            profile.TattoosJson = JsonSerializer.Serialize(Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(appearance.Tattoos));
             profile.Slot = slot;
             profile.PreferenceUnavailable = (DbPreferenceUnavailableMode)humanoid.PreferenceUnavailable;
             profile.Company = humanoid.Company;

@@ -19,6 +19,7 @@ namespace Content.Server.Power.EntitySystems;
 
 public sealed partial class ApcSystem : EntitySystem
 {
+    private static readonly Enum ApcUiKeyBoxed = ApcUiKey.Key;
     [Dependency] private AccessReaderSystem _accessReader = default!;
     [Dependency] private IGameTiming _gameTiming = default!;
     [Dependency] private EmagSystem _emag = default!;
@@ -53,7 +54,7 @@ public sealed partial class ApcSystem : EntitySystem
         var query = EntityQueryEnumerator<ApcComponent, PowerNetworkBatteryComponent, UserInterfaceComponent>();
         while (query.MoveNext(out var uid, out var apc, out var battery, out var ui))
         {
-            if (apc.LastUiUpdate + ApcComponent.VisualsChangeDelay < _gameTiming.CurTime && _ui.IsUiOpen((uid, ui), ApcUiKey.Key))
+            if (apc.LastUiUpdate + ApcComponent.VisualsChangeDelay < _gameTiming.CurTime && _ui.IsUiOpen((uid, ui), ApcUiKeyBoxed))
             {
                 apc.LastUiUpdate = _gameTiming.CurTime;
                 UpdateUIState(uid, apc, battery);
@@ -192,7 +193,7 @@ public sealed partial class ApcSystem : EntitySystem
             (int) MathF.Ceiling(battery.CurrentSupply), apc.LastExternalState,
             charge);
 
-        _ui.SetUiState((uid, ui), ApcUiKey.Key, state);
+        _ui.SetUiState((uid, ui), ApcUiKeyBoxed, state);
     }
 
     private ApcChargeState CalcChargeState(EntityUid uid, PowerState.Battery battery)

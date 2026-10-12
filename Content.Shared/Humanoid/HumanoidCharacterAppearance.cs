@@ -33,6 +33,9 @@ public sealed partial class HumanoidCharacterAppearance : ICharacterAppearance, 
     public List<Marking> Markings { get; set; } = new();
 
     [DataField]
+    public List<Content.Shared._DeepLagoon.Tattoos.Tattoo> Tattoos { get; set; } = new();
+
+    [DataField]
     public float Height { get; set; } = 1.0f;
 
     [DataField]
@@ -46,7 +49,8 @@ public sealed partial class HumanoidCharacterAppearance : ICharacterAppearance, 
         Color skinColor,
         List<Marking> markings,
         float height = 1.0f,
-        float width = 1.0f)
+        float width = 1.0f,
+        List<Content.Shared._DeepLagoon.Tattoos.Tattoo>? tattoos = null)
     {
         HairStyleId = hairStyleId;
         HairColor = ClampColor(hairColor);
@@ -57,57 +61,58 @@ public sealed partial class HumanoidCharacterAppearance : ICharacterAppearance, 
         Markings = markings;
         Height = height <= 0.005f ? 1.0f : height;
         Width = width <= 0.005f ? 1.0f : width;
+        Tattoos = Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(tattoos);
     }
 
     public HumanoidCharacterAppearance(HumanoidCharacterAppearance other) :
-        this(other.HairStyleId, other.HairColor, other.FacialHairStyleId, other.FacialHairColor, other.EyeColor, other.SkinColor, new(other.Markings), other.Height, other.Width)
+        this(other.HairStyleId, other.HairColor, other.FacialHairStyleId, other.FacialHairColor, other.EyeColor, other.SkinColor, new(other.Markings), other.Height, other.Width, other.Tattoos)
     {
 
     }
 
     public HumanoidCharacterAppearance WithHairStyleName(string newName)
     {
-        return new(newName, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, Markings, Height, Width);
+        return new(newName, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, Markings, Height, Width, Tattoos);
     }
 
     public HumanoidCharacterAppearance WithHairColor(Color newColor)
     {
-        return new(HairStyleId, newColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, Markings, Height, Width);
+        return new(HairStyleId, newColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, Markings, Height, Width, Tattoos);
     }
 
     public HumanoidCharacterAppearance WithFacialHairStyleName(string newName)
     {
-        return new(HairStyleId, HairColor, newName, FacialHairColor, EyeColor, SkinColor, Markings, Height, Width);
+        return new(HairStyleId, HairColor, newName, FacialHairColor, EyeColor, SkinColor, Markings, Height, Width, Tattoos);
     }
 
     public HumanoidCharacterAppearance WithFacialHairColor(Color newColor)
     {
-        return new(HairStyleId, HairColor, FacialHairStyleId, newColor, EyeColor, SkinColor, Markings, Height, Width);
+        return new(HairStyleId, HairColor, FacialHairStyleId, newColor, EyeColor, SkinColor, Markings, Height, Width, Tattoos);
     }
 
     public HumanoidCharacterAppearance WithEyeColor(Color newColor)
     {
-        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, newColor, SkinColor, Markings, Height, Width);
+        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, newColor, SkinColor, Markings, Height, Width, Tattoos);
     }
 
     public HumanoidCharacterAppearance WithSkinColor(Color newColor)
     {
-        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, newColor, Markings, Height, Width);
+        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, newColor, Markings, Height, Width, Tattoos);
     }
 
     public HumanoidCharacterAppearance WithMarkings(List<Marking> newMarkings)
     {
-        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, newMarkings, Height, Width);
+        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, newMarkings, Height, Width, Tattoos);
     }
 
     public HumanoidCharacterAppearance WithHeight(float newHeight)
     {
-        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, Markings, newHeight, Width);
+        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, Markings, newHeight, Width, Tattoos);
     }
 
     public HumanoidCharacterAppearance WithWidth(float newWidth)
     {
-        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, Markings, Height, newWidth);
+        return new(HairStyleId, HairColor, FacialHairStyleId, FacialHairColor, EyeColor, SkinColor, Markings, Height, newWidth, Tattoos);
     }
 
     public static HumanoidCharacterAppearance DefaultWithSpecies(string species)
@@ -254,7 +259,7 @@ public sealed partial class HumanoidCharacterAppearance : ICharacterAppearance, 
             skinColor,
             markingSet.GetForwardEnumerator().ToList(),
             appearance.Height,
-            appearance.Width);
+            appearance.Width, appearance.Tattoos);
     }
 
     public bool MemberwiseEquals(ICharacterAppearance maybeOther)
@@ -267,6 +272,7 @@ public sealed partial class HumanoidCharacterAppearance : ICharacterAppearance, 
         if (!EyeColor.Equals(other.EyeColor)) return false;
         if (!SkinColor.Equals(other.SkinColor)) return false;
         if (!Markings.SequenceEqual(other.Markings)) return false;
+        if (Tattoos.Count != other.Tattoos.Count || !Tattoos.Zip(other.Tattoos).All(p => p.First.ContentEquals(p.Second))) return false;
         if (!Height.Equals(other.Height)) return false;
         if (!Width.Equals(other.Width)) return false;
         return true;
@@ -283,6 +289,7 @@ public sealed partial class HumanoidCharacterAppearance : ICharacterAppearance, 
                EyeColor.Equals(other.EyeColor) &&
                SkinColor.Equals(other.SkinColor) &&
                Markings.SequenceEqual(other.Markings) &&
+               Tattoos.Count == other.Tattoos.Count && Tattoos.Zip(other.Tattoos).All(p => p.First.ContentEquals(p.Second)) &&
                Height.Equals(other.Height) &&
                Width.Equals(other.Width);
     }

@@ -10,6 +10,9 @@ namespace Content.Server.Power.Pow3r
     {
         private UpdateNetworkJob _networkJob;
         private bool _disableParallel;
+        private List<List<Network>>? _scheduledGroups;
+        private readonly HashSet<List<Network>> _serialGroups = new();
+        private const int MinParallelWork = 256;
 
         public BatteryRampPegSolver(bool disableParallel = false)
         {
@@ -37,28 +40,33 @@ namespace Content.Server.Power.Pow3r
             ClearLoadsAndSupplies(state);
 
             state.GroupedNets ??= GroupByNetworkDepth(state);
-            DebugTools.Assert(state.GroupedNets.Select(x => x.Count).Sum() == state.Networks.Count);
+            if (!ReferenceEquals(_scheduledGroups, state.GroupedNets))
+            {
+                _scheduledGroups = state.GroupedNets;
+                _serialGroups.Clear();
+                DebugTools.Assert(state.GroupedNets.Select(x => x.Count).Sum() == state.Networks.Count);
+                ValidateNetworkGroups(state, state.GroupedNets);
+
+                foreach (var group in state.GroupedNets)
+                {
+                    var work = 0;
+                    foreach (var network in group)
+                        work += network.Loads.Count + network.Supplies.Count +
+                                network.BatteryLoads.Count + network.BatterySupplies.Count;
+
+                    if (group.Count <= 1 || work < MinParallelWork)
+                        _serialGroups.Add(group);
+                }
+            }
             _networkJob.State = state;
             _networkJob.FrameTime = frameTime;
-            ValidateNetworkGroups(state, state.GroupedNets);
 
             // Each network height layer can be run in parallel without issues.
             foreach (var group in state.GroupedNets)
             {
-                // Note that many net-layers only have a handful of networks.
-                // E.g., the number of nets from lowest to highest for box and saltern are:
-                // Saltern: 1477, 11, 2, 2, 3.
-                // Box:     3308, 20, 1, 5.
-                //
-                // I have NFI what the overhead for a Parallel.ForEach is, and how it compares to computing differently
-                // sized nets. Basic benchmarking shows that this is better, but maybe the highest-tier nets should just
-                // be run sequentially? But then again, maybe they are 2-3 very BIG networks at the top? So maybe:
-                //
-                // TODO make GroupByNetworkDepth evaluate the TOTAL size of each layer (i.e. loads + chargers +
-                // suppliers + discharger) Then decide based on total layer size whether its worth parallelizing that
-                // layer?
+                // Small layers cost less to solve serially than to dispatch to parallel workers.
                 _networkJob.Networks = group;
-                if (_disableParallel)
+                if (_disableParallel || _serialGroups.Contains(group))
                     parallel.ProcessSerialNow(_networkJob, group.Count);
                 else
                     parallel.ProcessNow(_networkJob, group.Count);

@@ -197,8 +197,8 @@ public sealed partial class GridEditorSystem : EntitySystem
                 items.Add(new GridEditorItem { Id = Field(node, "id"), Kind = Field(node, "kind"), Prototype = Field(node, "prototype"),
                     X = Number("x"), Y = Number("y"), Rotation = Number("rotation"), Z = (int) Number("z"),
                     Color = Field(node, "color", "#FFFFFFFF"), Cleanable = Field(node, "cleanable") == "true",
-                    Anchored = Field(node, "anchored") == "true", Variant = checked((byte) Number("variant")),
-                    Flags = checked((byte) Number("flags")), Mirror = checked((byte) Number("mirror")) });
+                    Anchored = Field(node, "anchored") == "true", Variant = CheckedByte(Number("variant")),
+                    Flags = CheckedByte(Number("flags")), Mirror = CheckedByte(Number("mirror")) });
             }
             _upload.AddRange(items);
             _uploadNext++;
@@ -222,6 +222,14 @@ public sealed partial class GridEditorSystem : EntitySystem
                 .Bool("success", false).Number("resultVersion", ++_resultVersion)).ToString());
             _uploadId = null; _upload.Clear();
         }
+    }
+
+    // Keep truncation and range validation without conv.ovf.u1, unsupported by the engine sandbox.
+    private static byte CheckedByte(float value)
+    {
+        var integer = checked((int) value);
+        if (integer is < byte.MinValue or > byte.MaxValue) throw new InvalidDataException("Byte value outside 0–255 range");
+        return unchecked((byte) integer);
     }
 
     private void AckUpload() => _window?.Panel.Web.Send("update", new TguiData().Object("data",

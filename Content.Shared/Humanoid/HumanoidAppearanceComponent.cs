@@ -17,6 +17,13 @@ public sealed partial class HumanoidAppearanceComponent : Component
     [DataField, AutoNetworkedField]
     public MarkingSet MarkingSet = new();
 
+    [DataField, AutoNetworkedField]
+    public List<Content.Shared._DeepLagoon.Tattoos.Tattoo> Tattoos = new();
+
+    // Owner's runtime preference; hiding does not erase the saved artwork.
+    [DataField, AutoNetworkedField]
+    public bool TattoosEnabled = true;
+
     [DataField]
     public Dictionary<HumanoidVisualLayers, HumanoidSpeciesSpriteLayer> BaseLayers = new();
 

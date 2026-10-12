@@ -20,6 +20,7 @@ namespace Content.Server.Power.EntitySystems;
 /// </remarks>
 public sealed partial class BatteryInterfaceSystem : EntitySystem
 {
+    private static readonly Enum BatteryUiKeyBoxed = BatteryUiKey.Key;
     [Dependency] private UserInterfaceSystem _uiSystem = null!;
 
     public override void Initialize()
@@ -29,7 +30,7 @@ public sealed partial class BatteryInterfaceSystem : EntitySystem
         UpdatesAfter.Add(typeof(PowerNetSystem));
 
         Subs.BuiEvents<BatteryInterfaceComponent>(
-            BatteryUiKey.Key,
+            BatteryUiKeyBoxed,
             subs =>
             {
                 subs.Event<BatterySetInputBreakerMessage>(HandleSetInputBreaker);
@@ -80,12 +81,12 @@ public sealed partial class BatteryInterfaceSystem : EntitySystem
         BatteryComponent battery,
         PowerNetworkBatteryComponent netBattery)
     {
-        if (!_uiSystem.IsUiOpen(uid, BatteryUiKey.Key))
+        if (!_uiSystem.IsUiOpen(uid, BatteryUiKeyBoxed))
             return;
 
         _uiSystem.SetUiState(
             uid,
-            BatteryUiKey.Key,
+            BatteryUiKeyBoxed,
             new BatteryBuiState
             {
                 Capacity = battery.MaxCharge,

@@ -18,10 +18,10 @@ public sealed class TguiActionData
     public bool TryFloat(string key, out float value) => float.TryParse(String(key), NumberStyles.Float, CultureInfo.InvariantCulture, out value)
         && float.IsFinite(value);
 
-    public static bool TryParse(string payload, out TguiActionData? data)
+    public static bool TryParse(string payload, out TguiActionData? data, int maxLength = 8192)
     {
         data = null;
-        if (payload.Length > 8192 || !payload.TrimStart().StartsWith('{')) return false;
+        if (payload.Length > maxLength || !payload.TrimStart().StartsWith('{')) return false;
         try
         {
             using var reader = new StringReader(payload);

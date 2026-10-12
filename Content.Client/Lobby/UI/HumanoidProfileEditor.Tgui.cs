@@ -37,6 +37,33 @@ public sealed partial class HumanoidProfileEditor
     private readonly Dictionary<int, (string Id, string Image, string Status)> _headshotPreviews = new();
     private readonly Dictionary<int, Guid> _headshotReads = new();
     private string _tguiMode = "appearance";
+    private readonly Content.Client._DeepLagoon.Tattoos.TattooEditorData _tattooEditor = new();
+    private string _tattooStatus = "";
+    private bool _tattooFileBusy;
+
+    private async void HandleTattooFileAction(string action, Content.Shared._DeepLagoon.Tattoos.Tattoo template)
+    {
+        var slot = CharacterSlot; _tattooFileBusy = true; _tattooStatus = "Выбор PNG…"; PublishTguiProfile();
+        try
+        {
+            if (action == "tattoo-export")
+                _tattooStatus = await Content.Client._DeepLagoon.Tattoos.TattooFileDialogs.Export(template);
+            else
+            {
+                var result = await Content.Client._DeepLagoon.Tattoos.TattooFileDialogs.Import(template);
+                if (_profileWeb == null || Profile == null || CharacterSlot != slot) return;
+                _tattooStatus = result.Status;
+                if (result.Tattoo == null) return;
+                if (!_cfgManager.GetCVar(Content.Shared._DeepLagoon.Tattoos.TattooCVars.Enabled)
+                    || !Profile.Appearance.Tattoos.Any(t => t.ContentEquals(template)))
+                { _tattooStatus = "Настройки или рисунок изменились. Повторите загрузку PNG."; return; }
+                var appearance = Profile.Appearance.Clone();
+                appearance.Tattoos[appearance.Tattoos.FindIndex(t => t.Id == template.Id)] = result.Tattoo;
+                Profile = Profile.WithCharacterAppearance(appearance); ReloadProfilePreview(); SetDirty();
+            }
+        }
+        finally { _tattooFileBusy = false; if (_profileWeb != null && CharacterSlot == slot) PublishTguiProfile(); }
+    }
     private readonly Control _editorSettingsTab = new();
     private CharacterEditorAppearance _editorAppearance = new();
     private readonly Dictionary<string, string> _companyWebImages = new();
@@ -164,6 +191,7 @@ public sealed partial class HumanoidProfileEditor
         if (mode == "equipment") data.Object("equipment", _personalLoadoutEditor.CreateTguiState());
         if (mode == "markings")
         {
+            data.Object("tattooEditor", _tattooEditor.Build(PreviewDummy, p.Appearance.Tattoos, _tattooStatus).Bool("fileBusy", _tattooFileBusy));
             data.Array("markings", p.Appearance.Markings.Select((marking, index) =>
                 new TguiData().Number("index", index).String("name", Loc.GetString($"marking-{marking.MarkingId}"))
                     .Bool("locked", !_markingManager.TryGetMarking(marking, out var proto) || proto.ForcedColoring || _markingManager.MustMatchSkin(p.Species, proto.BodyPart, out _, _prototypeManager))
@@ -309,6 +337,22 @@ public sealed partial class HumanoidProfileEditor
     public bool HandleTguiProfileAction(string action, string payload)
     {
         if (!TguiActionData.TryParse(payload, out var args)) return false;
+        if (action.StartsWith("tattoo-", StringComparison.Ordinal)
+            && action != "tattoo-preview-direction" && action != "tattoo-remove" && action != "tattoo-clear" && action != "tattoo-export"
+            && !_cfgManager.GetCVar(Content.Shared._DeepLagoon.Tattoos.TattooCVars.Enabled))
+        { _tattooStatus = "Нанесение татуировок выключено в настройках."; PublishTguiProfile(); return false; }
+        if (action is "tattoo-export" or "tattoo-import")
+        {
+            if (_tattooFileBusy || Profile?.Appearance.Tattoos.FirstOrDefault(t => t.Id == args!.String("id")) is not { } selectedTattoo) return false;
+            HandleTattooFileAction(action, selectedTattoo.Clone()); return true;
+        }
+        if (_tattooFileBusy && action.StartsWith("tattoo-", StringComparison.Ordinal)) return false;
+        if (action == "tattoo-bake-chunk")
+        {
+            if (!_tattooEditor.ReceiveBakeChunk(args!, out var completed)) return false;
+            if (completed == null) return true;
+            args = completed; action = "tattoo-bake";
+        }
         if (action == "icons")
         {
             if (args!.String("ids") is not { } ids || _profileWeb == null || Profile == null) return false;
@@ -332,6 +376,25 @@ public sealed partial class HumanoidProfileEditor
         var value = args!.String("value") ?? "";
         var species = _prototypeManager.Index(Profile.Species);
         var valid = true;
+        if (action.StartsWith("tattoo-", StringComparison.Ordinal))
+        {
+            if (action == "tattoo-preview-direction" && args!.TryInt("direction", out var tattooDirection) && tattooDirection is >= 0 and < 4)
+            {
+                _previewRotation = tattooDirection switch { 1 => Direction.North, 2 => Direction.East, 3 => Direction.West, _ => Direction.South };
+                SetPreviewRotation(_previewRotation);
+                return true;
+            }
+            if (Content.Client._DeepLagoon.Tattoos.TattooEditorData.TryApply(action, args!, Profile.Appearance.Tattoos, out var tattoos, out _tattooStatus))
+            {
+                var appearance = Profile.Appearance.Clone();
+                appearance.Tattoos = tattoos;
+                Profile = Profile.WithCharacterAppearance(appearance);
+                ReloadProfilePreview();
+                SetDirty();
+            }
+            PublishTguiProfile();
+            return true;
+        }
         if (action.StartsWith("equipment/", StringComparison.Ordinal))
         {
             var result = _personalLoadoutEditor.HandleTguiAction(action[10..], args);

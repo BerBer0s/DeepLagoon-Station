@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Numerics;
 using Content.Client.Stealth;
 using Content.Shared._White.Overlays;
@@ -114,9 +113,7 @@ public sealed partial class ThermalVisionOverlay : Overlay
                 // Mono End
             }
 
-            if (_entries.Any(e => e.Ent.Owner == entity))
-                continue;
-
+            // Each body UID occurs once; contained bodies were excluded above.
             _entries.Add(new ThermalVisionRenderEntry((entity, sprite, xform), mapId, eyeRot));
         }
 

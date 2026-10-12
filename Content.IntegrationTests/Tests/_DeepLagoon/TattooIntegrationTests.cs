@@ -1,0 +1,256 @@
+using System.Linq;
+using System.Reflection;
+using System.Text.Json;
+using Content.Client.Lobby;
+using Content.Client.Lobby.UI;
+using Content.Client._DeepLagoon.Tattoos;
+using Content.Shared._DeepLagoon.Tattoos;
+using Content.Shared.Hands.EntitySystems;
+using Content.Shared.Humanoid;
+using Content.Shared.Interaction;
+using Content.Shared.Inventory;
+using Content.Shared.Preferences;
+using NUnit.Framework;
+using Robust.Client.GameObjects;
+using Robust.Client.UserInterface;
+using Robust.Shared.GameObjects;
+using Robust.Shared.Map;
+using Content.Server._DeepLagoon.Tattoos;
+using Content.Shared.Humanoid.Markings;
+
+namespace Content.IntegrationTests.Tests._DeepLagoon;
+
+[TestFixture, NonParallelizable]
+public sealed class TattooIntegrationTests
+{
+    private static Tattoo Drawing() => new()
+    {
+        NormalBitmap = Content.Tests._DeepLagoon.TattooTests.Bitmap(),
+        GlowBitmap = Content.Tests._DeepLagoon.TattooTests.Bitmap(true),
+    };
+
+    [Test]
+    public async Task OrdinaryAndLuminousLayersStayBelowClothingAndFollowHiddenBodyParts()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, InLobby = true });
+        await pair.Client.WaitAssertion(() =>
+        {
+            var entities = pair.Client.EntMan;
+            var uid = entities.SpawnEntity("MobHumanDummy", MapCoordinates.Nullspace);
+            try
+            {
+                var profile = HumanoidCharacterProfile.DefaultWithSpecies("Human");
+                profile.Appearance.Markings.Add(new Marking("TattooHiveChest", new[] { Robust.Shared.Maths.Color.Red }));
+                var tattoo = Drawing(); profile.Appearance.Tattoos.Add(tattoo);
+                entities.System<Content.Client.Humanoid.HumanoidAppearanceSystem>().LoadProfile(uid, profile);
+                var humanoid = entities.GetComponent<HumanoidAppearanceComponent>(uid);
+                var sprite = entities.GetComponent<SpriteComponent>(uid);
+                var normalKey = "dl-tattoo/" + tattoo.Id + "/False";
+                var glowKey = "dl-tattoo/" + tattoo.Id + "/True";
+                Assert.That(sprite.LayerMapTryGet(normalKey, out var normal), Is.True);
+                Assert.That(sprite.LayerMapTryGet(glowKey, out var glow), Is.True);
+                Assert.That(sprite.LayerMapTryGet("jumpsuit", out var clothing), Is.True);
+                Assert.That(normal, Is.LessThan(glow));
+                Assert.That(glow, Is.LessThan(clothing));
+                Assert.That(sprite.LayerMapTryGet("TattooHiveChest-tattoo_hive_chest", out var bodyMarking), Is.True);
+                Assert.That(bodyMarking, Is.LessThan(normal), "Both kinds of ink must draw over existing markings.");
+                profile.Appearance.Markings.Clear();
+                profile.Appearance.Markings.Add(new Marking("TattooNightlingChest", new[] { Robust.Shared.Maths.Color.Blue }));
+                entities.System<Content.Client.Humanoid.HumanoidAppearanceSystem>().LoadProfile(uid, profile);
+                Assert.That(sprite.LayerMapTryGet(normalKey, out normal), Is.True);
+                Assert.That(sprite.LayerMapTryGet(glowKey, out glow), Is.True);
+                Assert.That(sprite.LayerMapTryGet("jumpsuit", out clothing), Is.True);
+                Assert.That(sprite.LayerMapTryGet("TattooNightlingChest-tattoo_nightling", out var addedMarking), Is.True);
+                Assert.That(addedMarking, Is.LessThan(normal), "Adding a marking must preserve the cached tattoo's draw order.");
+                Assert.That(glow, Is.LessThan(clothing));
+                Assert.That(((SpriteComponent.Layer) sprite[glow]).ShaderPrototype, Is.EqualTo("DeepLagoonTattooGlow"));
+                foreach (var key in new[] { normalKey, glowKey })
+                {
+                    Assert.That(sprite.LayerMapTryGet(key + "/sampler-guard", out var guard), Is.True);
+                    Assert.That(sprite.LayerMapTryGet(key, out var ink), Is.True);
+                    Assert.That(guard, Is.EqualTo(ink - 1), "The sampler reset must draw immediately before its ink.");
+                    var resetLayer = (SpriteComponent.Layer) sprite[guard];
+                    var inkLayer = (SpriteComponent.Layer) sprite[ink];
+                    Assert.That(resetLayer.ShaderPrototype, Is.EqualTo(inkLayer.ShaderPrototype));
+                    Assert.That(resetLayer.Shader, Is.Not.SameAs(inkLayer.Shader));
+                    Assert.That(resetLayer.CopyToShaderParameters, Is.Null, "The reset must issue a draw, not merely set parameters.");
+                }
+                Assert.That(sprite[normal].Visible && sprite[glow].Visible, Is.True);
+                pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, false);
+                Assert.That(sprite[normal].Visible || sprite[glow].Visible, Is.False, "The viewer preference hides other people's ink immediately.");
+                Assert.That(sprite[normal - 1].Visible || sprite[glow - 1].Visible, Is.False);
+                pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, true);
+                Assert.That(sprite[normal].Visible && sprite[glow].Visible, Is.True);
+                humanoid.TattoosEnabled = false;
+                entities.System<TattooVisualizerSystem>().UpdateVisibility(uid, humanoid, sprite);
+                Assert.That(sprite[normal].Visible || sprite[glow].Visible, Is.False, "The owner's opt-out hides ink from a viewer who opted in.");
+                Assert.That(humanoid.Tattoos.Single().ContentEquals(tattoo), Is.True);
+                humanoid.TattoosEnabled = true;
+                entities.System<TattooVisualizerSystem>().UpdateVisibility(uid, humanoid, sprite);
+                Assert.That(sprite[normal].Visible && sprite[glow].Visible, Is.True);
+                humanoid.HiddenLayers[HumanoidVisualLayers.Chest] = SlotFlags.OUTERCLOTHING;
+                entities.System<TattooVisualizerSystem>().UpdateVisibility(uid, humanoid, sprite);
+                Assert.That(sprite[normal].Visible || sprite[glow].Visible, Is.False);
+                Assert.That(sprite[normal - 1].Visible || sprite[glow - 1].Visible, Is.False);
+                humanoid.HiddenLayers.Clear();
+                entities.System<TattooVisualizerSystem>().UpdateVisibility(uid, humanoid, sprite);
+                Assert.That(sprite[normal].Visible && sprite[glow].Visible, Is.True);
+                humanoid.PermanentlyHidden.Add(HumanoidVisualLayers.Chest);
+                entities.System<TattooVisualizerSystem>().UpdateVisibility(uid, humanoid, sprite);
+                Assert.That(sprite[normal].Visible || sprite[glow].Visible, Is.False);
+            }
+            finally { entities.DeleteEntity(uid); }
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
+    public async Task MachineRequiresHeldToolOpenSkinAndCurrentRevision()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, Connected = true });
+        var map = await pair.CreateTestMap();
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            var artist = entities.SpawnEntity("MobHuman", map.GridCoords);
+            var target = entities.SpawnEntity("MobHuman", map.GridCoords);
+            var machine = entities.SpawnEntity("DLTattooMachine", map.GridCoords);
+            var session = pair.Server.PlayerMan.Sessions.Single();
+            pair.Server.PlayerMan.SetAttachedEntity(session, artist);
+            var hands = entities.System<SharedHandsSystem>();
+            Assert.That(hands.TryPickupAnyHand(artist, machine, animate: false), Is.True);
+            entities.EventBus.RaiseLocalEvent(machine, new AfterInteractEvent(artist, machine, target, map.GridCoords, true));
+            var tool = entities.GetComponent<TattooMachineComponent>(machine);
+            Assert.That(tool.Target, Is.EqualTo(target));
+            var humanoid = entities.GetComponent<HumanoidAppearanceComponent>(target);
+            var drawing = Drawing();
+            void Apply(Tattoo tattoo, int revision, EntityUid actor) => entities.EventBus.RaiseLocalEvent(machine,
+                new TattooMachineApplyMessage([tattoo], revision) { Actor = actor, UiKey = TattooMachineUiKey.Key });
+            Apply(drawing, 1, artist);
+            Assert.That(humanoid.Tattoos.Single().ContentEquals(drawing), Is.True);
+            var changed = drawing.Clone(); changed.X = .6f;
+            humanoid.HiddenLayers[HumanoidVisualLayers.Chest] = SlotFlags.OUTERCLOTHING;
+            Apply(changed, 2, artist);
+            Assert.That(humanoid.Tattoos[0].X, Is.EqualTo(.5f));
+            humanoid.HiddenLayers.Clear();
+            Apply(changed, 2, artist);
+            Assert.That(humanoid.Tattoos[0].X, Is.EqualTo(.6f));
+            Apply(drawing, 2, artist);
+            Assert.That(humanoid.Tattoos[0].X, Is.EqualTo(.6f), "A stale draft must not overwrite a newer drawing");
+            Apply(drawing, 3, target);
+            Assert.That(humanoid.Tattoos[0].X, Is.EqualTo(.6f), "Another actor cannot use this machine session");
+            entities.DeleteEntity(machine);
+            entities.DeleteEntity(target);
+            entities.DeleteEntity(artist);
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
+    public async Task DisabledPreferenceReplicatesAndRejectsAlreadyOpenMachine()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, Connected = true });
+        var map = await pair.CreateTestMap();
+        EntityUid artist = default, target = default, machine = default;
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            artist = entities.SpawnEntity("MobHuman", map.GridCoords);
+            target = entities.SpawnEntity("MobHuman", map.GridCoords);
+            machine = entities.SpawnEntity("DLTattooMachine", map.GridCoords);
+            pair.Server.PlayerMan.SetAttachedEntity(pair.Server.PlayerMan.Sessions.Single(), artist);
+            Assert.That(entities.System<SharedHandsSystem>().TryPickupAnyHand(artist, machine, animate: false), Is.True);
+            entities.EventBus.RaiseLocalEvent(machine, new AfterInteractEvent(artist, machine, target, map.GridCoords, true));
+            Assert.That(entities.GetComponent<TattooMachineComponent>(machine).Target, Is.EqualTo(target));
+        });
+        await pair.Client.WaitPost(() => pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, false));
+        await pair.RunTicksSync(30);
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            Assert.That(entities.GetComponent<HumanoidAppearanceComponent>(artist).TattoosEnabled, Is.False);
+            Assert.That(entities.System<TattooMachineSystem>().TattoosAllowed(artist), Is.False);
+            entities.EventBus.RaiseLocalEvent(machine, new TattooMachineApplyMessage([Drawing()], 1) { Actor = artist, UiKey = TattooMachineUiKey.Key });
+            Assert.That(entities.GetComponent<HumanoidAppearanceComponent>(target).Tattoos, Is.Empty);
+            var interaction = new AfterInteractEvent(artist, machine, target, map.GridCoords, true);
+            entities.EventBus.RaiseLocalEvent(machine, interaction);
+            Assert.That(interaction.Handled, Is.False, "A disabled artist cannot reopen the machine.");
+        });
+        await pair.Client.WaitPost(() => pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, true));
+        await pair.RunTicksSync(30);
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            Assert.That(entities.GetComponent<HumanoidAppearanceComponent>(artist).TattoosEnabled, Is.True);
+            entities.GetComponent<HumanoidAppearanceComponent>(target).TattoosEnabled = false;
+            var interaction = new AfterInteractEvent(artist, machine, target, map.GridCoords, true);
+            entities.EventBus.RaiseLocalEvent(machine, interaction);
+            Assert.That(interaction.Handled, Is.False, "An enabled artist cannot tattoo an opted-out target.");
+            entities.GetComponent<HumanoidAppearanceComponent>(target).TattoosEnabled = true;
+            interaction = new AfterInteractEvent(artist, machine, target, map.GridCoords, true);
+            entities.EventBus.RaiseLocalEvent(machine, interaction);
+            Assert.That(interaction.Handled, Is.True);
+            entities.EventBus.RaiseLocalEvent(machine, new TattooMachineApplyMessage([Drawing()], 2) { Actor = artist, UiKey = TattooMachineUiKey.Key });
+            Assert.That(entities.GetComponent<HumanoidAppearanceComponent>(target).Tattoos, Has.Count.EqualTo(1));
+            entities.DeleteEntity(machine); entities.DeleteEntity(target); entities.DeleteEntity(artist);
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
+    public async Task ProfileTguiDrawingSurvivesAppearanceEditsAndPublishesBodyMasks()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, InLobby = true });
+        await pair.Client.WaitAssertion(() =>
+        {
+            var ui = pair.Client.ResolveDependency<IUserInterfaceManager>();
+            var lobby = ui.GetUIController<LobbyUIController>();
+            lobby.OpenCharacterEditor();
+            var window = ui.WindowRoot.Children.OfType<CharacterEditorWindow>().Single();
+            var editor = (HumanoidProfileEditor) typeof(LobbyUIController).GetField("_profileEditor", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lobby)!;
+            editor.SetProfile(HumanoidCharacterProfile.DefaultWithSpecies("Human"), editor.CharacterSlot);
+            pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, false);
+            Assert.That(editor.HandleTguiProfileAction("tattoo-add", "{\"part\":\"Chest\",\"direction\":0}"), Is.False);
+            pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, true);
+            Assert.That(editor.HandleTguiProfileAction("tattoo-add", "{\"part\":\"Chest\",\"direction\":0}"), Is.True);
+            var tattoo = editor.Profile!.Appearance.Tattoos.Single();
+            Assert.That(editor.HandleTguiProfileAction("tattoo-stroke", JsonSerializer.Serialize(new
+            { id = tattoo.Id, points = ".4,.4;.6,.6", width = .02f, color = "#44FFAAFF", glow = true, erase = false })), Is.True);
+            var baked = JsonSerializer.Serialize(new { id = tattoo.Id, normal = "", glow = Content.Tests._DeepLagoon.TattooTests.Bitmap(true) });
+            for (var offset = 0; offset < baked.Length; offset += 1000)
+                Assert.That(editor.HandleTguiProfileAction("tattoo-bake-chunk", JsonSerializer.Serialize(new
+                { id = tattoo.Id, index = offset / 1000, count = (baked.Length + 999) / 1000, text = baked.Substring(offset, System.Math.Min(1000, baked.Length - offset)) })), Is.True);
+            Assert.That(editor.HandleTguiProfileAction("width", "{\"value\":0.95}"), Is.True);
+            Assert.That(editor.Profile.Appearance.Tattoos.Single().Strokes, Is.Empty);
+            Assert.That(editor.Profile.Appearance.Tattoos.Single().GlowBitmap, Is.Not.Empty);
+            Assert.That(editor.IsDirty, Is.True);
+            using var state = JsonDocument.Parse(editor.CreateTguiProfileState("markings").ToString());
+            var frames = state.RootElement.GetProperty("tattooEditor").GetProperty("parts").EnumerateArray()
+                .Single(p => p.GetProperty("id").GetString() == "Chest").GetProperty("frames").EnumerateArray().ToArray();
+            Assert.That(frames.Length, Is.EqualTo(4));
+            Assert.That(frames.All(f => f.GetProperty("image").GetString()!.StartsWith("data:image/png;base64,")), Is.True);
+            Assert.That(frames.Select(f => f.GetProperty("image").GetString()).Distinct().Count(), Is.GreaterThan(1));
+            Assert.That(frames.All(f => f.GetProperty("previewImage").GetString()!.StartsWith("data:image/png;base64,")), Is.True);
+            var rawSkin = frames.Select(f => f.GetProperty("image").GetString()).ToArray();
+            var beforeMarking = frames.Select(f => f.GetProperty("previewImage").GetString()).ToArray();
+            Assert.That(editor.HandleTguiProfileAction("marking-add", "{\"value\":\"TattooHiveChest\"}"), Is.True);
+            using var updated = JsonDocument.Parse(editor.CreateTguiProfileState("markings").ToString());
+            var after = updated.RootElement.GetProperty("tattooEditor").GetProperty("parts").EnumerateArray()
+                .Single(p => p.GetProperty("id").GetString() == "Chest").GetProperty("frames").EnumerateArray().ToArray();
+            Assert.That(after.Select(f => f.GetProperty("image").GetString()), Is.EqualTo(rawSkin), "A marking does not change the clipping contour.");
+            Assert.That(after.All(f => f.GetProperty("previewImage").GetString()!.StartsWith("data:image/png;base64,")), Is.True);
+            Assert.That(after.Where((f, i) => f.GetProperty("previewImage").GetString() != beforeMarking[i]), Is.Not.Empty,
+                "The real marking must be visible in its own direction behind the drawing surface.");
+            var preserved = editor.Profile.Appearance.Tattoos.Single().Clone();
+            pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, false);
+            Assert.That(editor.HandleTguiProfileAction("tattoo-clear", "{}"), Is.True);
+            Assert.That(editor.Profile.Appearance.Tattoos, Is.Empty, "Clearing remains available even when new tattoos are disabled.");
+            Assert.That(preserved.GlowBitmap, Is.Not.Empty);
+            Assert.That(editor.IsDirty, Is.True);
+            pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, true);
+            editor.ResetToDefault();
+            window.CloseConfirmed();
+        });
+        await pair.CleanReturnAsync();
+    }
+}

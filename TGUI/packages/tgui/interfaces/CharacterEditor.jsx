@@ -11,6 +11,7 @@ import { CharacterHeadshots } from './CharacterHeadshots';
 import { EquipmentBrowser } from './EquipmentBrowser';
 import { filter as fuzzyFilter } from './fuzzySearch'; // DeepLagoon: fuzzy search
 import { CharacterEditorSettings, editorAppearance } from './CharacterEditorSettings';
+import { TattooEditor } from './TattooStudio';
 import { configureNativeChatBackground, clearNativeChatBackground } from '../../tgui-panel/chat/nativeBackground';
 
 const Field = ({ label, children }) => <label className="CharacterEditor__field"><span>{label}</span>{children}</label>;
@@ -211,6 +212,14 @@ export const CharacterEditor = () => {
       {[['flavor','Описание персонажа',data.flavorText],['ooc','OOC заметки',data.oocNotes]].map(([key,label,value])=><Section key={key} title={label}><CharacterTextEditor label={label} value={value||''} maxLength={data.maxFlavorLength} onChange={change(key)} /><details><summary>Предпросмотр форматирования</summary><div className="CharacterText"><CharacterText text={value}/></div></details></Section>)}
     </>}
     {data.mode === 'markings' && <>
+      <details className="CharacterEditor__tattoos">
+        <summary>Татуировки ({data.tattooEditor?.tattoos?.length || 0})</summary>
+        <Section>
+          <Button role="button" color="bad" disabled={!data.tattooEditor?.tattoos?.length || data.tattooEditor?.fileBusy} onClick={() => act('tattoo-clear')}>Очистить все татуировки</Button>
+          <p>Создавайте и рисуйте татуировки прямо здесь — тату-машинка и предметы в руках не нужны.</p>
+          <TattooEditor data={data.tattooEditor} act={act} />
+        </Section>
+      </details>
       <Section title="Выбранные особенности">{(data.markings||[]).map(marking=><div key={marking.index}>
         <strong>{marking.name}</strong><Button onClick={()=>act('marking-remove',{index:marking.index})}>Удалить</Button>
         <Button onClick={()=>act('marking-move',{index:marking.index,value:-1})}>↑</Button><Button onClick={()=>act('marking-move',{index:marking.index,value:1})}>↓</Button>

@@ -131,34 +131,43 @@
                             Math.Min(Owner.PixelHeight, bufImg.Height)));
                 }",
                 @"                var renderer = _data.Renderer;
-                lock (renderer.Buffer)
+                Rgba32[]? upload = null;
+                var bounds = default(UIBox2i);
+                var count = 0;
+                try
                 {
-                    if (renderer.IsDirty)
+                    lock (renderer.Buffer)
                     {
-                        var image = renderer.Buffer.Buffer;
-                        var bounds = renderer.FullUpload ? new UIBox2i(0, 0, image.Width, image.Height) : renderer.DirtyRegion;
-                        bounds = new UIBox2i(Math.Max(0, bounds.Left), Math.Max(0, bounds.Top),
-                            Math.Min(Math.Min(image.Width, _data.Texture.Width), bounds.Right),
-                            Math.Min(Math.Min(image.Height, _data.Texture.Height), bounds.Bottom));
-                        if (bounds.Right > bounds.Left && bounds.Bottom > bounds.Top)
+                        if (renderer.IsDirty)
                         {
-                            // The stock engine's Image overload rejects non-zero source origins.
-                            // Copy the dirty rows into a compact span for its supported span overload.
-                            var count = bounds.Width * bounds.Height;
-                            var upload = System.Buffers.ArrayPool<Rgba32>.Shared.Rent(count);
-                            try
+                            var image = renderer.Buffer.Buffer;
+                            bounds = renderer.FullUpload ? new UIBox2i(0, 0, image.Width, image.Height) : renderer.DirtyRegion;
+                            bounds = new UIBox2i(Math.Max(0, bounds.Left), Math.Max(0, bounds.Top),
+                                Math.Min(Math.Min(image.Width, _data.Texture.Width), bounds.Right),
+                                Math.Min(Math.Min(image.Height, _data.Texture.Height), bounds.Bottom));
+                            if (bounds.Right > bounds.Left && bounds.Bottom > bounds.Top)
                             {
+                                // Snapshot dirty pixels while CEF's paint buffer is locked.
+                                count = bounds.Width * bounds.Height;
+                                upload = System.Buffers.ArrayPool<Rgba32>.Shared.Rent(count);
                                 var pixels = ImageOps.GetPixelSpan(image);
                                 for (var row = 0; row < bounds.Height; row++)
                                     pixels.Slice((bounds.Top + row) * image.Width + bounds.Left, bounds.Width)
                                         .CopyTo(upload.AsSpan(row * bounds.Width, bounds.Width));
-                                _data.Texture.SetSubImage<Rgba32>(bounds.TopLeft, bounds.Size, upload.AsSpan(0, count));
                             }
-                            finally { System.Buffers.ArrayPool<Rgba32>.Shared.Return(upload); }
+                            renderer.IsDirty = false;
+                            renderer.FullUpload = false;
                         }
-                        renderer.IsDirty = false;
-                        renderer.FullUpload = false;
                     }
+
+                    // GPU uploads can block; allow CEF to paint its next frame meanwhile.
+                    // The cleared dirty flags belong to the snapshot, not subsequent paints.
+                    if (upload != null)
+                        _data.Texture.SetSubImage<Rgba32>(bounds.TopLeft, bounds.Size, upload.AsSpan(0, count));
+                }
+                finally
+                {
+                    if (upload != null) System.Buffers.ArrayPool<Rgba32>.Shared.Return(upload);
                 }"
             },
             new[] {
