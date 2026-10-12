@@ -1,4 +1,3 @@
-using Content.Shared.Administration;
 using Content.Client.UserInterface.Controls;
 using System.Numerics;
 using Robust.Shared.Console;
@@ -23,7 +22,8 @@ using Robust.Shared.Timing;
 namespace Content.Client._DeepLagoon.WebUI;
 
 /// <summary>Developer preview. Actual game actions use WebUiBoundUserInterface.</summary>
-[AnyCommand]
+// Admins with the DEBUG flag only: client commands get their flags from Resources/clientCommandPerms.yml
+// (AdminCommandAttribute is server-side).
 public sealed class WebUiPreviewCommand : IConsoleCommand
 {
     public string Command => "tgui_preview";
