@@ -13,7 +13,6 @@ using Robust.Shared.Serialization.Markdown;
 using Robust.Shared.Serialization.Markdown.Mapping;
 using Robust.Shared.Serialization.Markdown.Sequence;
 using Robust.Shared.Serialization.Markdown.Value;
-using Robust.Shared.Timing;
 using Robust.Shared.Utility;
 using Robust.Shared.Console;
 using Robust.Client.Input;
@@ -235,19 +234,10 @@ public sealed partial class GridEditorSystem : EntitySystem
         if (shuttingDown) window.Panel.Web.PrepareForShutdown();
         else window.Panel.Web.ReleaseTextInput();
         window.ForceClose();
-        if (shuttingDown)
-        {
+        // The browser control itself is disposed later (WebViewRelease, CEF lifetime workaround).
 #pragma warning disable CS0618
-            if (!window.Disposed) window.Dispose();
+        if (!window.Disposed) window.Dispose();
 #pragma warning restore CS0618
-            return;
-        }
-        Timer.Spawn(3000, () =>
-        {
-#pragma warning disable CS0618
-            if (!window.Disposed) window.Dispose();
-#pragma warning restore CS0618
-        });
     }
 }
 

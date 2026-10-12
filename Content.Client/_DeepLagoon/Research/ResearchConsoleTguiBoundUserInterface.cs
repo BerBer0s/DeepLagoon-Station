@@ -8,7 +8,6 @@ using Robust.Client.GameObjects;
 using Robust.Client.Player;
 using Robust.Client.UserInterface;
 using Robust.Shared.Prototypes;
-using Robust.Shared.Timing;
 
 namespace Content.Client._DeepLagoon.Research;
 
@@ -21,12 +20,6 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
 {
     private const string InterfaceName = "ResearchConsole";
     private const int MaxIconRequest = 128;
-
-    // The embedded browser is closed with the window, but CEF keeps querying the control's view rect
-    // for a moment afterwards; the engine answers a disposed control with an empty rect, which crashes
-    // libcef. Opening and closing quickly hits that race, so the window object outlives its browser.
-    // TEMPORARY: remove together with the delayed Dispose once the engine's GetViewRect is fixed.
-    private const int WindowDisposeDelayMs = 3000;
 
     private ResearchConsoleTguiWindow? _window;
     private ResearchConsoleTguiData? _data;
@@ -84,14 +77,10 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
             _window = null;
             window.OnClose -= Close;
             window.Close();
-            Timer.Spawn(WindowDisposeDelayMs, () =>
-            {
-                // Disposing releases the browser's text input; BUI-owned windows are disposed the same way.
+            // The browser control itself is disposed later (WebViewRelease, CEF lifetime workaround).
 #pragma warning disable CS0618
-                if (!window.Disposed)
-                    window.Dispose();
+            window.Dispose();
 #pragma warning restore CS0618
-            });
         }
 
         base.Dispose(disposing);

@@ -7,7 +7,6 @@ using Content.Shared.Materials;
 using Content.Shared.Research.Components;
 using Robust.Client.UserInterface;
 using Robust.Shared.Prototypes;
-using Robust.Shared.Timing;
 
 namespace Content.Client.Lathe.UI;
 
@@ -21,13 +20,6 @@ public sealed partial class LatheBoundUserInterface
     private const string InterfaceName = "LatheConsole";
     private const int MaxIconRequest = 128;
     private const int MaxQuantity = 999;
-
-    // The embedded browser is closed with the window, but CEF keeps querying the control's view rect
-    // for a moment afterwards; the engine answers a disposed control with an empty rect, which crashes
-    // libcef. Lathes are opened and closed all the time, so the window object outlives its browser.
-    // TEMPORARY: remove together with the same delay in ResearchConsoleTguiBoundUserInterface once the
-    // engine's GetViewRect is fixed.
-    private const int WindowDisposeDelayMs = 3000;
 
     // If the page has not reported in by then (no CEF, a broken bundle), the native menu opens instead.
     private const float ReadyTimeoutSeconds = 8f;
@@ -121,14 +113,10 @@ public sealed partial class LatheBoundUserInterface
         SavedPositions[Owner] = window.Position;
 
         window.Close();
-        Timer.Spawn(WindowDisposeDelayMs, () =>
-        {
-            // Disposing releases the browser's text input; BUI-owned windows are disposed the same way.
+        // The browser control itself is disposed later (WebViewRelease, CEF lifetime workaround).
 #pragma warning disable CS0618
-            if (!window.Disposed)
-                window.Dispose();
+        window.Dispose();
 #pragma warning restore CS0618
-        });
     }
 
     private void SwitchToClassic()

@@ -290,8 +290,7 @@ public sealed class GameWebView : Control
         ReleaseTextInput();
         _view.RemoveBeforeBrowseHandler(BeforeBrowse);
         _view.RemoveResourceRequestHandler(ResourceRequest);
-        _view.Orphan();
-        _view.Dispose();
+        WebViewRelease.CloseNowDisposeLater(_view);
         // StartBrowser allocates a 1x1 texture. A fresh control guarantees that
         // layout invokes Resized even when the resumed viewport has the same size.
         _view = CreateView();
@@ -303,7 +302,7 @@ public sealed class GameWebView : Control
         _disposed = true;
         _view.RemoveBeforeBrowseHandler(BeforeBrowse);
         _view.RemoveResourceRequestHandler(ResourceRequest);
-        if (_view.Parent == null) _view.Dispose();
+        WebViewRelease.CloseNowDisposeLater(_view);
         base.Dispose(disposing);
     }
 }

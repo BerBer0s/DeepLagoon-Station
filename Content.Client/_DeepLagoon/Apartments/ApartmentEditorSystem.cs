@@ -175,13 +175,10 @@ public sealed partial class ApartmentEditorSystem : EntitySystem
         if (window == null) return;
         window.Panel.Web.ReleaseTextInput();
         window.Close();
-        // Same CEF lifetime workaround used by existing TGUI windows.
-        Timer.Spawn(3000, () =>
-        {
+        // The browser control itself is disposed later (WebViewRelease, CEF lifetime workaround).
 #pragma warning disable CS0618
-            if (!window.Disposed) window.Dispose();
+        window.Dispose();
 #pragma warning restore CS0618
-        });
     }
 
     public override void Update(float frameTime)
