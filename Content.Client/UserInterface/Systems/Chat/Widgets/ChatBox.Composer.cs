@@ -72,7 +72,7 @@ public partial class ChatBox
             ",\"channel\":" + GameWebView.Quote(((uint) SelectedChannel).ToString()) +
             ",\"emoteChannel\":" + GameWebView.Quote(((uint) ChatSelectChannel.Emotes).ToString()) +
             ",\"maxLength\":" + _controller.MaxMessageLength +
-            ",\"channels\":[" + string.Join(",", channels) + "]}", "Чат");
+            ",\"channels\":[" + string.Join(",", channels) + "]}", Loc.GetString("dl-chat-composer-title")); // DeepLagoon: tgui fix
     }
 
     private void OnComposerChannelsChanged(ChatSelectChannel channels)

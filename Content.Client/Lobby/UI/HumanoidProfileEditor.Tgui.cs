@@ -129,7 +129,11 @@ public sealed partial class HumanoidProfileEditor
         if (Profile is not { } p) return data;
         data.Array("previewSlots", _personalLoadoutEditor.CreateTguiSlots(PreviewDummy));
         data.Array("tabs", Enumerable.Range(0, TabContainer.ChildCount).Select(i => new TguiData().Number("id", i)
-            .String("name", TguiTabMode(i) switch { "settings" => "Настройки", "appearance" => "Основное", "jobs" => "Профессии", "traits" => "Черты", "company" => "Компания", "markings" => "Внешность", "equipment" => "Снаряжение", "saved" => "Сохранённые предметы", _ => "Описание" })
+            .String("name", Loc.GetString("dl-character-editor-tab-" + TguiTabMode(i) switch // DeepLagoon: tgui fix
+            {
+                var known and ("settings" or "appearance" or "jobs" or "traits" or "company" or "markings" or "equipment" or "saved") => known,
+                _ => "flavor",
+            }))
             .String("mode", TguiTabMode(i))));
         if (mode == "saved") data.Array("savedItems", _savedItemEntities.Where(_entManager.EntityExists).Select(entity =>
             new TguiData().String("name", _entManager.GetComponent<MetaDataComponent>(entity).EntityName)
