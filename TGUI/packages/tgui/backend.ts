@@ -52,6 +52,8 @@ const initialState = {
   data: {},
   shared: {},
   outgoingPayloadQueues: {} as Record<string, string[]>,
+  // Top-level data keys of the last full state (see backend/update).
+  fullDataKeys: [] as string[],
   // Start as suspended
   suspended: Date.now(),
   suspending: false,
@@ -72,6 +74,18 @@ export const backendReducer = (state = initialState, action) => {
       ...payload.static_data,
       ...payload.data,
     };
+    // DeepLagoon: a full state (TguiPanel publishes config together with data) replaces the previous
+    // full state: a key it no longer has is removed instead of keeping a stale value. Static data and
+    // partial updates (data only: icon batches, statuses, acks) still merge and stay.
+    let fullDataKeys = state.fullDataKeys;
+    if (payload.config && payload.data) {
+      for (const key of fullDataKeys) {
+        if (!(key in payload.data)) {
+          delete data[key];
+        }
+      }
+      fullDataKeys = Object.keys(payload.data);
+    }
     // Merge shared states
     const shared = { ...state.shared };
     if (payload.shared) {
@@ -90,6 +104,7 @@ export const backendReducer = (state = initialState, action) => {
       ...state,
       config,
       data,
+      fullDataKeys,
       shared,
       suspended: false,
     };
@@ -118,6 +133,7 @@ export const backendReducer = (state = initialState, action) => {
     return {
       ...state,
       data: {},
+      fullDataKeys: [],
       shared: {},
       config: {
         ...state.config,
