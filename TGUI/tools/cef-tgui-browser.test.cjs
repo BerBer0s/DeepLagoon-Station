@@ -22,8 +22,27 @@ const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
     const page = await browser.newPage({ viewport: { width: 1100, height: 760 } });
     const errors = [];
     page.on('pageerror', error => errors.push(String(error)));
-    await page.addInitScript(({ png }) => {
+    const transport = process.env.BRIDGE_TRANSPORT || 'image';
+    await page.addInitScript(({ png, transport }) => {
       window.__sent = [];
+      window.__fetchBridgeRequests = 0;
+      window.__deeplagoonFetchBridge = transport === 'fetch';
+      const respond = message => {
+        if (message.type === 'act/icons') {
+          window.update(JSON.stringify({ type: 'update', payload: { data: { iconBatch: { icons:
+            message.payload.ids.split(',').map(id => ({ id, layers: [{ url: png, color: '#ffffff' }] })) } } } }));
+        }
+      };
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = async (url, options) => {
+        if (!url.startsWith('res://deeplagoon/Web/DeepLagoon/bridge?')) return nativeFetch(url, options);
+        const [type, payload] = url.split('?')[1].split('&');
+        const message = { type: decodeURIComponent(type), payload: JSON.parse(decodeURIComponent(payload)) };
+        window.__fetchBridgeRequests++;
+        window.__sent.push(message);
+        queueMicrotask(() => respond(message));
+        return { ok: true, arrayBuffer: async () => new ArrayBuffer(0) };
+      };
       const NativeImage = window.Image;
       window.Image = class extends NativeImage {
         set src(value) {
@@ -33,14 +52,11 @@ const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
           window.__sent.push(message);
           queueMicrotask(() => {
             this.onload?.(new Event('load'));
-            if (message.type === 'act/icons') {
-              window.update(JSON.stringify({ type: 'update', payload: { data: { iconBatch: { icons:
-                message.payload.ids.split(',').map(id => ({ id, layers: [{ url: png, color: '#ffffff' }] })) } } } }));
-            }
+            respond(message);
           });
         }
       };
-    }, { png });
+    }, { png, transport });
     await page.goto(`http://127.0.0.1:${server.address().port}/interface.html`);
     await page.waitForFunction(() => window.__tguiAppBooted__);
     const state = { available: true, mode: 'appearance', name: 'Test', age: 25, sex: 0, gender: 0, spawn: 0,
@@ -55,10 +71,11 @@ const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
     await page.getByText('Выбор причёски', { exact: true }).waitFor();
     assert.equal(await page.evaluate(() => window.__sent.filter(m => m.type === 'act/icons').length), 0, 'Collapsed hair catalogue must not decode icons');
     await page.getByText('Выбор причёски', { exact: true }).click();
+    await page.locator('.HairCarousel__track').first().scrollIntoViewIfNeeded();
     await page.waitForFunction(() => window.__sent.some(m => m.type === 'act/icons'));
     const visibleIds = await page.evaluate(() => window.__sent.filter(m => m.type === 'act/icons').flatMap(m => m.payload.ids.split(',')));
     assert.ok(visibleIds.length > 0 && visibleIds.length <= 8, `Only visible hair icons requested: ${visibleIds.length}`);
-    await page.locator('.HairCarousel__track').evaluate(track => { track.scrollLeft = track.clientWidth * 2; });
+    await page.locator('.HairCarousel__track').first().evaluate(track => { track.scrollLeft = track.clientWidth * 2; });
     await page.waitForFunction(count => window.__sent.filter(m => m.type === 'act/icons').flatMap(m => m.payload.ids.split(',')).length > count, visibleIds.length);
     await publish({ ...state, hairColor: '#123456' });
     await page.evaluate(() => window.DeepLagoonHealth.ping());
@@ -67,6 +84,7 @@ const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
     await page.getByText('Выберите персонажа.', { exact: false }).waitFor();
     assert.equal(await page.locator('.HairCarousel').count(), 0);
     assert.deepEqual(errors, []);
+    assert.equal(await page.evaluate(() => window.__fetchBridgeRequests > 0), transport === 'fetch');
     console.log(`PASS: production boot, collapsed catalogue, ${visibleIds.length} visible icons, carousel lazy loading, colour update, health pong, empty profile, no JS errors`);
   } finally {
     await browser?.close();

@@ -101,7 +101,7 @@ public sealed class WikiGuidebookWindow : FancyWindow
         if (_web.Visible)
         {
             _loadSeconds += args.DeltaSeconds;
-            if (_ensureViewport && !_web.IsLoading && _loadSeconds >= 1)
+            if (!WebViewCapabilities.NativeLifecycle && _ensureViewport && !_web.IsLoading && _loadSeconds >= 1)
             {
                 // CEF can finish creating its initial 1x1 surface after layout.
                 _web.Arrange(UIBox2.FromDimensions(Vector2.Zero, _web.Size + Vector2.One));

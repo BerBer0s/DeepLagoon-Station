@@ -7,29 +7,44 @@ const { test } = require('node:test');
 const bridge = fs.readFileSync(path.resolve(__dirname,
   '../../Resources/Web/DeepLagoon/bridge.js'), 'utf8');
 
-function createPage(name = 'chat.html') {
+function createPage(name = 'chat.html', options = {}) {
   const listeners = {};
   const messages = [];
+  const transports = [];
+  const record = url => {
+    const [type, payload] = url.split('?')[1].split('&');
+    messages.push({ type: decodeURIComponent(type), ...JSON.parse(decodeURIComponent(payload)) });
+  };
   const document = {
     activeElement: null,
     addEventListener: (type, callback) => (listeners[type] ??= []).push(callback),
   };
   class Image {
     set src(url) {
-      const [type, payload] = url.split('?')[1].split('&');
-      messages.push({ type: decodeURIComponent(type), ...JSON.parse(decodeURIComponent(payload)) });
+      transports.push('image');
+      record(url);
       this.onload();
     }
   }
   const windowListeners = {};
   const window = {
     addEventListener: (type, callback) => (windowListeners[type] ??= []).push(callback),
+    __deeplagoonFetchBridge: Boolean(options.native),
+    fetch: async (url, requestOptions) => {
+      transports.push('fetch');
+      assert.equal(requestOptions.mode, 'same-origin');
+      assert.equal(requestOptions.credentials, 'omit');
+      if (options.failFetch) throw new Error('Unsupported custom scheme');
+      record(url);
+      return { ok: true, arrayBuffer: async () => new ArrayBuffer(0) };
+    },
   };
   vm.runInNewContext(bridge, {
     window, document, Image, location: { pathname: `/Web/DeepLagoon/${name}` }, queueMicrotask, setTimeout, console,
   });
   return {
     messages,
+    transports,
     async topic(value) {
       window.Byond.topic(value);
       await new Promise(resolve => setImmediate(resolve));
@@ -67,6 +82,46 @@ test('reading chat never requests keyboard focus', async () => {
   const page = createPage();
   await page.focus(background);
   assert.deepEqual(page.messages, []);
+});
+
+test('native bridge sends a large ASCII state in one fetch request', async () => {
+  const page = createPage('interface.html', { native: true });
+  await page.topic({ type: 'panel/state_set', panel_state: JSON.stringify({ value: 'a'.repeat(16000) }) });
+  assert.deepEqual(page.transports, ['fetch']);
+  assert.equal(page.messages[0].type, 'panel/state_set');
+  assert.equal(page.messages[0].value.length, 16000);
+});
+
+test('native bridge still chunks percent-encoded Unicode states within the URL limit', async () => {
+  const page = createPage('interface.html', { native: true });
+  const value = 'абв🙂'.repeat(4000);
+  await page.topic({ type: 'panel/state_set', panel_state: JSON.stringify({ value }) });
+  assert.ok(page.messages.length > 5);
+  assert.ok(page.transports.every(transport => transport === 'fetch'));
+  page.messages.forEach((message, index) => {
+    assert.equal(message.type, 'bridge/chunk');
+    assert.equal(message.index, index);
+  });
+  assert.equal(JSON.parse(page.messages.map(message => message.text).join('')).value, value);
+});
+
+test('native bridge preserves message order', async () => {
+  const page = createPage('interface.html', { native: true });
+  await Promise.all([
+    page.topic({ type: 'act/first', payload: { value: 1 } }),
+    page.topic({ type: 'act/second', payload: { value: 2 } }),
+  ]);
+  assert.deepEqual(page.messages.map(message => message.type), ['act/first', 'act/second']);
+});
+
+test('unsupported native fetch falls back to the old image bridge', async () => {
+  const page = createPage('interface.html', { native: true, failFetch: true });
+  await page.topic({ type: 'act/test', payload: { value: 1 } });
+  await new Promise(resolve => setTimeout(resolve, 220));
+  assert.deepEqual(page.transports, ['fetch', 'fetch', 'fetch', 'fetch', 'image']);
+  assert.equal(page.messages[0].type, 'act/test');
+  await page.topic({ type: 'act/second', payload: { value: 2 } });
+  assert.equal(page.transports.at(-1), 'image');
 });
 
 test('each background click releases the stock engines automatic keyboard focus', async () => {

@@ -8,13 +8,30 @@
   const page = Date.now().toString(36) + Math.random().toString(36).slice(2);
   let sending = Promise.resolve();
   const transmit = (type, payload, attempt = 0) => new Promise((resolve, reject) => {
+    const url = root + 'bridge?' + encodeURIComponent(type) + '&' + encodeURIComponent(payload);
+    if (window.__deeplagoonFetchBridge && typeof window.fetch === 'function') {
+      window.fetch(url, { mode: 'same-origin', credentials: 'omit', cache: 'no-store' }).then(async response => {
+        if (!response.ok) throw new Error('Bridge response: ' + response.status);
+        await response.arrayBuffer();
+        resolve();
+      }).catch(() => {
+        if (attempt < 3) {
+          setTimeout(() => transmit(type, payload, attempt + 1).then(resolve, reject), 50);
+        } else {
+          // A mismatched native module must not leave the UI without its bridge.
+          window.__deeplagoonFetchBridge = false;
+          transmit(type, payload).then(resolve, reject);
+        }
+      });
+      return;
+    }
     const image = new Image();
     image.onload = resolve;
     image.onerror = () => {
       if (attempt < 3) setTimeout(() => transmit(type, payload, attempt + 1).then(resolve, reject), 50);
       else reject(new Error('DeepLagoon bridge request failed: ' + type));
     };
-    image.src = root + 'bridge?' + encodeURIComponent(type) + '&' + encodeURIComponent(payload);
+    image.src = url;
   });
   const send = message => {
     const payload = JSON.stringify({ ...message.payload, _sequence: sequence++, _page: page });
@@ -23,10 +40,12 @@
       return;
     }
     // Serialize requests so a ready or action cannot overtake earlier messages.
-    // Robust's res scheme is not FetchEnabled. An image request uses the existing
-    // resource callback without navigating or requiring engine changes.
+    // The native module supports fetch without creating/decoding an image for each
+    // message. Keep the image transport for official modules and dev documents.
     sending = sending.catch(error => console.error(error)).then(async () => {
-      if (payload.length <= 6000) {
+      const nativeRequestFits = window.__deeplagoonFetchBridge && typeof window.fetch === 'function' &&
+        encodeURIComponent(message.type).length + 1 + encodeURIComponent(payload).length <= 65535;
+      if (payload.length <= 6000 || nativeRequestFits) {
         await transmit(message.type, payload);
         return;
       }

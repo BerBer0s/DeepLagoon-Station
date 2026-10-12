@@ -140,6 +140,8 @@ public partial class ChatBox
 
     private void OnComposerKey(KeyEventArgs args, KeyEventType type)
     {
+        if (Content.Client._DeepLagoon.WebUI.WebViewCapabilities.NativeLifecycle)
+            return;
         var tab = args.Key == Keyboard.Key.Tab && args.Shift;
         if (args.Handled || type == KeyEventType.Up || (args.Key != Keyboard.Key.Return && !tab) ||
             _composerComposing || _composer?.Panel.Web is not { IsReady: true, HasInputFocus: true } web)

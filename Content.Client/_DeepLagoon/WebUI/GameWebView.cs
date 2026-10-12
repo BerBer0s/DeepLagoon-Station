@@ -16,6 +16,8 @@ namespace Content.Client._DeepLagoon.WebUI;
 public sealed class GameWebView : Control
 {
     private const string Root = "/Web/DeepLagoon/";
+    private static readonly byte[] BridgeAck = Convert.FromBase64String(
+        "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
     private WebViewControl _view;
     private readonly string _documentUrl;
     private readonly string? _devOrigin;
@@ -74,8 +76,7 @@ public sealed class GameWebView : Control
             _view.ExecuteJavaScript("window.focus(); window.dispatchEvent(new Event('deeplagoon/focus-input'));");
     }
 
-    // The current CEF adapter follows Return with a Backspace char event.
-    // Composer intercepts that key and sends a DOM keydown without the bad char.
+    // Compatibility path for the old official module's incorrect Return char event.
     public void SendInputKey(bool tab, bool shift)
     {
         if (!_ready || _disposed || !HasInputFocus) return;
@@ -171,8 +172,7 @@ public sealed class GameWebView : Control
             return;
         }
         _incoming.Enqueue(uri.Query.TrimStart('?'));
-        context.DoRespondStream(new MemoryStream(Convert.FromBase64String(
-            "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")), "image/gif");
+        context.DoRespondStream(new MemoryStream(BridgeAck, writable: false), "image/gif");
     }
 
     public void Send(string type, string payloadJson)
@@ -311,11 +311,15 @@ public sealed class GameWebView : Control
                 case "ready":
                     // Vite may reload the document after an HTML/non-component edit.
                     // Keep the native window open and let its owner resend current state.
-                    // Force a fresh size notification once CEF has finished creating its view.
-                    _view.Arrange(UIBox2.FromDimensions(System.Numerics.Vector2.Zero, Size + System.Numerics.Vector2.One));
-                    InvalidateArrange();
+                    if (!WebViewCapabilities.NativeLifecycle)
+                    {
+                        _view.Arrange(UIBox2.FromDimensions(System.Numerics.Vector2.Zero, Size + System.Numerics.Vector2.One));
+                        InvalidateArrange();
+                    }
                     _ready = true;
                     _healthWait = 0;
+                    if (WebViewCapabilities.NativeLifecycle && _devOrigin == null)
+                        _view.ExecuteJavaScript("window.__deeplagoonFetchBridge = true;");
                     if (_captureKeyboard) _view.ExecuteJavaScript("window.__deeplagoonCaptureKeys = true;");
                     if (_background != null)
                         _view.ExecuteJavaScript("window.__deeplagoonNativeBackground = true; window.dispatchEvent(new Event('deeplagoon/native-background'));");
@@ -385,14 +389,17 @@ public sealed class GameWebView : Control
     private void SuspendBrowser()
     {
         ReleaseTextInput();
-        _view.RemoveBeforeBrowseHandler(BeforeBrowse);
-        _view.RemoveResourceRequestHandler(ResourceRequest);
+        if (!WebViewCapabilities.NativeLifecycle)
+        {
+            _view.RemoveBeforeBrowseHandler(BeforeBrowse);
+            _view.RemoveResourceRequestHandler(ResourceRequest);
+        }
         WebViewLifetime.Close(_view);
         _healthWait = _pingWait = 0;
         _healthFailed = _recovering = false;
-        // StartBrowser allocates a 1x1 texture. A fresh control guarantees that
-        // layout invokes Resized even when the resumed viewport has the same size.
-        _view = CreateView();
+        // Older modules need a fresh layout to replace their initial 1x1 texture.
+        if (!WebViewCapabilities.NativeLifecycle)
+            _view = CreateView();
     }
 
     protected override void Dispose(bool disposing)
