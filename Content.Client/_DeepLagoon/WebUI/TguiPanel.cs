@@ -190,10 +190,15 @@ public sealed class TguiPanel : Control
     private void Publish()
     {
         if (_interface.Length == 0 || !Web.IsReady) return;
+        // The data is spliced as an object. Surrounding whitespace is dropped, and anything that is not
+        // an object (an empty DataJson of a server WebUiState) is published as an empty one.
+        var data = _data.Trim();
+        if (data.Length < 2 || data[0] != '{' || data[^1] != '}') data = "{}";
+        var fields = data[1..^1].Trim();
         Web.Send("update", "{\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
             ",\"title\":" + GameWebView.Quote(_title) +
-            ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":" + _data[..^1] +
-            (_data.Trim() == "{}" ? "" : ",") + "\"chatAppearance\":" + _chatAppearance + "}}");
+            ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":{" + fields +
+            (fields.Length == 0 ? "" : ",") + "\"chatAppearance\":" + _chatAppearance + "}}");
     }
 
     /// <summary>
