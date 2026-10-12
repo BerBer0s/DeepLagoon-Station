@@ -4,29 +4,10 @@
  * @license MIT
  */
 
-// Themes
+// Styles. DeepLagoon: the SS13 themes (styles/themes/*) are not imported: no interface
+// selects one, the windows use theme-dark/theme-light from playerTheme. Every window parses
+// this CSS, and the themes were about 70% of it.
 import './styles/main.scss';
-import './styles/themes/abductor.scss';
-import './styles/themes/disclaimer.scss';
-import './styles/themes/hotpink.scss';
-import './styles/themes/cardtable.scss';
-import './styles/themes/hackerman.scss';
-import './styles/themes/heretic.scss';
-import './styles/themes/malfunction.scss';
-import './styles/themes/neutral.scss';
-import './styles/themes/ntos.scss';
-import './styles/themes/ntos_darkmode.scss';
-import './styles/themes/ntos_synth.scss';
-import './styles/themes/ntos_terminal.scss';
-import './styles/themes/ntos_cat.scss';
-import './styles/themes/ntos_lightmode.scss';
-import './styles/themes/paper.scss';
-import './styles/themes/retro.scss';
-import './styles/themes/syndicate.scss';
-import './styles/themes/wizard.scss';
-import './styles/themes/clockcult.scss';
-import './styles/themes/inteq.scss';
-import './styles/themes/pact.scss';
 
 import { perf } from 'common/perf';
 import { setupHotReloading } from 'tgui-dev-server/link/client.cjs';
