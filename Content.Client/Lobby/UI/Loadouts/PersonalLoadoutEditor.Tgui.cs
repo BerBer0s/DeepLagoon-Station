@@ -16,12 +16,6 @@ public sealed partial class PersonalLoadoutEditor
     public bool TguiMode;
     private static TguiSpriteImages _images => TguiSpriteImages.Shared; // DeepLagoon: tgui fix, one session cache
 
-    private IEnumerator<string>? _imageWarmup;
-    public void WarmTguiImages()
-    {
-        _imageWarmup ??= _prototypes.EnumeratePrototypes<LoadoutPrototype>().SelectMany(p => p.PersonalItems).Select(p => p.Id).Distinct().GetEnumerator();
-        for (var i = 0; i < 8 && _imageWarmup.MoveNext(); i++) _ = _images.Item(_imageWarmup.Current).ToArray();
-    }
     public IEnumerable<TguiData> CreateTguiSlots(EntityUid preview)
     {
         var inventory = _entities.System<InventorySystem>();
@@ -120,7 +114,7 @@ public sealed partial class PersonalLoadoutEditor
                         .Bool("canPaint", true).Bool("canRename", true).Bool("canDescribe", true)
                         .Bool("canHeirloom", item.PersonalHeirloom).Bool("heirloom", choice?.Customization?.Heirloom ?? false)
                         .String("color", custom?.Color).String("customName", custom?.Name).String("description", custom?.Description)
-                        .Array("images", _images.Item(item.PersonalItems[0].Id));
+                        .String("iconId", "item/" + item.PersonalItems[0].Id);
                 }))
             .Array("jobItems", _jobEntries.Where(entry => _slotFilter == null || FitsJobSlot(entry.Item, _slotFilter)).Select(entry =>
             {
@@ -135,7 +129,7 @@ public sealed partial class PersonalLoadoutEditor
                     .String("reason", reason?.ToString()).Number("cost", item.Price).Number("min", entry.Group.MinLimit).Number("max", entry.Group.MaxLimit)
                     .Bool("canPaint", true).Bool("canRename", true).Bool("canDescribe", true)
                     .String("color", custom?.Color).String("customName", custom?.Name).String("description", custom?.Description)
-                    .Array("images", entity is {} id ? _images.Item(id.Id) : Enumerable.Empty<TguiData>());
+                    .String("iconId", entity is {} id ? "item/" + id.Id : "");
             }));
         _cachedTguiState = data;
         return data;

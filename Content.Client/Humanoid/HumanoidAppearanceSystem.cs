@@ -31,6 +31,7 @@ public sealed partial class HumanoidAppearanceSystem : SharedHumanoidAppearanceS
     {
         UpdateLayers(component, sprite);
         ApplyMarkingSet(component, sprite);
+        EntityManager.System<Content.Client._DeepLagoon.Tattoos.TattooVisualizerSystem>().Refresh(sprite.Owner, component, sprite);
 
         sprite[sprite.LayerMapReserveBlank(HumanoidVisualLayers.Eyes)].Color = component.EyeColor;
     }
@@ -201,6 +202,7 @@ public sealed partial class HumanoidAppearanceSystem : SharedHumanoidAppearanceS
         humanoid.Species = profile.Species;
         humanoid.SkinColor = profile.Appearance.SkinColor;
         humanoid.EyeColor = profile.Appearance.EyeColor;
+        humanoid.Tattoos = Content.Shared._DeepLagoon.Tattoos.Tattoo.Sanitize(profile.Appearance.Tattoos);
         humanoid.Height = profile.Appearance.Height;
         humanoid.Width = profile.Appearance.Width;
 
@@ -379,6 +381,7 @@ public sealed partial class HumanoidAppearanceSystem : SharedHumanoidAppearanceS
             return;
 
         spriteLayer.Visible = visible;
+        EntityManager.System<Content.Client._DeepLagoon.Tattoos.TattooVisualizerSystem>().UpdateVisibility(ent.Owner, ent.Comp, sprite);
 
         // I fucking hate this. I'll get around to refactoring sprite layers eventually I swear
         // Just a week away...

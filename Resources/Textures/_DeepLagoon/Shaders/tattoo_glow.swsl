@@ -1,0 +1,23 @@
+light_mode unshaded;
+
+uniform sampler2D inkTexture;
+uniform highp float inkOpacity;
+uniform highp vec2[32] directionMin;
+uniform highp vec2[32] directionMax;
+uniform highp int directionCount;
+varying highp vec2 inkUV;
+
+void vertex() {
+    inkUV = tCoord2;
+}
+
+void fragment() {
+    highp float visible = 0.0;
+    for (int i = 0; i < 32; i++) {
+        if (i >= directionCount) break;
+        if (UV.x >= directionMin[i].x && UV.y >= directionMin[i].y &&
+            UV.x <= directionMax[i].x && UV.y <= directionMax[i].y) visible = 1.0;
+    }
+    COLOR = texture2D(inkTexture, inkUV);
+    COLOR.a *= zTexture(UV).a * visible * inkOpacity;
+}

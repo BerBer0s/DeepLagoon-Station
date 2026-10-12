@@ -26,6 +26,15 @@ public sealed partial class CCVars
     public static readonly CVarDef<string> DiscordLinkToken =
         CVarDef.Create("discord_link.api_token", "", CVar.SERVERONLY | CVar.CONFIDENTIAL);
 
+    public static readonly CVarDef<string> DiscordSupporterToken =
+        CVarDef.Create("discord_link.supporter_token", "", CVar.SERVERONLY | CVar.CONFIDENTIAL);
+    public static readonly CVarDef<string> DiscordModerationToken =
+        CVarDef.Create("discord_link.moderation_token", "", CVar.SERVERONLY | CVar.CONFIDENTIAL);
+    public static readonly CVarDef<string> DiscordCoinToken =
+        CVarDef.Create("discord_link.coin_token", "", CVar.SERVERONLY | CVar.CONFIDENTIAL);
+    public static readonly CVarDef<string> DiscordIdentityToken =
+        CVarDef.Create("discord_link.identity_token", "", CVar.SERVERONLY | CVar.CONFIDENTIAL);
+
     public static readonly CVarDef<string> DiscordAccountMergePython =
         CVarDef.Create("discord_link.merge_python", "/home/ss14/ss14/control-agent-venv/bin/python", CVar.SERVERONLY);
 

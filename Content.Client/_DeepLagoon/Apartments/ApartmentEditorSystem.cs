@@ -175,9 +175,9 @@ public sealed partial class ApartmentEditorSystem : EntitySystem
         if (window == null) return;
         window.Panel.Web.ReleaseTextInput();
         window.Close();
-        // The browser control itself is disposed later (WebViewRelease, CEF lifetime workaround).
+        // GameWebView keeps only the CEF control alive while its browser closes.
 #pragma warning disable CS0618
-        window.Dispose();
+        if (!window.Disposed) window.Dispose();
 #pragma warning restore CS0618
     }
 

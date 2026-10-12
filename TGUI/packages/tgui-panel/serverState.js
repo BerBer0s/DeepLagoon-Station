@@ -201,10 +201,10 @@ const doSaveToServer = (store) => {
       type: 'panel/state_set',
       panel_state: stateJson,
     };
-    if (stateJson.length < 7900) {
+    if (stateJson.length < 32000) {
       sendStateDirectly(stateJson);
     } else {
-      throw new Error('Panel settings exceed the DeepLagoon 8 KiB limit');
+      throw new Error('Panel settings exceed the DeepLagoon 32 KiB limit');
     }
   }
   catch (err) {

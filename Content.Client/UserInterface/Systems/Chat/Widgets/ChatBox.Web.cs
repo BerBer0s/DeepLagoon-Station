@@ -15,14 +15,11 @@ public partial class ChatBox
     private IClientPreferencesManager? _webPreferences;
     private float _emoteRefresh;
     private string _lastEmoteState = "";
-    // DeepLagoon: tgui fix. Saved chat settings and their pinned emotes, parsed only when the settings change.
-    private string? _emoteSettingsSource;
-    private List<string> _emotePinned = new();
     private string? _lastWebHistoryPayload;
-    // DeepLagoon: tgui fix (Н8). The page shows at most MAX_VISIBLE_MESSAGES (tgui-panel/chat/constants.js);
-    // each message is formatted once and its payload reused for every later history publish.
-    private const int WebHistoryLimit = 2500;
+    // DeepLagoon: tgui fix (Н8). Each message is formatted once; its payload is reused by later history publishes.
     private Dictionary<ChatMessage, string> _webPayloads = new(ReferenceEqualityComparer.Instance);
+    private string? _cachedWebSettingsSource;
+    private ChatTabsSettings? _cachedWebSettings;
     public GameWebView? WebChat => _webChat;
 
     public void EnableTguiChat()
@@ -52,7 +49,7 @@ public partial class ChatBox
                 HandleEmoteShortcut(type, payload);
                 return;
             }
-            if (type != "panel/state_set" || payload.Length > 8192 || _webPreferences.Preferences == null)
+            if (type != "panel/state_set" || payload.Length > 32768 || _webPreferences.Preferences == null)
                 return;
             var settings = ChatTabsSettings.Deserialize(_webPreferences.Preferences.ChatPanelSettings) ?? new();
             if (settings.Tabs.Count == 0)
@@ -63,6 +60,7 @@ public partial class ChatBox
         };
         LayoutContainer.SetAnchorPreset(_webChat, LayoutContainer.LayoutPreset.Wide);
         ChatBody.AddChild(_webChat);
+        _webChat.Failed += () => ApplyChatMode(true);
         Contents.Visible = false;
         // The controller owns history. Do not keep a second, hidden UI history.
         Contents.Clear();
@@ -96,10 +94,13 @@ public partial class ChatBox
 
     private ChatTabsSettings CurrentWebSettings()
     {
-        var settings = ChatTabsSettings.Deserialize(_webPreferences?.Preferences?.ChatPanelSettings ?? "") ?? new();
+        var source = _webPreferences?.Preferences?.ChatPanelSettings ?? "";
+        if (_cachedWebSettings != null && source == _cachedWebSettingsSource) return _cachedWebSettings;
+        _cachedWebSettingsSource = source;
+        var settings = ChatTabsSettings.Deserialize(source) ?? new();
         if (settings.Tabs.Count == 0)
             settings.Tabs.Add(new ChatTabSettings { Name = Loc.GetString("chat-tabs-all"), Channels = (ChatChannel) uint.MaxValue });
-        return settings;
+        return _cachedWebSettings = settings;
     }
 
     private void HandleEmoteShortcut(string type, string payload)
@@ -122,15 +123,10 @@ public partial class ChatBox
     {
         if (_webChat?.IsReady != true) return;
         var available = _entManager.System<EmoteShortcutSystem>().Available();
-        var source = _webPreferences?.Preferences?.ChatPanelSettings ?? ""; // DeepLagoon: tgui fix
-        if (!string.Equals(source, _emoteSettingsSource, StringComparison.Ordinal))
-        {
-            _emoteSettingsSource = source;
-            _emotePinned = CurrentWebSettings().PinnedEmotes.ToList();
-        }
+        var settings = CurrentWebSettings();
         var json = "{\"available\":[" + string.Join(',', available.Select(emote =>
             "{\"id\":" + GameWebView.Quote(emote.ID) + ",\"name\":" + GameWebView.Quote(Loc.GetString(emote.Name)) + "}")) +
-            "],\"pinned\":[" + string.Join(',', _emotePinned.Select(GameWebView.Quote)) + "]}";
+            "],\"pinned\":[" + string.Join(',', settings.PinnedEmotes.Select(GameWebView.Quote)) + "]}";
         if (json == _lastEmoteState) return;
         _lastEmoteState = json;
         _webChat.Send("deeplagoon/emotes", json);
@@ -146,7 +142,7 @@ public partial class ChatBox
     {
         if (_useVanillaChat || _webChat?.IsReady != true || _repopulatingWeb || message.HideChat)
             return;
-        if (_webPayloads.Count >= WebHistoryLimit * 2) _webPayloads.Clear(); // DeepLagoon: tgui fix (Н8)
+        if (_webPayloads.Count >= 5000) _webPayloads.Clear(); // DeepLagoon: tgui fix (Н8)
         _webChat.Send("chat/message", _webPayloads[message] = WebChatMessageFormatter.BuildPayload(message));
         _lastWebHistoryPayload = null;
     }
@@ -154,10 +150,12 @@ public partial class ChatBox
     private void PublishWebHistory(bool force = false)
     {
         if (_useVanillaChat || _webChat?.IsReady != true) return;
-        // DeepLagoon: tgui fix (Н8). Only the messages the page keeps, with cached payloads.
-        var shown = _controller.History.Where(entry => !entry.Msg.HideChat).Select(entry => entry.Msg).ToList();
-        var payloads = new Dictionary<ChatMessage, string>(ReferenceEqualityComparer.Instance);
-        var payload = "[" + string.Join(',', shown.Skip(Math.Max(0, shown.Count - WebHistoryLimit)).Select(message =>
+        var messages = new List<ChatMessage>(Math.Min(2500, _controller.History.Count));
+        for (var i = _controller.History.Count - 1; i >= 0 && messages.Count < 2500; i--)
+            if (!_controller.History[i].Msg.HideChat) messages.Add(_controller.History[i].Msg);
+        messages.Reverse();
+        var payloads = new Dictionary<ChatMessage, string>(ReferenceEqualityComparer.Instance); // DeepLagoon: tgui fix (Н8)
+        var payload = "[" + string.Join(',', messages.Select(message =>
             payloads[message] = _webPayloads.GetValueOrDefault(message) ?? WebChatMessageFormatter.BuildPayload(message))) + "]";
         _webPayloads = payloads;
         if (!force && payload == _lastWebHistoryPayload) return;

@@ -30,6 +30,7 @@ public sealed partial class LatheBoundUserInterface
     private LatheTguiWindow? _tguiWindow;
     private LatheTguiData? _tguiData;
     private bool _classic;
+    private static bool _classicForSession;
     private bool _tguiDirty;
     private bool _awaitingReady;
     private float _readyWaited;
@@ -42,7 +43,7 @@ public sealed partial class LatheBoundUserInterface
 
     private bool OpenTgui()
     {
-        if (_classic)
+        if (_classic || _classicForSession)
             return false;
 
         _tguiData = new LatheTguiData(Owner, EntMan);
@@ -56,6 +57,7 @@ public sealed partial class LatheBoundUserInterface
         window.Panel.OnAction += OnTguiAction;
         // The panel publishes its own state first on every (re)load; static data follows it.
         window.Panel.Web.Ready += SendTguiStatic;
+        window.Panel.Web.Failed += DeferSwitchToClassic;
 
         if (SavedPositions.TryGetValue(Owner, out var position))
             window.Open(position);
@@ -113,9 +115,9 @@ public sealed partial class LatheBoundUserInterface
         SavedPositions[Owner] = window.Position;
 
         window.Close();
-        // The browser control itself is disposed later (WebViewRelease, CEF lifetime workaround).
+        // GameWebView keeps only the CEF control alive during asynchronous close.
 #pragma warning disable CS0618
-        window.Dispose();
+        if (!window.Disposed) window.Dispose();
 #pragma warning restore CS0618
     }
 
@@ -125,6 +127,7 @@ public sealed partial class LatheBoundUserInterface
             return;
 
         _classic = true;
+        _classicForSession = true;
         CloseTguiWindow();
         Open();
         if (State != null)

@@ -1,4 +1,5 @@
 using Content.Shared.Damage;
+using Content.Shared.GameTicking;
 using Content.Shared.Spreader;
 using Robust.Shared.Random;
 using Robust.Shared.Timing;
@@ -17,12 +18,39 @@ public sealed partial class KudzuSystem : EntitySystem
     [ValidatePrototypeId<EdgeSpreaderPrototype>]
     private const string KudzuGroup = "Kudzu";
 
+    private static readonly TimeSpan GrowthTickInterval = TimeSpan.FromSeconds(0.5);
+    private readonly PriorityQueue<GrowthScheduleEntry, TimeSpan> _growthQueue = new();
+    private EntityQuery<GrowingKudzuComponent> _growingQuery;
+    private EntityQuery<KudzuComponent> _kudzuQuery;
+    private EntityQuery<DamageableComponent> _damageableQuery;
+    private EntityQuery<AppearanceComponent> _appearanceQuery;
+
+    // The component reference distinguishes removal/re-addition on the same entity.
+    private readonly record struct GrowthScheduleEntry(EntityUid Uid, GrowingKudzuComponent Component);
+
     /// <inheritdoc/>
     public override void Initialize()
     {
+        base.Initialize();
+        _growingQuery = GetEntityQuery<GrowingKudzuComponent>();
+        _kudzuQuery = GetEntityQuery<KudzuComponent>();
+        _damageableQuery = GetEntityQuery<DamageableComponent>();
+        _appearanceQuery = GetEntityQuery<AppearanceComponent>();
         SubscribeLocalEvent<KudzuComponent, ComponentStartup>(SetupKudzu);
         SubscribeLocalEvent<KudzuComponent, SpreadNeighborsEvent>(OnKudzuSpread);
         SubscribeLocalEvent<KudzuComponent, DamageChangedEvent>(OnDamageChanged);
+        SubscribeLocalEvent<GrowingKudzuComponent, ComponentStartup>(OnGrowingStartup);
+        SubscribeLocalEvent<RoundRestartCleanupEvent>(OnRoundRestartCleanup);
+    }
+
+    private void OnGrowingStartup(Entity<GrowingKudzuComponent> ent, ref ComponentStartup args)
+    {
+        _growthQueue.Enqueue(new GrowthScheduleEntry(ent.Owner, ent.Comp), ent.Comp.NextTick);
+    }
+
+    private void OnRoundRestartCleanup(RoundRestartCleanupEvent args)
+    {
+        _growthQueue.Clear();
     }
 
     private void OnDamageChanged(EntityUid uid, KudzuComponent component, DamageChangedEvent args)
@@ -91,20 +119,26 @@ public sealed partial class KudzuSystem : EntitySystem
     /// <inheritdoc/>
     public override void Update(float frameTime)
     {
-        var appearanceQuery = GetEntityQuery<AppearanceComponent>();
-        var query = EntityQueryEnumerator<GrowingKudzuComponent>();
-        var kudzuQuery = GetEntityQuery<KudzuComponent>();
-        var damageableQuery = GetEntityQuery<DamageableComponent>();
         var curTime = _timing.CurTime;
 
-        while (query.MoveNext(out var uid, out var grow))
+        while (_growthQueue.TryPeek(out var entry, out var dueTime) && dueTime <= curTime)
         {
-            if (grow.NextTick > curTime)
+            _growthQueue.Dequeue();
+            var uid = entry.Uid;
+            if (TerminatingOrDeleted(uid) || !_growingQuery.TryGetComponent(uid, out var grow) ||
+                !ReferenceEquals(entry.Component, grow) || !grow.Running)
                 continue;
 
-            grow.NextTick = curTime + TimeSpan.FromSeconds(0.5);
+            // AutoPausedField can move NextTick after this entry was queued.
+            if (Paused(uid) || grow.NextTick > curTime)
+            {
+                _growthQueue.Enqueue(entry, Paused(uid) ? curTime + GrowthTickInterval : grow.NextTick);
+                continue;
+            }
 
-            if (!kudzuQuery.TryGetComponent(uid, out var kudzu))
+            grow.NextTick = curTime + GrowthTickInterval;
+
+            if (!_kudzuQuery.TryGetComponent(uid, out var kudzu))
             {
                 RemCompDeferred(uid, grow);
                 continue;
@@ -112,10 +146,11 @@ public sealed partial class KudzuSystem : EntitySystem
 
             if (!_robustRandom.Prob(kudzu.GrowthTickChance))
             {
+                _growthQueue.Enqueue(entry, grow.NextTick);
                 continue;
             }
 
-            if (damageableQuery.TryGetComponent(uid, out var damage))
+            if (_damageableQuery.TryGetComponent(uid, out var damage))
             {
                 if (damage.TotalDamage > 1.0)
                 {
@@ -129,6 +164,7 @@ public sealed partial class KudzuSystem : EntitySystem
                         // Don't grow when quite damaged
                         if (_robustRandom.Prob(0.95f))
                         {
+                            _growthQueue.Enqueue(entry, grow.NextTick);
                             continue;
                         }
                     }
@@ -142,8 +178,12 @@ public sealed partial class KudzuSystem : EntitySystem
                 // why cache when you can simply cease to be? Also saves a bit of memory/time.
                 RemCompDeferred(uid, grow);
             }
+            else
+            {
+                _growthQueue.Enqueue(entry, grow.NextTick);
+            }
 
-            if (appearanceQuery.TryGetComponent(uid, out var appearance))
+            if (_appearanceQuery.TryGetComponent(uid, out var appearance))
             {
                 _appearance.SetData(uid, KudzuVisuals.GrowthLevel, kudzu.GrowthLevel, appearance);
             }

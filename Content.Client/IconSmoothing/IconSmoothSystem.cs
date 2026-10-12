@@ -20,8 +20,39 @@ namespace Content.Client.IconSmoothing
     {
         [Dependency] private SharedMapSystem _mapSystem = default!;
 
-        private readonly Queue<EntityUid> _dirtyEntities = new();
-        private readonly Queue<EntityUid> _anchorChangedEntities = new();
+        // Bound PVS, map-load and construction bursts without dropping sprite updates.
+        private const int MaxQueueWorkPerFrame = 256;
+        private const int MaxAnchorChangesPerFrame = MaxQueueWorkPerFrame / 2;
+
+        private sealed class PendingEntityQueue
+        {
+            private readonly Queue<EntityUid> _queue = new();
+            private readonly HashSet<EntityUid> _queued = new();
+
+            public int Count => _queue.Count;
+
+            public void Enqueue(EntityUid uid)
+            {
+                if (_queued.Add(uid))
+                    _queue.Enqueue(uid);
+            }
+
+            public bool TryDequeue(ref int work, int maxWork, out EntityUid uid)
+            {
+                if (work >= maxWork || !_queue.TryDequeue(out uid))
+                {
+                    uid = default;
+                    return false;
+                }
+
+                _queued.Remove(uid);
+                work++;
+                return true;
+            }
+        }
+
+        private readonly PendingEntityQueue _dirtyEntities = new();
+        private readonly PendingEntityQueue _anchorChangedEntities = new();
 
         private int _generation;
 
@@ -114,8 +145,9 @@ namespace Content.Client.IconSmoothing
             var xformQuery = GetEntityQuery<TransformComponent>();
             var smoothQuery = GetEntityQuery<IconSmoothComponent>();
 
-            // first process anchor state changes.
-            while (_anchorChangedEntities.TryDequeue(out var uid))
+            // First process anchor state changes, leaving budget for actual sprite updates.
+            var work = 0;
+            while (_anchorChangedEntities.TryDequeue(ref work, MaxAnchorChangesPerFrame, out var uid))
             {
                 if (!xformQuery.TryGetComponent(uid, out var xform))
                     continue;
@@ -139,8 +171,7 @@ namespace Content.Client.IconSmoothing
 
             var spriteQuery = GetEntityQuery<SpriteComponent>();
 
-            // Performance: This could be spread over multiple updates, or made parallel.
-            while (_dirtyEntities.TryDequeue(out var uid))
+            while (_dirtyEntities.TryDequeue(ref work, MaxQueueWorkPerFrame, out var uid))
             {
                 CalculateNewSprite(uid, spriteQuery, smoothQuery, xformQuery);
             }

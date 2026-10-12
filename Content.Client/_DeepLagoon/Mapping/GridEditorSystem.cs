@@ -85,6 +85,11 @@ public sealed partial class GridEditorSystem : EntitySystem
                 .Object("data", new TguiData().Number("closeRequested", ++_closeVersion)).ToString());
             _window.Panel.OnAction += Action;
             _window.Panel.OnClose += Close;
+            _window.Panel.Web.Ready += () =>
+            {
+                PublishLibrary();
+                Search(_searchQuery, _searchCategory, _searchPage);
+            };
             _window.OpenCentered();
             _window.Panel.Web.FocusInput();
         }
@@ -191,8 +196,8 @@ public sealed partial class GridEditorSystem : EntitySystem
                 items.Add(new GridEditorItem { Id = Field(node, "id"), Kind = Field(node, "kind"), Prototype = Field(node, "prototype"),
                     X = Number("x"), Y = Number("y"), Rotation = Number("rotation"), Z = (int) Number("z"),
                     Color = Field(node, "color", "#FFFFFFFF"), Cleanable = Field(node, "cleanable") == "true",
-                    Anchored = Field(node, "anchored") == "true", Variant = checked((byte) Number("variant")),
-                    Flags = checked((byte) Number("flags")), Mirror = checked((byte) Number("mirror")) });
+                    Anchored = Field(node, "anchored") == "true", Variant = CheckedByte(Number("variant")),
+                    Flags = CheckedByte(Number("flags")), Mirror = CheckedByte(Number("mirror")) });
             }
             _upload.AddRange(items);
             _uploadNext++;
@@ -218,6 +223,14 @@ public sealed partial class GridEditorSystem : EntitySystem
         }
     }
 
+    // Keep truncation and range validation without conv.ovf.u1, unsupported by the engine sandbox.
+    private static byte CheckedByte(float value)
+    {
+        var integer = checked((int) value);
+        if (integer is < byte.MinValue or > byte.MaxValue) throw new InvalidDataException("Byte value outside 0–255 range");
+        return unchecked((byte) integer);
+    }
+
     private void AckUpload() => _window?.Panel.Web.Send("update", new TguiData().Object("data",
         new TguiData().String("uploadId", _uploadId).Number("uploadNext", _uploadNext)).ToString());
 
@@ -234,7 +247,6 @@ public sealed partial class GridEditorSystem : EntitySystem
         if (shuttingDown) window.Panel.Web.PrepareForShutdown();
         else window.Panel.Web.ReleaseTextInput();
         window.ForceClose();
-        // The browser control itself is disposed later (WebViewRelease, CEF lifetime workaround).
 #pragma warning disable CS0618
         if (!window.Disposed) window.Dispose();
 #pragma warning restore CS0618
@@ -243,7 +255,7 @@ public sealed partial class GridEditorSystem : EntitySystem
 
 public sealed class GridEditorWindow : FancyWindow
 {
-    public readonly TguiPanel Panel = new();
+    public readonly TguiPanel Panel = new(captureKeyboard: true);
     public event Action? CloseRequested;
     public override void Close() => CloseRequested?.Invoke();
     public void ForceClose() => base.Close();

@@ -26,7 +26,7 @@ public sealed partial class MarkingPoints
             {
                 Points = points.Points,
                 Required = points.Required,
-                DefaultMarkings = points.DefaultMarkings
+                DefaultMarkings = new(points.DefaultMarkings)
             };
         }
 

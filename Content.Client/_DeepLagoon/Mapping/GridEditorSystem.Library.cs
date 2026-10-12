@@ -35,7 +35,7 @@ public sealed partial class GridEditorSystem
             items.Add(new GridEditorItem { Id = Field(node, "id"), Kind = Field(node, "kind"), Prototype = Field(node, "prototype"),
                 X = Number("x"), Y = Number("y"), Rotation = Number("rotation"), Z = (int) Number("z"), Color = Field(node, "color", "#FFFFFFFF"),
                 Cleanable = Field(node, "cleanable") == "true", Anchored = Field(node, "anchored") == "true",
-                Variant = checked((byte) Number("variant")), Flags = checked((byte) Number("flags")), Mirror = checked((byte) Number("mirror")) });
+                Variant = CheckedByte(Number("variant")), Flags = CheckedByte(Number("flags")), Mirror = CheckedByte(Number("mirror")) });
         }
         return items;
     }

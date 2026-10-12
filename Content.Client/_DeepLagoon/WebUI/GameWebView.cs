@@ -3,7 +3,6 @@ using System.IO;
 using System.Text;
 using Content.Shared._DeepLagoon.WebUI;
 using Robust.Shared.Configuration;
-using Robust.Client.Input;
 using Robust.Client.UserInterface;
 using Robust.Client.WebView;
 using Robust.Shared.Timing;
@@ -17,54 +16,47 @@ namespace Content.Client._DeepLagoon.WebUI;
 public sealed class GameWebView : Control
 {
     private const string Root = "/Web/DeepLagoon/";
-
-    // Page -> C# limits, in one unit: UTF-16 code units of the decoded message type and payload JSON,
-    // the same strings bridge.js measures. The encoded query only gets a cap derived from them
-    // (encodeURIComponent turns one UTF-16 code unit into at most 9 characters).
-    public const int MaxMessageTypeLength = 68;
-    public const int MaxMessagePayloadLength = WebUiActionMessage.MaxPayloadLength;
-    private const int MaxQueryLength = (MaxMessageTypeLength + MaxMessagePayloadLength) * 9 + 2;
-    private const int MaxIncoming = 64;
     private const int MaxLogLength = 2048;
     private const int MaxLogPerSecond = 5;
     private WebViewControl _view;
     private readonly string _documentUrl;
     private readonly string? _devOrigin;
-    private readonly ConcurrentQueue<(string Type, string Payload)> _incoming = new();
+    private readonly ConcurrentQueue<string> _incoming = new();
     private readonly Queue<string> _outgoing = new();
+    private readonly StringBuilder _chunkPayload = new();
+    private string _chunkType = "";
+    private int _chunkIndex;
+    private int _chunkCount;
     private bool _ready;
     private bool _disposed;
     private bool _messageDispatchPending;
     private bool _explicitTextInput;
-    // Interface pages report whether a text field has DOM focus (bridge.js, "input-focus").
-    private bool _pageEditing;
-    // FocusTextInput requests, and their count when the edited field got focus (see "input-focus").
-    private int _textInputRequests;
-    private int _editingRequests;
-    private IInputManager? _input;
-    private ISawmill? _pageLog;
-    private TimeSpan _logWindow;
-    private int _logCount;
+    private float _healthWait;
+    private float _pingWait;
+    private bool _healthFailed;
+    private bool _recovering;
     private readonly bool _suspendWhenHidden;
+    private readonly bool _captureKeyboard;
     // The browser outlives leaving the UI tree (WebViewControl.AlwaysActive): a window that is closed and
     // opened again (the chat composer) keeps its loaded page instead of starting a new browser each time.
     private readonly bool _keepAlive;
-    private readonly bool _chat;
+    private ISawmill? _pageLog;
+    private TimeSpan _logWindow;
+    private int _logCount;
     private readonly NativeChatBackground _background;
     public bool BrowserActive => _view.IsInsideTree;
     public bool IsReady => _ready;
     public event Action<string, string>? Message;
     public event Action? Ready;
+    public event Action? Failed;
 
     public void FocusInput() => _view.GrabKeyboardFocus();
+    public void SyncInputFocus()
+    {
+        if (_ready && !_disposed) _view.ExecuteJavaScript("window.DeepLagoonHealth?.syncFocus();");
+    }
 
     public bool HasInputFocus => _view.HasKeyboardFocus();
-
-    /// <summary>Text input was asked for explicitly (chat, composer, a page's "focus" action).</summary>
-    public bool HasTextInput => _explicitTextInput;
-
-    /// <summary>A text field of the page has DOM focus.</summary>
-    public bool IsEditing => _pageEditing;
 
     public void SendGridEditorKey(string code, bool down, bool control, bool shift, bool alt)
     {
@@ -85,7 +77,6 @@ public sealed class GameWebView : Control
     {
         FocusInput();
         _explicitTextInput = true;
-        _textInputRequests++;
         _view.Root?.Window?.TextInputStart();
         if (_ready)
             _view.ExecuteJavaScript("window.focus(); window.dispatchEvent(new Event('deeplagoon/focus-input'));");
@@ -118,10 +109,10 @@ public sealed class GameWebView : Control
         while (_incoming.TryDequeue(out _)) { }
     }
 
-    public GameWebView(bool chat = false, bool suspendWhenHidden = false, bool keepAlive = false)
+    public GameWebView(bool chat = false, bool suspendWhenHidden = false, bool captureKeyboard = false, bool keepAlive = false)
     {
+        _captureKeyboard = captureKeyboard;
         _keepAlive = keepAlive && !suspendWhenHidden;
-        _chat = chat;
         _suspendWhenHidden = suspendWhenHidden;
         HorizontalExpand = VerticalExpand = true;
         // Interfaces such as the character editor use the same native layer.
@@ -178,31 +169,26 @@ public sealed class GameWebView : Control
         }
         if (uri.AbsolutePath != Root + "bridge")
             return;
-        // A message that is not taken (too long, queue full) gets no image: the page's onerror reports it.
-        if (context.Method != "GET" || uri.Query.Length > MaxQueryLength ||
-            (context.RequestInitiator != "res://deeplagoon" && context.RequestInitiator != _devOrigin) ||
-            !TryDecodeMessage(uri.Query, out var message) || _incoming.Count >= MaxIncoming)
+        if (context.Method != "GET" || uri.Query.Length > 65536 ||
+            (context.RequestInitiator != "res://deeplagoon" && context.RequestInitiator != _devOrigin))
         {
             context.DoCancel();
             return;
         }
-        _incoming.Enqueue(message);
+        // Query contains a percent-encoded message type and JSON payload.
+        if (_incoming.Count >= 64 || _disposed)
+        {
+            context.DoCancel();
+            return;
+        }
+        _incoming.Enqueue(uri.Query.TrimStart('?'));
         context.DoRespondStream(new MemoryStream(Convert.FromBase64String(
             "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")), "image/gif");
     }
 
-    // Query contains a percent-encoded message type and JSON payload.
-    private static bool TryDecodeMessage(string query, out (string Type, string Payload) message)
-    {
-        message = default;
-        var fields = query.TrimStart('?').Split('&', 2);
-        if (fields.Length != 2) return false;
-        message = (Uri.UnescapeDataString(fields[0]), Uri.UnescapeDataString(fields[1]));
-        return message.Type.Length <= MaxMessageTypeLength && message.Payload.Length <= MaxMessagePayloadLength;
-    }
-
     public void Send(string type, string payloadJson)
     {
+        if (_disposed) return;
         var json = "{\"type\":" + Quote(type) + ",\"payload\":" + payloadJson + "}";
         if (!_ready)
         {
@@ -215,9 +201,15 @@ public sealed class GameWebView : Control
 
     public void Reload()
     {
+        if (_disposed || !BrowserActive) return;
         _ready = false;
+        _healthWait = _pingWait = 0;
+        _healthFailed = false;
+        _recovering = false;
         _background?.Reset();
         _outgoing.Clear();
+        while (_incoming.TryDequeue(out _)) { }
+        _chunkPayload.Clear();
         _view.Reload();
     }
 
@@ -244,6 +236,41 @@ public sealed class GameWebView : Control
         // Attach only once the visible viewport is laid out. Hidden editors do
         // not create background CEF browsers, even while their UI stays in tree.
         if (_suspendWhenHidden && VisibleInTree && _view.Parent == null) AddChild(_view);
+        if (!_disposed && BrowserActive && VisibleInTree && !_healthFailed)
+        {
+            _healthWait += args.DeltaSeconds;
+            _pingWait += args.DeltaSeconds;
+            if (_ready && _pingWait >= 2)
+            {
+                _pingWait = 0;
+                _view.ExecuteJavaScript("window.DeepLagoonHealth?.ping();");
+            }
+            if (_healthWait >= 15)
+            {
+                UserInterfaceManager.DeferAction(() =>
+                {
+                    if (_disposed || !VisibleInTree || _healthWait < 15)
+                    {
+                        _healthFailed = false;
+                        return;
+                    }
+                    if (!_recovering)
+                    {
+                        Robust.Shared.Log.Logger.GetSawmill("tgui").Warning("TGUI health check timed out; reloading the page.");
+                        Reload();
+                        _recovering = true;
+                        return;
+                    }
+                    _healthFailed = true;
+                    _ready = false;
+                    ReleaseTextInput();
+                    _view.ReleaseKeyboardFocus();
+                    Robust.Shared.Log.Logger.GetSawmill("tgui").Error("TGUI recovery failed; using the native fallback or retry control.");
+                    Failed?.Invoke();
+                });
+                _healthFailed = true;
+            }
+        }
         if (_disposed || _messageDispatchPending || _incoming.IsEmpty) return;
         _messageDispatchPending = true;
         // Actions can add or remove windows (including this browser's owner).
@@ -257,11 +284,39 @@ public sealed class GameWebView : Control
 
     private void DispatchIncoming()
     {
-        for (var i = 0; i < 32 && _incoming.TryDequeue(out var message); i++)
+        for (var i = 0; i < 32 && _incoming.TryDequeue(out var json); i++)
         {
             if (_disposed)
                 return;
-            var (type, payload) = message;
+            var fields = json.Split('&', 2);
+            if (fields.Length != 2) continue;
+            var type = Uri.UnescapeDataString(fields[0]);
+            var payload = Uri.UnescapeDataString(fields[1]);
+            if (type == "bridge/chunk")
+            {
+                if (!TguiActionData.TryParse(payload, out var chunk) ||
+                    !chunk!.TryInt("index", out var index) || !chunk.TryInt("count", out var count) ||
+                    count is < 1 or > 17 || chunk.String("text") is not { Length: <= 2000 } part ||
+                    chunk.String("messageType") is not { } originalType ||
+                    !(originalType == "panel/state_set" || originalType.StartsWith("act/", StringComparison.Ordinal))) continue;
+                if (index == 0)
+                {
+                    _chunkPayload.Clear();
+                    _chunkType = originalType;
+                    _chunkCount = count;
+                    _chunkIndex = 0;
+                }
+                if (originalType != _chunkType || count != _chunkCount || index != _chunkIndex ||
+                    _chunkPayload.Length + part.Length > 32768) { _chunkPayload.Clear(); _chunkIndex = -1; continue; }
+                _chunkPayload.Append(part);
+                _chunkIndex++;
+                if (_chunkIndex != count) continue;
+                type = _chunkType;
+                payload = _chunkPayload.ToString();
+                _chunkPayload.Clear();
+                _chunkIndex = -1;
+            }
+            if (type.Length > 68 || payload.Length > (type == "panel/state_set" ? 32768 : WebUiActionMessage.MaxPayloadLength)) continue;
             switch (type)
             {
                 case "ready":
@@ -271,23 +326,21 @@ public sealed class GameWebView : Control
                     _view.Arrange(UIBox2.FromDimensions(System.Numerics.Vector2.Zero, Size + System.Numerics.Vector2.One));
                     InvalidateArrange();
                     _ready = true;
-                    _pageEditing = false;
+                    _healthWait = 0;
+                    if (_captureKeyboard) _view.ExecuteJavaScript("window.__deeplagoonCaptureKeys = true;");
                     if (_background != null)
                         _view.ExecuteJavaScript("window.__deeplagoonNativeBackground = true; window.dispatchEvent(new Event('deeplagoon/native-background'));");
                     while (_outgoing.TryDequeue(out var queued))
                         Dispatch(queued);
                     Ready?.Invoke();
                     break;
-                case "input-focus":
-                    if (_chat || !TguiActionData.TryParse(payload, out var editing)) break;
-                    var active = editing!.String("active") == "true";
-                    if (active && !_pageEditing)
-                        _editingRequests = _textInputRequests;
-                    // Text input asked for while this field was focused ends with the field; a newer request
-                    // (a click elsewhere in the page that asked for the keyboard) stays.
-                    else if (!active && _pageEditing && _textInputRequests == _editingRequests)
-                        ReleaseTextInput();
-                    _pageEditing = active;
+                case "health/pong":
+                    _healthWait = 0;
+                    _recovering = false;
+                    break;
+                case "health/error":
+                    Robust.Shared.Log.Logger.GetSawmill("tgui").Error("Unhandled script error in packaged TGUI; scheduling recovery.");
+                    _healthWait = 15;
                     break;
                 case "log":
                     LogPage(payload);
@@ -296,13 +349,17 @@ public sealed class GameWebView : Control
                     _background?.Configure(payload);
                     break;
                 case "chat-input-focus":
-                    if (!_chat || !VisibleInTree || !_view.IsInsideTree ||
+                    if (!VisibleInTree || !_view.IsInsideTree ||
                         !TguiActionData.TryParse(payload, out var focus)) break;
                     if (focus!.String("active") == "true")
                     {
                         FocusInput();
-                        _explicitTextInput = true;
-                        _view.Root?.Window?.TextInputStart();
+                        if (focus.String("text") == "false") ReleaseTextInput();
+                        else
+                        {
+                            _explicitTextInput = true;
+                            _view.Root?.Window?.TextInputStart();
+                        }
                     }
                     else if (focus.String("active") == "false")
                     {
@@ -321,30 +378,9 @@ public sealed class GameWebView : Control
     protected override void EnteredTree()
     {
         base.EnteredTree();
-        _input = IoCManager.Resolve<IInputManager>();
-        _input.FirstChanceOnKeyEvent += OnFirstChanceKey;
         // A kept-alive page may have posted messages while its window was closed; they are stale now.
         if (_keepAlive) while (_incoming.TryDequeue(out _)) { }
     }
-
-    // Stock WebView keeps every key while it has keyboard focus (its RawKeyEvent returns true), so one
-    // click into a window took WASD away from the game until the player clicked the world. First-chance
-    // handlers run before that raw dispatch: while no text field is edited and no text input was asked
-    // for, a key the page does not use itself releases the focus here and goes on to the game binds.
-    // The page keeps TGUI's own keys (hotkeys.ts): Esc, Enter, Space, Tab, arrows, F5, modifiers, Ctrl combos.
-    private void OnFirstChanceKey(KeyEventArgs args, KeyEventType type)
-    {
-        if (args.Handled || type != KeyEventType.Down || _explicitTextInput || _pageEditing ||
-            IsPageKey(args) || !_view.HasKeyboardFocus())
-            return;
-        _view.ReleaseKeyboardFocus();
-    }
-
-    private static bool IsPageKey(KeyEventArgs args) => args.Control || args.Key.IsMouseKey() || args.Key is
-        Keyboard.Key.Escape or Keyboard.Key.Return or Keyboard.Key.NumpadEnter or Keyboard.Key.Space or
-        Keyboard.Key.Tab or Keyboard.Key.Up or Keyboard.Key.Down or Keyboard.Key.Left or Keyboard.Key.Right or
-        Keyboard.Key.F5 or Keyboard.Key.Control or Keyboard.Key.Shift or Keyboard.Key.Alt or
-        Keyboard.Key.LSystem or Keyboard.Key.RSystem;
 
     // Page warnings and errors (bridge.js forwards TGUI's logger.warn/error and uncaught errors).
     // The page is untrusted: the text is cut, rate limited and logged as a value, not as a template.
@@ -371,19 +407,16 @@ public sealed class GameWebView : Control
     protected override void ExitedTree()
     {
         base.ExitedTree();
-        if (_input != null) _input.FirstChanceOnKeyEvent -= OnFirstChanceKey;
-        _input = null;
         if (_keepAlive && !_disposed)
         {
             // The page stays loaded and ready. Drop its field focus so a caret does not repaint it while hidden.
             if (_ready) _view.ExecuteJavaScript("document.activeElement?.blur();");
-            _pageEditing = false;
+            _healthWait = _pingWait = 0;
             while (_incoming.TryDequeue(out _)) { }
             return;
         }
         if (_suspendWhenHidden && !_disposed) SuspendBrowser();
         _ready = false;
-        _pageEditing = false;
         _background?.Reset();
         _outgoing.Clear();
         while (_incoming.TryDequeue(out _)) { }
@@ -395,7 +428,6 @@ public sealed class GameWebView : Control
         if (!_suspendWhenHidden || VisibleInTree || _view.Parent == null) return;
         SuspendBrowser();
         _ready = false;
-        _pageEditing = false;
         _background?.Reset();
         _outgoing.Clear();
         while (_incoming.TryDequeue(out _)) { }
@@ -406,7 +438,9 @@ public sealed class GameWebView : Control
         ReleaseTextInput();
         _view.RemoveBeforeBrowseHandler(BeforeBrowse);
         _view.RemoveResourceRequestHandler(ResourceRequest);
-        WebViewRelease.CloseNowDisposeLater(_view);
+        WebViewLifetime.Close(_view);
+        _healthWait = _pingWait = 0;
+        _healthFailed = _recovering = false;
         // StartBrowser allocates a 1x1 texture. A fresh control guarantees that
         // layout invokes Resized even when the resumed viewport has the same size.
         _view = CreateView();
@@ -420,7 +454,7 @@ public sealed class GameWebView : Control
         _view.RemoveResourceRequestHandler(ResourceRequest);
         // A kept-alive browser outside the tree is only closed by turning AlwaysActive off.
         if (_keepAlive) _view.AlwaysActive = false;
-        WebViewRelease.CloseNowDisposeLater(_view);
+        WebViewLifetime.Close(_view);
         base.Dispose(disposing);
     }
 }

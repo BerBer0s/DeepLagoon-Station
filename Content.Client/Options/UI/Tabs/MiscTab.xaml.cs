@@ -44,6 +44,7 @@ public sealed partial class MiscTab : Control
         Control.AddOptionDropDown(CVars.InterfaceTheme, DropDownHudTheme, themeEntries);
         Control.AddOptionDropDown(CCVars.UILayout, DropDownHudLayout, layoutEntries);
         Control.AddOptionCheckBox(Content.Shared._DeepLagoon.WebUI.WebUiCVars.VanillaChat, VanillaChat);
+        Control.AddOptionCheckBox(Content.Shared._DeepLagoon.Tattoos.TattooCVars.Enabled, TattoosEnabled);
 
         Control.AddOptionCheckBox(CVars.DiscordEnabled, DiscordRich);
         Control.AddOptionCheckBox(CCVars.ShowOocPatronColor, ShowOocPatronColor);

@@ -1,0 +1,18 @@
+- type: entity
+  parent: BaseItem
+  id: DLTattooMachine
+  name: tattoo machine
+  description: A tattoo machine with ordinary and luminous inks.
+  components:
+  - type: Sprite
+    sprite: Objects/Misc/pens.rsi
+    state: pen
+  - type: Item
+    sprite: Objects/Misc/pens.rsi
+    heldPrefix: pen
+    size: Tiny
+  - type: TattooMachine
+  - type: UserInterface
+    interfaces:
+      enum.TattooMachineUiKey.Key:
+        type: TattooMachineBoundUserInterface

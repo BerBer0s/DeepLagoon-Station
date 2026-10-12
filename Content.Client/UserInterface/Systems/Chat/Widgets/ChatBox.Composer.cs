@@ -54,6 +54,7 @@ public partial class ChatBox
             window.Panel.OnClose += CloseComposer;
             window.OnClose += CloseComposer;
             window.Panel.Web.Ready += window.Panel.Web.FocusTextInput;
+            window.Panel.Web.Failed += OnComposerFailed;
             window.OpenCentered();
         }
         _composerRevision++;
@@ -163,9 +164,18 @@ public partial class ChatBox
         window.Panel.OnClose -= CloseComposer;
         window.OnClose -= CloseComposer;
         window.Panel.Web.Ready -= window.Panel.Web.FocusTextInput;
+        window.Panel.Web.Failed -= OnComposerFailed;
         window.Panel.Web.ReleaseTextInput();
         window.Close();
         _controller.NotifyChatFocus(false);
+    }
+
+    private void OnComposerFailed()
+    {
+        // DeepLagoon: tgui fix (Н3). A failed page is not kept alive for the next T.
+        DisposeComposer();
+        ApplyChatMode(true);
+        ChatInput.Input.GrabKeyboardFocus();
     }
 
     // DeepLagoon: tgui fix (Н3). Closes the kept-alive composer browser for good.

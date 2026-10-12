@@ -26,10 +26,19 @@ function createPage(name = 'chat.html') {
     addEventListener: (type, callback) => (windowListeners[type] ??= []).push(callback),
   };
   vm.runInNewContext(bridge, {
-    window, document, Image, location: { pathname: `/Web/DeepLagoon/${name}` }, queueMicrotask,
+    window, document, Image, location: { pathname: `/Web/DeepLagoon/${name}` }, queueMicrotask, setTimeout, console,
   });
   return {
     messages,
+    async topic(value) {
+      window.Byond.topic(value);
+      await new Promise(resolve => setImmediate(resolve));
+    },
+    async ping(booted) {
+      window.__tguiAppBooted__ = booted;
+      window.DeepLagoonHealth.ping();
+      await new Promise(resolve => setImmediate(resolve));
+    },
     async click(node) {
       document.activeElement = node;
       for (const callback of listeners.mouseup ?? []) callback();
@@ -107,9 +116,29 @@ test('returning to the same input after clicking the game reacquires focus', asy
   assert.deepEqual(page.messages.map(m => m.active), [true, false, true]);
 });
 
-test('interface and composer retain their existing focus policy', async () => {
+test('interface clicks return gameplay focus outside editable fields', async () => {
   const page = createPage('interface.html');
   await page.focus(input());
   await page.focus(background);
+  assert.deepEqual(page.messages.map(m => [m.type, m.active]), [
+    ['chat-input-focus', true], ['chat-input-focus', false],
+  ]);
+});
+
+test('large Cyrillic settings are transmitted in bounded ordered chunks', async () => {
+  const page = createPage();
+  const value = 'абв🙂'.repeat(4000);
+  await page.topic({ type: 'panel/state_set', panel_state: JSON.stringify({ value }) });
+  assert.ok(page.messages.length > 5);
+  assert.ok(page.messages.every(message => message.type === 'bridge/chunk' && message.text.length <= 2000));
+  page.messages.forEach((message, index) => assert.equal(message.index, index));
+  assert.equal(JSON.parse(page.messages.map(message => message.text).join('')).value, value);
+});
+
+test('health ping only succeeds after the application has booted', async () => {
+  const page = createPage('interface.html');
+  await page.ping(false);
   assert.deepEqual(page.messages, []);
+  await page.ping(true);
+  assert.equal(page.messages[0].type, 'health/pong');
 });

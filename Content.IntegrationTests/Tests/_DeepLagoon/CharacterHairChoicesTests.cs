@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using Content.Client._Mono.Company;
 using Content.Client.Lobby;
@@ -45,8 +46,16 @@ public sealed class CharacterHairChoicesTests
             {
                 var choices = state.RootElement.GetProperty(key).EnumerateArray().ToArray();
                 Assert.That(choices.Length, hasStyles ? Is.GreaterThan(4) : Is.EqualTo(1), key);
-                Assert.That(choices.Skip(1).All(choice => choice.GetProperty("images")[0].GetProperty("url").GetString()!.StartsWith("data:image/png;base64,")), Is.True, key);
+                Assert.That(choices.Skip(1).All(choice => choice.GetProperty("iconId").GetString() == "marking/" + choice.GetProperty("id").GetString()), Is.True, key);
+                Assert.That(choices.All(choice => !choice.TryGetProperty("images", out _)), Is.True, "Catalogue must not resend PNGs on profile edits");
             }
+            var draft = editor.Profile;
+            typeof(HumanoidProfileEditor).GetMethod("RestoreNativeEditor", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(editor, null);
+            Assert.That(editor.Profile, Is.SameAs(draft), "Native recovery must preserve the current draft");
+            Assert.That(typeof(HumanoidProfileEditor).GetField("_tguiHost", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(editor), Is.Null);
+            var tabs = editor.Children.SelectMany(child => child.Children).OfType<Robust.Client.UserInterface.Controls.TabContainer>().FirstOrDefault();
+            Assert.That(tabs, Is.Not.Null, "Native tabs must return to the editor column");
+            Assert.That(tabs!.Visible, Is.True);
         });
         await pair.CleanReturnAsync();
     }

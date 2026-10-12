@@ -37,6 +37,33 @@ public sealed partial class HumanoidProfileEditor
     private readonly Dictionary<int, (string Id, string Image, string Status)> _headshotPreviews = new();
     private readonly Dictionary<int, Guid> _headshotReads = new();
     private string _tguiMode = "appearance";
+    private readonly Content.Client._DeepLagoon.Tattoos.TattooEditorData _tattooEditor = new();
+    private string _tattooStatus = "";
+    private bool _tattooFileBusy;
+
+    private async void HandleTattooFileAction(string action, Content.Shared._DeepLagoon.Tattoos.Tattoo template)
+    {
+        var slot = CharacterSlot; _tattooFileBusy = true; _tattooStatus = "Выбор PNG…"; PublishTguiProfile();
+        try
+        {
+            if (action == "tattoo-export")
+                _tattooStatus = await Content.Client._DeepLagoon.Tattoos.TattooFileDialogs.Export(template);
+            else
+            {
+                var result = await Content.Client._DeepLagoon.Tattoos.TattooFileDialogs.Import(template);
+                if (_profileWeb == null || Profile == null || CharacterSlot != slot) return;
+                _tattooStatus = result.Status;
+                if (result.Tattoo == null) return;
+                if (!_cfgManager.GetCVar(Content.Shared._DeepLagoon.Tattoos.TattooCVars.Enabled)
+                    || !Profile.Appearance.Tattoos.Any(t => t.ContentEquals(template)))
+                { _tattooStatus = "Настройки или рисунок изменились. Повторите загрузку PNG."; return; }
+                var appearance = Profile.Appearance.Clone();
+                appearance.Tattoos[appearance.Tattoos.FindIndex(t => t.Id == template.Id)] = result.Tattoo;
+                Profile = Profile.WithCharacterAppearance(appearance); ReloadProfilePreview(); SetDirty();
+            }
+        }
+        finally { _tattooFileBusy = false; if (_profileWeb != null && CharacterSlot == slot) PublishTguiProfile(); }
+    }
     private readonly Control _editorSettingsTab = new();
     private CharacterEditorAppearance _editorAppearance = new();
     private readonly Dictionary<string, string> _companyWebImages = new();
@@ -44,6 +71,8 @@ public sealed partial class HumanoidProfileEditor
     private bool _tguiPublishPending;
     // DeepLagoon: tgui fix. Option lists with images depend only on species and sex, not on every color step.
     private readonly Dictionary<(string Species, Sex Sex, string List), string> _tguiOptions = new();
+    private readonly Dictionary<Control, bool> _nativeTabVisibility = new();
+    private Control? _nativeSpriteParent;
 
     private void InitializeTguiEditor()
     {
@@ -52,10 +81,15 @@ public sealed partial class HumanoidProfileEditor
         _profileWeb = new TguiPanel(suspendWhenHidden: true, inheritChatAppearance: false) { Name = "CharacterTgui" };
         _profileWeb.OnAction += (action, payload) => HandleTguiProfileAction(action, payload);
         _personalLoadoutEditor.TguiMode = true;
+        _nativeSpriteParent = SpriteView.Parent;
         // One browser owns every editor control and the shared animated background.
         // SpriteView remains the engine renderer, transparently above that background.
         for (var tab = 0; tab < TabContainer.ChildCount; tab++)
-            foreach (var child in TabContainer.GetChild(tab).Children) child.Visible = false;
+            foreach (var child in TabContainer.GetChild(tab).Children)
+            {
+                _nativeTabVisibility[child] = child.Visible;
+                child.Visible = false;
+            }
         IdentityNative.Visible = ProfileHighlight.Visible = ShowClothes.Visible = false;
         PreviewColumn.Visible = false;
         SpriteView.Orphan();
@@ -64,8 +98,32 @@ public sealed partial class HumanoidProfileEditor
         TabContainer.Visible = false;
         _tguiHost = new TguiEditorHost(TabContainer, _profileWeb, SpriteView);
         EditorColumn.AddChild(_tguiHost);
+        _profileWeb.Web.Failed += RestoreNativeEditor;
         TabContainer.OnTabChanged += SelectTguiTab;
         SelectTguiTab(TabContainer.CurrentTab);
+    }
+
+    private void RestoreNativeEditor()
+    {
+        if (_tguiHost == null || _profileWeb == null) return;
+        // DeepLagoon: tgui fix. TGUI edits skip the hidden native pickers; bring them up to date before showing them.
+        UpdateMarkings(); UpdateHairPickers(); UpdateCMarkingsHair(); UpdateCMarkingsFacialHair();
+        _profileWeb.Visible = false;
+        TabContainer.Orphan();
+        SpriteView.Orphan();
+        _tguiHost.Orphan();
+        EditorColumn.AddChild(TabContainer);
+        _nativeSpriteParent?.AddChild(SpriteView);
+        TabContainer.Visible = true;
+        foreach (var (control, visible) in _nativeTabVisibility) control.Visible = visible;
+        IdentityNative.Visible = ProfileHighlight.Visible = ShowClothes.Visible = PreviewColumn.Visible = true;
+        _personalLoadoutEditor.TguiMode = false;
+        TabContainer.OnTabChanged -= SelectTguiTab;
+#pragma warning disable CS0618
+        _tguiHost.Dispose();
+#pragma warning restore CS0618
+        _tguiHost = null;
+        _profileWeb = null;
     }
 
     private string TguiTabMode(int tab)
@@ -98,7 +156,6 @@ public sealed partial class HumanoidProfileEditor
         _tguiRefresh -= args.DeltaSeconds;
         if (_tguiRefresh > 0 || _profileWeb == null || !_profileWeb.VisibleInTree) return;
         _tguiRefresh = 0.2f;
-        if (_profileWeb.Web.IsReady) _personalLoadoutEditor.WarmTguiImages();
         var bonus = _entManager.System<Content.Shared._DeepLagoon.DiscordLink.SharedDiscordBoostSystem>().GetLoadoutPointBonus(_playerManager.LocalSession);
         if (!ReferenceEquals(Profile, _publishedTguiProfile) || IsDirty != _publishedTguiDirty || ShowClothes.Pressed != _publishedTguiClothes || bonus != _publishedSupporterBonus)
             PublishTguiProfile();
@@ -149,6 +206,7 @@ public sealed partial class HumanoidProfileEditor
         if (mode == "equipment") data.Object("equipment", _personalLoadoutEditor.CreateTguiState());
         if (mode == "markings")
         {
+            data.Object("tattooEditor", _tattooEditor.Build(PreviewDummy, p.Appearance.Tattoos, _tattooStatus).Bool("fileBusy", _tattooFileBusy));
             data.Array("markings", p.Appearance.Markings.Select((marking, index) =>
                 new TguiData().Number("index", index).String("name", Loc.GetString($"marking-{marking.MarkingId}"))
                     .Bool("locked", !_markingManager.TryGetMarking(marking, out var proto) || proto.ForcedColoring || _markingManager.MustMatchSkin(p.Species, proto.BodyPart, out _, _prototypeManager))
@@ -156,7 +214,7 @@ public sealed partial class HumanoidProfileEditor
             data.Json("markingOptions", TguiOptions("markings", () => _markingManager.Markings.Values.Where(m => m.MarkingCategory is not (MarkingCategories.Hair or MarkingCategories.FacialHair)
                 && _markingManager.CanBeApplied(p.Species, p.Sex, m, _prototypeManager))
                 .Select(m => Choice(m.ID, Loc.GetString($"marking-{m.ID}")).String("category", Loc.GetString($"markings-category-{m.MarkingCategory}"))
-                    .Array("images", m.Sprites.Select(sprite => new TguiData().String("url", _tguiImages.Frame(sprite)))))));
+                    .String("iconId", "marking/" + m.ID))));
         }
         var species = _prototypeManager.Index(p.Species);
         data.String("name", p.Name).Number("age", p.Age).String("species", p.Species.Id)
@@ -263,7 +321,7 @@ public sealed partial class HumanoidProfileEditor
                      .Where(m => _markingManager.CanBeApplied(Profile.Species, Profile.Sex, m, _prototypeManager))
                      .OrderBy(m => Loc.GetString($"marking-{m.ID}")))
             if (marking.ID != (beard ? HairStyles.DefaultFacialHairStyle : HairStyles.DefaultHairStyle))
-                yield return Choice(marking.ID, Loc.GetString($"marking-{marking.ID}")).Array("images", marking.Sprites.Select(sprite => new TguiData().String("url", _tguiImages.Frame(sprite))));
+                yield return Choice(marking.ID, Loc.GetString($"marking-{marking.ID}")).String("iconId", "marking/" + marking.ID);
     }
 
     private TguiData JobData(JobPrototype job)
@@ -303,11 +361,64 @@ public sealed partial class HumanoidProfileEditor
     public bool HandleTguiProfileAction(string action, string payload)
     {
         if (!TguiActionData.TryParse(payload, out var args)) return false;
+        if (action.StartsWith("tattoo-", StringComparison.Ordinal)
+            && action != "tattoo-preview-direction" && action != "tattoo-remove" && action != "tattoo-clear" && action != "tattoo-export"
+            && !_cfgManager.GetCVar(Content.Shared._DeepLagoon.Tattoos.TattooCVars.Enabled))
+        { _tattooStatus = "Нанесение татуировок выключено в настройках."; PublishTguiProfile(); return false; }
+        if (action is "tattoo-export" or "tattoo-import")
+        {
+            if (_tattooFileBusy || Profile?.Appearance.Tattoos.FirstOrDefault(t => t.Id == args!.String("id")) is not { } selectedTattoo) return false;
+            HandleTattooFileAction(action, selectedTattoo.Clone()); return true;
+        }
+        if (_tattooFileBusy && action.StartsWith("tattoo-", StringComparison.Ordinal)) return false;
+        if (action == "tattoo-bake-chunk")
+        {
+            if (!_tattooEditor.ReceiveBakeChunk(args!, out var completed)) return false;
+            if (completed == null) return true;
+            args = completed; action = "tattoo-bake";
+        }
+        if (action == "icons")
+        {
+            if (args!.String("ids") is not { } ids || _profileWeb == null || Profile == null) return false;
+            var icons = new List<TguiData>();
+            foreach (var id in ids.Split(',').Distinct().Take(100))
+            {
+                if (id.StartsWith("marking/", StringComparison.Ordinal) &&
+                    _markingManager.Markings.TryGetValue(id[8..], out var marking))
+                    icons.Add(new TguiData().String("id", id).Array("layers", marking.Sprites.Select(sprite =>
+                        new TguiData().String("url", _tguiImages.Frame(sprite)).String("color", "#ffffff"))));
+                else if (id.StartsWith("item/", StringComparison.Ordinal) && _prototypeManager.TryIndex<EntityPrototype>(id[5..], out _))
+                    icons.Add(new TguiData().String("id", id).Array("layers", _tguiImages.Item(id[5..])));
+                else
+                    icons.Add(new TguiData().String("id", id).Array("layers", Enumerable.Empty<TguiData>()));
+            }
+            _profileWeb.Web.Send("update", new TguiData().Object("data", new TguiData().Object("iconBatch", new TguiData().Array("icons", icons))).ToString());
+            return true;
+        }
         if (action.StartsWith("setup/", StringComparison.Ordinal)) { var accepted = SetupAction?.Invoke(action[6..], args!) ?? false; _tguiPublishPending = true; return accepted; } // DeepLagoon: tgui fix
         if (Profile == null) return false;
         var value = args!.String("value") ?? "";
         var species = _prototypeManager.Index(Profile.Species);
         var valid = true;
+        if (action.StartsWith("tattoo-", StringComparison.Ordinal))
+        {
+            if (action == "tattoo-preview-direction" && args!.TryInt("direction", out var tattooDirection) && tattooDirection is >= 0 and < 4)
+            {
+                _previewRotation = tattooDirection switch { 1 => Direction.North, 2 => Direction.East, 3 => Direction.West, _ => Direction.South };
+                SetPreviewRotation(_previewRotation);
+                return true;
+            }
+            if (Content.Client._DeepLagoon.Tattoos.TattooEditorData.TryApply(action, args!, Profile.Appearance.Tattoos, out var tattoos, out _tattooStatus))
+            {
+                var appearance = Profile.Appearance.Clone();
+                appearance.Tattoos = tattoos;
+                Profile = Profile.WithCharacterAppearance(appearance);
+                ReloadProfilePreview();
+                SetDirty();
+            }
+            PublishTguiProfile();
+            return true;
+        }
         if (action.StartsWith("equipment/", StringComparison.Ordinal))
         {
             var result = _personalLoadoutEditor.HandleTguiAction(action[10..], args);

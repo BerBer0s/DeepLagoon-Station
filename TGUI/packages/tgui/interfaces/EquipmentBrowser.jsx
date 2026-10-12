@@ -1,9 +1,10 @@
+import { LazySprite } from '../components/LazySprite';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Dropdown, Section } from '../components';
 import { PlayerColorPicker } from '../components/PlayerColorPicker';
 import { TintedSprite } from '../components/PlayerTheme';
 import './EquipmentBrowser.scss';
-const Sprite = ({item,color='#ffffff'}) => <div className="EquipmentBrowser__sprite">{(item.images||[]).map((image,i)=><TintedSprite key={i} image={image.url} color={color} baseColor={image.color} />)}</div>;
+const Sprite = ({item,color='#ffffff'}) => <div className="EquipmentBrowser__sprite">{item.iconId ? <LazySprite id={item.iconId} color={color} /> : (item.images||[]).map((image,i)=><TintedSprite key={i} image={image.url} color={color} baseColor={image.color} />)}</div>;
 const Customization = ({item,mode,act,close}) => {
   const [color,setColor]=useState(item.color?.slice(0,7)||'#ffffff');
   const [name,setName]=useState(item.customName||'');

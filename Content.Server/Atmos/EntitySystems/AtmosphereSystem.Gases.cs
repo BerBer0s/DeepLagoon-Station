@@ -10,6 +10,8 @@ namespace Content.Server.Atmos.EntitySystems
 {
     public sealed partial class AtmosphereSystem
     {
+        // The temporary mixture does not escape ScrubInto. Workers need separate mole arrays.
+        [ThreadStatic] private static GasMixture? _scrubBuffer;
         [Dependency] private IPrototypeManager _protoMan = default!;
 
         private GasReactionPrototype[] _gasReactions = Array.Empty<GasReactionPrototype>();
@@ -238,7 +240,10 @@ namespace Content.Server.Atmos.EntitySystems
         /// </summary>
         public void ScrubInto(GasMixture mixture, GasMixture destination, IReadOnlyCollection<Gas> filterGases)
         {
-            var buffer = new GasMixture(mixture.Volume){Temperature = mixture.Temperature};
+            var buffer = _scrubBuffer ??= new GasMixture();
+            buffer.Clear();
+            buffer.Volume = mixture.Volume;
+            buffer.Temperature = mixture.Temperature;
 
             foreach (var gas in filterGases)
             {

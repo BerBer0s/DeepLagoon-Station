@@ -23,20 +23,26 @@ public sealed class TguiPanel : Control
     private ScreenCoordinates _dragPointer;
     private Vector2 _dragOrigin;
     private bool _dragging;
-    // How the browser took keyboard input when the drag began, to give it back after the drag.
-    private bool _dragHadTextInput;
-    private bool _dragHadEditing;
     private string _chatAppearance = "{}";
     private string? _chatSettings;
     private float _appearanceRefresh;
     private readonly bool _inheritChatAppearance;
+    private readonly BoxContainer _failure = new() { Orientation = BoxContainer.LayoutOrientation.Vertical, Visible = false };
 
-    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true, bool keepAlive = false)
+    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true, bool captureKeyboard = false,
+        bool keepAlive = false)
     {
         _inheritChatAppearance = inheritChatAppearance;
-        Web = new GameWebView(suspendWhenHidden: suspendWhenHidden, keepAlive: keepAlive);
+        Web = new GameWebView(suspendWhenHidden: suspendWhenHidden, captureKeyboard: captureKeyboard, keepAlive: keepAlive);
         HorizontalExpand = VerticalExpand = true;
         AddChild(Web);
+        _failure.AddChild(new Label { Text = "Не удалось запустить TGUI. Повторите загрузку интерфейса." });
+        var retry = new Button { Text = "Повторить" };
+        retry.OnPressed += _ => { _failure.Visible = false; Web.Reload(); };
+        _failure.AddChild(retry);
+        AddChild(_failure);
+        Web.Failed += () => _failure.Visible = true;
+        Web.Ready += () => _failure.Visible = false;
         Web.Ready += Publish;
         Web.Message += (type, payload) =>
         {
@@ -107,9 +113,6 @@ public sealed class TguiPanel : Control
         _dragPointer = pointer;
         _dragOrigin = window.Position;
         _dragging = false;
-        // First-chance: this runs before the press reaches CEF and can blur the page's field.
-        _dragHadTextInput = Web.HasInputFocus && Web.HasTextInput;
-        _dragHadEditing = Web.HasInputFocus && Web.IsEditing;
     }
 
     private void UpdateWindowDrag(ScreenCoordinates pointer)
@@ -137,12 +140,9 @@ public sealed class TguiPanel : Control
         if (_dragging)
         {
             Web.SetWindowDragging(false);
-            var hadTextInput = _dragHadTextInput;
-            var hadEditing = _dragHadEditing;
             // Mouse-up bindings and CEF can change focus after the first-chance
-            // handler. Restore the keyboard after that processing, without stealing
-            // it from another window, and only as the browser had it before the drag:
-            // a drag must not take WASD away or start text input on its own.
+            // handler. Restore both native keyboard/text input and DOM focus
+            // after that processing, without stealing it from another window.
             UserInterfaceManager.DeferAction(() =>
             {
                 if (!Disposed && VisibleInTree && window is { Disposed: false, Parent: not null } &&
@@ -154,8 +154,7 @@ public sealed class TguiPanel : Control
                         UserInterfaceManager.ControlFocused = null;
                         break;
                     }
-                    if (hadTextInput) Web.FocusTextInput();
-                    else if (hadEditing) Web.FocusInput();
+                    Web.SyncInputFocus();
                 }
             });
         }
@@ -200,15 +199,12 @@ public sealed class TguiPanel : Control
     private void Publish()
     {
         if (_interface.Length == 0 || !Web.IsReady) return;
-        // The data is spliced as an object. Surrounding whitespace is dropped, and anything that is not
-        // an object (an empty DataJson of a server WebUiState) is published as an empty one.
         var data = _data.Trim();
         if (data.Length < 2 || data[0] != '{' || data[^1] != '}') data = "{}";
-        var fields = data[1..^1].Trim();
-        Web.Send("update", "{\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
+        Web.Send("update", "{\"replaceData\":true,\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
             ",\"title\":" + GameWebView.Quote(_title) +
-            ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":{" + fields +
-            (fields.Length == 0 ? "" : ",") + "\"chatAppearance\":" + _chatAppearance + "}}");
+            ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":" + data[..^1] +
+            (string.IsNullOrWhiteSpace(data[1..^1]) ? "" : ",") + "\"chatAppearance\":" + _chatAppearance + "}}");
     }
 
     /// <summary>

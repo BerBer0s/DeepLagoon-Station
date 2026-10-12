@@ -230,11 +230,24 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             await context.RespondErrorAsync(HttpStatusCode.NotFound);
             return true;
         }
-        var expectedToken = path.EndsWith("/enroll_launcher", StringComparison.Ordinal)
-            ? Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(_token),
-                Encoding.UTF8.GetBytes("lagoon-launcher-enrollment-v1"))).ToLowerInvariant()
-            : _token;
-        var authorized = _enabled && _token.Length >= 32 &&
+        var enrollment = path.EndsWith("/enroll_launcher", StringComparison.Ordinal);
+        var scope = path.EndsWith("/supporter", StringComparison.Ordinal) || path.EndsWith("/boost", StringComparison.Ordinal)
+            ? "supporter" : path.EndsWith("/moderation", StringComparison.Ordinal) ? "moderation"
+            : path.Contains("/lc_", StringComparison.Ordinal) ? "coin" : "identity";
+        var configured = enrollment ? "" : scope switch
+        {
+            "supporter" => _config.GetCVar(CCVars.DiscordSupporterToken),
+            "moderation" => _config.GetCVar(CCVars.DiscordModerationToken),
+            "coin" => _config.GetCVar(CCVars.DiscordCoinToken),
+            _ => _config.GetCVar(CCVars.DiscordIdentityToken),
+        };
+        // Independent keys take precedence. Derived keys support coordinated
+        // migration without transmitting the root key to any API endpoint.
+        var expectedToken = configured.Length > 0 ? configured : _token.Length >= 32
+            ? Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(_token), Encoding.UTF8.GetBytes(
+                enrollment ? "lagoon-launcher-enrollment-v1" : "lagoon-api-" + scope + "-v1"))).ToLowerInvariant()
+            : "";
+        var authorized = _enabled && expectedToken.Length >= 32 &&
             IPAddress.IsLoopback(context.RemoteEndPoint.Address) &&
             context.RequestHeaders.TryGetValue("Authorization", out var auth) &&
             CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(auth.ToString()), Encoding.UTF8.GetBytes("Bearer " + expectedToken));

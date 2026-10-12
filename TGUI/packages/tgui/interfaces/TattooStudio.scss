@@ -1,0 +1,25 @@
+.TattooStudio {
+  padding: 8px;
+  background: #111b24;
+  color: #e6ecf2;
+  font-size: 12px;
+  button, select, input { font: inherit; }
+  button, select { background: #23313d; color: inherit; border: 1px solid #4d6577; border-radius: 3px; padding: 5px 7px; }
+  button[aria-pressed='true'] { background: #285775; border-color: #78bce9; }
+  button:disabled { opacity: .45; }
+  &__locations, &__tools, &__views, &__list { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  &__list { max-height: 76px; overflow: auto; }
+  &__importWarning { margin-bottom: 8px; color: #d8bd81; p { margin: 4px 0 0; } }
+  &__tools label { display: flex; align-items: center; gap: 4px; }
+  &__tools input[type='range'] { width: 76px; }
+  &__tools input[type='color'] { width: 32px; height: 28px; padding: 1px; border: 0; }
+  &__workspace { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(145px, .55fr); align-items: start; gap: 10px; }
+  &__canvas { width: 100%; aspect-ratio: 1; touch-action: none; cursor: crosshair; border: 1px solid #4d6577;
+    background: repeating-conic-gradient(#17212a 0% 25%, #1e2b36 0% 50%) 0 / 20px 20px; }
+  &__canvas--blocked { cursor: not-allowed; }
+  &__placement { display: flex; flex-direction: column; gap: 8px; p { margin: 0; } small { color: #aabdc9; } }
+  fieldset { display: flex; flex-direction: column; gap: 9px; border: 0; padding: 0; margin: 0; }
+  fieldset label { display: flex; flex-direction: column; gap: 3px; }
+}
+.TattooStudioPage { min-height: 100vh; background: #111b24; }
+@media (max-width: 500px) { .TattooStudio__workspace { grid-template-columns: 1fr; } }

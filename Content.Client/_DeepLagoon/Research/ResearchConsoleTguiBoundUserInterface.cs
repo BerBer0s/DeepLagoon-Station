@@ -8,6 +8,8 @@ using Robust.Client.GameObjects;
 using Robust.Client.Player;
 using Robust.Client.UserInterface;
 using Robust.Shared.Prototypes;
+using Robust.Shared.Timing;
+using Content.Client.Research.UI;
 
 namespace Content.Client._DeepLagoon.Research;
 
@@ -22,6 +24,8 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
     private const int MaxIconRequest = 128;
 
     private ResearchConsoleTguiWindow? _window;
+    private ResearchConsoleMenu? _classicWindow;
+    private static bool _classicForSession;
     private ResearchConsoleTguiData? _data;
     private string _title = string.Empty;
     private string _staticJson = string.Empty;
@@ -32,6 +36,11 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
     protected override void Open()
     {
         base.Open();
+        if (_classicForSession)
+        {
+            OpenClassic();
+            return;
+        }
 
         _data = new ResearchConsoleTguiData(EntMan);
         _title = Loc.GetString("research-console-menu-title");
@@ -48,6 +57,7 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
         _window.Panel.OnAction += OnAction;
         // The panel publishes its own state first on every (re)load; static data follows it.
         _window.Panel.Web.Ready += SendStatic;
+        _window.Panel.Web.Failed += SwitchToClassic;
         _window.Panel.SetState(InterfaceName, "{}", _title);
         PushState();
     }
@@ -68,6 +78,33 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
     {
         base.UpdateState(state);
         PushState();
+        if (state is ResearchConsoleBoundInterfaceState research)
+        {
+            _classicWindow?.UpdatePanels(research);
+            _classicWindow?.UpdateInformationPanel(research);
+        }
+    }
+
+    private void SwitchToClassic()
+    {
+        if (_window is not { } window || !IsOpened) return;
+        _window = null;
+        _classicForSession = true;
+        window.OnClose -= Close;
+        window.Close();
+#pragma warning disable CS0618
+        window.Dispose();
+#pragma warning restore CS0618
+        OpenClassic();
+    }
+
+    private void OpenClassic()
+    {
+        _classicWindow = this.CreateWindow<ResearchConsoleMenu>();
+        _classicWindow.SetEntity(Owner);
+        _classicWindow.OnTechnologyCardPressed += id => SendMessage(new ConsoleUnlockTechnologyMessage(id));
+        _classicWindow.OnServerButtonPressed += () => SendMessage(new ConsoleServerSelectionMessage());
+        if (State != null) UpdateState(State);
     }
 
     protected override void Dispose(bool disposing)
@@ -77,9 +114,9 @@ public sealed class ResearchConsoleTguiBoundUserInterface(EntityUid owner, Enum 
             _window = null;
             window.OnClose -= Close;
             window.Close();
-            // The browser control itself is disposed later (WebViewRelease, CEF lifetime workaround).
+            // GameWebView owns the asynchronous browser teardown.
 #pragma warning disable CS0618
-            window.Dispose();
+            if (!window.Disposed) window.Dispose();
 #pragma warning restore CS0618
         }
 
