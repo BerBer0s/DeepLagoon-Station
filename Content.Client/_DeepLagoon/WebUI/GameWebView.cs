@@ -46,6 +46,9 @@ public sealed class GameWebView : Control
     private TimeSpan _logWindow;
     private int _logCount;
     private readonly bool _suspendWhenHidden;
+    // The browser outlives leaving the UI tree (WebViewControl.AlwaysActive): a window that is closed and
+    // opened again (the chat composer) keeps its loaded page instead of starting a new browser each time.
+    private readonly bool _keepAlive;
     private readonly bool _chat;
     private readonly NativeChatBackground _background;
     public bool BrowserActive => _view.IsInsideTree;
@@ -115,8 +118,9 @@ public sealed class GameWebView : Control
         while (_incoming.TryDequeue(out _)) { }
     }
 
-    public GameWebView(bool chat = false, bool suspendWhenHidden = false)
+    public GameWebView(bool chat = false, bool suspendWhenHidden = false, bool keepAlive = false)
     {
+        _keepAlive = keepAlive && !suspendWhenHidden;
         _chat = chat;
         _suspendWhenHidden = suspendWhenHidden;
         HorizontalExpand = VerticalExpand = true;
@@ -146,6 +150,8 @@ public sealed class GameWebView : Control
         };
         view.AddBeforeBrowseHandler(BeforeBrowse);
         view.AddResourceRequestHandler(ResourceRequest);
+        // Starts the browser now, with the handlers already installed.
+        if (_keepAlive) view.AlwaysActive = true;
         return view;
     }
 
@@ -317,6 +323,8 @@ public sealed class GameWebView : Control
         base.EnteredTree();
         _input = IoCManager.Resolve<IInputManager>();
         _input.FirstChanceOnKeyEvent += OnFirstChanceKey;
+        // A kept-alive page may have posted messages while its window was closed; they are stale now.
+        if (_keepAlive) while (_incoming.TryDequeue(out _)) { }
     }
 
     // Stock WebView keeps every key while it has keyboard focus (its RawKeyEvent returns true), so one
@@ -365,6 +373,14 @@ public sealed class GameWebView : Control
         base.ExitedTree();
         if (_input != null) _input.FirstChanceOnKeyEvent -= OnFirstChanceKey;
         _input = null;
+        if (_keepAlive && !_disposed)
+        {
+            // The page stays loaded and ready. Drop its field focus so a caret does not repaint it while hidden.
+            if (_ready) _view.ExecuteJavaScript("document.activeElement?.blur();");
+            _pageEditing = false;
+            while (_incoming.TryDequeue(out _)) { }
+            return;
+        }
         if (_suspendWhenHidden && !_disposed) SuspendBrowser();
         _ready = false;
         _pageEditing = false;
@@ -402,6 +418,8 @@ public sealed class GameWebView : Control
         _disposed = true;
         _view.RemoveBeforeBrowseHandler(BeforeBrowse);
         _view.RemoveResourceRequestHandler(ResourceRequest);
+        // A kept-alive browser outside the tree is only closed by turning AlwaysActive off.
+        if (_keepAlive) _view.AlwaysActive = false;
         WebViewRelease.CloseNowDisposeLater(_view);
         base.Dispose(disposing);
     }

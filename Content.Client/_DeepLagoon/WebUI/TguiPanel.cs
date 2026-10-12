@@ -31,10 +31,10 @@ public sealed class TguiPanel : Control
     private float _appearanceRefresh;
     private readonly bool _inheritChatAppearance;
 
-    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true)
+    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true, bool keepAlive = false)
     {
         _inheritChatAppearance = inheritChatAppearance;
-        Web = new GameWebView(suspendWhenHidden: suspendWhenHidden);
+        Web = new GameWebView(suspendWhenHidden: suspendWhenHidden, keepAlive: keepAlive);
         HorizontalExpand = VerticalExpand = true;
         AddChild(Web);
         Web.Ready += Publish;
