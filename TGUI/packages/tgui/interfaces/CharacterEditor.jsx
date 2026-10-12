@@ -92,7 +92,7 @@ export const CharacterEditor = () => {
   // DeepLagoon: fuzzy search; one list per search, so the typo rule counts all jobs (or all markings) together
   const matchedJobs = new Set(fuzzyFilter((data.departments || []).flatMap(department => department.jobs), search, job => job.name));
   const matchedMarkings = new Set(fuzzyFilter(data.markingOptions || [], search, option => option.name));
-  const theme = playerTheme(JSON.stringify({ settings: appearance }));
+  const theme = playerTheme(appearance);
   return <ColorTransferContext.Provider value={transfer}><div ref={backgroundRoot} className={'CharacterEditor Chat ' + theme.className + ' CharacterEditor--' + data.mode +
     (appearance.smoothScroll ? ' CharacterEditor--smooth' : '') + (appearance.hoverEffect ? ' CharacterEditor--hover' : '')}
     style={{ ...theme.style, ...editorAppearance(appearance) }}>

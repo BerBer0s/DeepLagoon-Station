@@ -23,7 +23,7 @@ public sealed class TguiPanel : Control
     private ScreenCoordinates _dragPointer;
     private Vector2 _dragOrigin;
     private bool _dragging;
-    private string _chatState = "";
+    private string _chatAppearance = "{}";
     private string? _chatSettings;
     private float _appearanceRefresh;
     private readonly bool _inheritChatAppearance;
@@ -168,7 +168,8 @@ public sealed class TguiPanel : Control
             {
                 _chatSettings = settings;
                 var state = Content.Client.UserInterface.Systems.Chat.Controls.ChatTabsSettings.Deserialize(settings)?.WebState ?? "";
-                if (state != _chatState) { _chatState = state; Publish(); }
+                var appearance = ChatAppearance(state);
+                if (appearance != _chatAppearance) { _chatAppearance = appearance; Publish(); }
             }
         }
         if (_dragWindow == null || _input == null) return;
@@ -192,6 +193,24 @@ public sealed class TguiPanel : Control
         Web.Send("update", "{\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
             ",\"title\":" + GameWebView.Quote(_title) +
             ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":" + _data[..^1] +
-            (_data.Trim() == "{}" ? "" : ",") + "\"chatState\":" + GameWebView.Quote(_chatState) + "}}");
+            (_data.Trim() == "{}" ? "" : ",") + "\"chatAppearance\":" + _chatAppearance + "}}");
+    }
+
+    /// <summary>
+    /// Only the fields playerTheme reads. The whole chat panel state (up to 8 KiB) used to ride along
+    /// with every state of every window and was parsed by the page on every render.
+    /// </summary>
+    private static string ChatAppearance(string chatState)
+    {
+        var appearance = new TguiData();
+        if (!TguiActionData.TryParse(chatState, out var state) || state!.Object("settings") is not { } settings)
+            return appearance.ToString();
+        foreach (var key in new[] { "theme", "chatBgColor", "chatTextColor" })
+        {
+            // JSON null arrives from the YAML reader as the literal text.
+            if (settings.String(key) is { } value and not "null")
+                appearance.String(key, value);
+        }
+        return appearance.ToString();
     }
 }
