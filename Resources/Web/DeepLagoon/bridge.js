@@ -10,11 +10,31 @@
   // Same limits and unit as GameWebView: UTF-16 code units of the type and of the payload JSON.
   const maxType = 68;
   const maxPayload = 8192;
+  // Page warnings and errors for the client log (GameWebView, sawmill tgui.page): cut to 2 KiB and
+  // at most 5 a second, so a broken render loop cannot flood the bridge.
+  let logWindow = 0;
+  let logCount = 0;
+  const sendLog = (level, ns, message) => {
+    const now = Date.now();
+    if (now - logWindow >= 1000) {
+      logWindow = now;
+      logCount = 0;
+    }
+    if (++logCount > 5) return;
+    send({ type: 'log', payload: {
+      level, ns: String(ns || '').slice(0, 64), message: String(message || '').slice(0, 2048) } });
+  };
   // A message the host did not take (too long, its queue full) is reported, never lost silently.
   const dropped = (type, reason) => {
     console.warn('DeepLagoon bridge dropped a message:', type, reason);
     window.dispatchEvent(new CustomEvent('deeplagoon/bridge-dropped', { detail: { type, reason } }));
+    if (type !== 'log') sendLog('warn', 'bridge', 'dropped ' + type + ': ' + reason);
   };
+  // Errors outside React (handlers, timers, promises); the bundle strips console output.
+  window.addEventListener('error', event =>
+    sendLog('error', 'window', event.error?.stack || event.message));
+  window.addEventListener('unhandledrejection', event =>
+    sendLog('error', 'window', 'unhandled rejection: ' + (event.reason?.stack || event.reason)));
   const send = message => {
     const payload = JSON.stringify({ ...message.payload, _sequence: sequence++, _page: page });
     if (message.type.length > maxType || payload.length > maxPayload) {
@@ -38,6 +58,10 @@
   window.Byond = {
     parseJson: value => typeof value === 'string' ? JSON.parse(value) : value,
     topic: value => {
+      if (value.type === 'log') {
+        if (value.level === 'warn' || value.level === 'error') sendLog(value.level, value.ns, value.message);
+        return;
+      }
       if (value.type === 'panel/state_set' && typeof value.panel_state === 'string') {
         try { send({ type: value.type, payload: JSON.parse(value.panel_state) }); } catch {}
         return;

@@ -25,6 +25,8 @@ public sealed class GameWebView : Control
     public const int MaxMessagePayloadLength = WebUiActionMessage.MaxPayloadLength;
     private const int MaxQueryLength = (MaxMessageTypeLength + MaxMessagePayloadLength) * 9 + 2;
     private const int MaxIncoming = 64;
+    private const int MaxLogLength = 2048;
+    private const int MaxLogPerSecond = 5;
     private WebViewControl _view;
     private readonly string _documentUrl;
     private readonly string? _devOrigin;
@@ -40,6 +42,9 @@ public sealed class GameWebView : Control
     private int _textInputRequests;
     private int _editingRequests;
     private IInputManager? _input;
+    private ISawmill? _pageLog;
+    private TimeSpan _logWindow;
+    private int _logCount;
     private readonly bool _suspendWhenHidden;
     private readonly bool _chat;
     private readonly NativeChatBackground _background;
@@ -278,6 +283,9 @@ public sealed class GameWebView : Control
                         ReleaseTextInput();
                     _pageEditing = active;
                     break;
+                case "log":
+                    LogPage(payload);
+                    break;
                 case "native-background":
                     _background?.Configure(payload);
                     break;
@@ -329,6 +337,28 @@ public sealed class GameWebView : Control
         Keyboard.Key.Tab or Keyboard.Key.Up or Keyboard.Key.Down or Keyboard.Key.Left or Keyboard.Key.Right or
         Keyboard.Key.F5 or Keyboard.Key.Control or Keyboard.Key.Shift or Keyboard.Key.Alt or
         Keyboard.Key.LSystem or Keyboard.Key.RSystem;
+
+    // Page warnings and errors (bridge.js forwards TGUI's logger.warn/error and uncaught errors).
+    // The page is untrusted: the text is cut, rate limited and logged as a value, not as a template.
+    private void LogPage(string payload)
+    {
+        var now = IoCManager.Resolve<IGameTiming>().RealTime;
+        if (now - _logWindow >= TimeSpan.FromSeconds(1))
+        {
+            _logWindow = now;
+            _logCount = 0;
+        }
+        if (++_logCount > MaxLogPerSecond || !TguiActionData.TryParse(payload, out var entry)) return;
+        var ns = entry!.String("ns") ?? "";
+        var message = entry.String("message") ?? "";
+        if (ns.Length > 64) ns = ns[..64];
+        if (message.Length > MaxLogLength) message = message[..MaxLogLength];
+        _pageLog ??= IoCManager.Resolve<ILogManager>().GetSawmill("tgui.page");
+        if (entry.String("level") == "error")
+            _pageLog.Error("{Document} [{Namespace}] {Message}", _documentUrl, ns, message);
+        else
+            _pageLog.Warning("{Document} [{Namespace}] {Message}", _documentUrl, ns, message);
+    }
 
     protected override void ExitedTree()
     {
