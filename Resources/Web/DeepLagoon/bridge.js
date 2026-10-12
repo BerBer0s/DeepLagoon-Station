@@ -7,16 +7,32 @@
   let sequence = 0;
   const page = Date.now().toString(36) + Math.random().toString(36).slice(2);
   let sending = Promise.resolve();
+  // Same limits and unit as GameWebView: UTF-16 code units of the type and of the payload JSON.
+  const maxType = 68;
+  const maxPayload = 8192;
+  // A message the host did not take (too long, its queue full) is reported, never lost silently.
+  const dropped = (type, reason) => {
+    console.warn('DeepLagoon bridge dropped a message:', type, reason);
+    window.dispatchEvent(new CustomEvent('deeplagoon/bridge-dropped', { detail: { type, reason } }));
+  };
   const send = message => {
-    if (JSON.stringify(message).length > 12000) return;
+    const payload = JSON.stringify({ ...message.payload, _sequence: sequence++, _page: page });
+    if (message.type.length > maxType || payload.length > maxPayload) {
+      dropped(message.type, 'too long');
+      return;
+    }
     // Serialize requests so a ready or action cannot overtake earlier messages.
     // Robust's res scheme is not FetchEnabled. An image request uses the existing
     // resource callback without navigating or requiring engine changes.
     sending = sending.catch(() => {}).then(() => new Promise(resolve => {
       const image = new Image();
-      image.onload = image.onerror = resolve;
-      image.src = root + 'bridge?' + encodeURIComponent(message.type) + '&' +
-        encodeURIComponent(JSON.stringify({ ...message.payload, _sequence: sequence++, _page: page }));
+      image.onload = resolve;
+      // The host cancels the request when it does not take the message.
+      image.onerror = () => {
+        dropped(message.type, 'refused');
+        resolve();
+      };
+      image.src = root + 'bridge?' + encodeURIComponent(message.type) + '&' + encodeURIComponent(payload);
     }));
   };
   window.Byond = {

@@ -16,10 +16,18 @@ namespace Content.Client._DeepLagoon.WebUI;
 public sealed class GameWebView : Control
 {
     private const string Root = "/Web/DeepLagoon/";
+
+    // Page -> C# limits, in one unit: UTF-16 code units of the decoded message type and payload JSON,
+    // the same strings bridge.js measures. The encoded query only gets a cap derived from them
+    // (encodeURIComponent turns one UTF-16 code unit into at most 9 characters).
+    public const int MaxMessageTypeLength = 68;
+    public const int MaxMessagePayloadLength = WebUiActionMessage.MaxPayloadLength;
+    private const int MaxQueryLength = (MaxMessageTypeLength + MaxMessagePayloadLength) * 9 + 2;
+    private const int MaxIncoming = 64;
     private WebViewControl _view;
     private readonly string _documentUrl;
     private readonly string? _devOrigin;
-    private readonly ConcurrentQueue<string> _incoming = new();
+    private readonly ConcurrentQueue<(string Type, string Payload)> _incoming = new();
     private readonly Queue<string> _outgoing = new();
     private bool _ready;
     private bool _disposed;
@@ -145,17 +153,27 @@ public sealed class GameWebView : Control
         }
         if (uri.AbsolutePath != Root + "bridge")
             return;
-        if (context.Method != "GET" || uri.Query.Length > 65536 ||
-            (context.RequestInitiator != "res://deeplagoon" && context.RequestInitiator != _devOrigin))
+        // A message that is not taken (too long, queue full) gets no image: the page's onerror reports it.
+        if (context.Method != "GET" || uri.Query.Length > MaxQueryLength ||
+            (context.RequestInitiator != "res://deeplagoon" && context.RequestInitiator != _devOrigin) ||
+            !TryDecodeMessage(uri.Query, out var message) || _incoming.Count >= MaxIncoming)
         {
             context.DoCancel();
             return;
         }
-        // Query contains a percent-encoded message type and JSON payload.
-        if (_incoming.Count < 64)
-            _incoming.Enqueue(uri.Query.TrimStart('?'));
+        _incoming.Enqueue(message);
         context.DoRespondStream(new MemoryStream(Convert.FromBase64String(
             "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")), "image/gif");
+    }
+
+    // Query contains a percent-encoded message type and JSON payload.
+    private static bool TryDecodeMessage(string query, out (string Type, string Payload) message)
+    {
+        message = default;
+        var fields = query.TrimStart('?').Split('&', 2);
+        if (fields.Length != 2) return false;
+        message = (Uri.UnescapeDataString(fields[0]), Uri.UnescapeDataString(fields[1]));
+        return message.Type.Length <= MaxMessageTypeLength && message.Payload.Length <= MaxMessagePayloadLength;
     }
 
     public void Send(string type, string payloadJson)
@@ -214,15 +232,11 @@ public sealed class GameWebView : Control
 
     private void DispatchIncoming()
     {
-        for (var i = 0; i < 32 && _incoming.TryDequeue(out var json); i++)
+        for (var i = 0; i < 32 && _incoming.TryDequeue(out var message); i++)
         {
             if (_disposed)
                 return;
-            var fields = json.Split('&', 2);
-            if (fields.Length != 2) continue;
-            var type = Uri.UnescapeDataString(fields[0]);
-            var payload = Uri.UnescapeDataString(fields[1]);
-            if (type.Length > 68 || payload.Length > 8192) continue;
+            var (type, payload) = message;
             switch (type)
             {
                 case "ready":
