@@ -17,6 +17,15 @@ namespace Content.Client._DeepLagoon.WebUI;
 /// <summary>Read first sprite frames from packaged resources, without GPU readbacks.</summary>
 public sealed class TguiSpriteImages
 {
+    /// <summary>
+    /// One cache of decoded frames for every TGUI window of the session. Decoding is the costly part, and
+    /// per-window caches decoded the same sprites again (the character editor is rebuilt on every lobby entry).
+    /// </summary>
+    public static TguiSpriteImages Shared { get; private set; } = new();
+
+    /// <summary>Drops every decoded frame, after prototypes were reloaded.</summary>
+    public static void ResetShared() => Shared = new TguiSpriteImages();
+
     private readonly Dictionary<SpriteSpecifier, string> _frames = new();
     private readonly Dictionary<string, List<TguiData>> _items = new();
     private readonly Dictionary<ResPath, string> _tileFrames = new();

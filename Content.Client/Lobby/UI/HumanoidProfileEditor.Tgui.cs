@@ -33,7 +33,7 @@ public sealed partial class HumanoidProfileEditor
     private bool _publishedTguiClothes;
     private int _publishedSupporterBonus = -1;
     private float _tguiRefresh;
-    private readonly TguiSpriteImages _tguiImages = new();
+    private static TguiSpriteImages _tguiImages => TguiSpriteImages.Shared; // DeepLagoon: tgui fix, one session cache
     private readonly Dictionary<int, (string Id, string Image, string Status)> _headshotPreviews = new();
     private readonly Dictionary<int, Guid> _headshotReads = new();
     private string _tguiMode = "appearance";
