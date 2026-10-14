@@ -12,6 +12,16 @@ namespace Content.Server._DeepLagoon.DiscordLink;
 /// </summary>
 public sealed class DiscordLinkStore : IDisposable
 {
+    public static string ResolvePath(string root, string relative)
+    {
+        // A server-owned setting allows a dedicated directory with narrowly
+        // inherited read ACLs for Identity, including recreated WAL/SHM files.
+        if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Contains(':') ||
+            relative.Split('/', '\\').Any(part => part is ".." or "." or ""))
+            throw new ArgumentException("Discord link database must be relative to the server data directory.", nameof(relative));
+        return Path.Combine(Path.GetFullPath(root), relative);
+    }
+
     private readonly SqliteConnection _db;
     private readonly Func<long> _now;
     private readonly Dictionary<Guid, (long BoostUntil, int Tier, long TierUntil)> _supporterCache = new();

@@ -204,7 +204,7 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             Log.Error("Discord linking requires a persistent server data directory.");
             return;
         }
-        _store = new DiscordLinkStore(Path.Combine(root, "discord-links.db"));
+        _store = new DiscordLinkStore(DiscordLinkStore.ResolvePath(root, _config.GetCVar(CCVars.DiscordLinkDatabaseFile)));
     }
 
     public override void Shutdown()

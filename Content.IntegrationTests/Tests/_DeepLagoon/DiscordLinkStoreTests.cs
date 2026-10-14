@@ -15,6 +15,16 @@ public sealed class DiscordLinkStoreTests
     private string _path = default!;
     private long _now;
 
+    [Test]
+    public void DatabasePathAllowsDedicatedDirectoryButRejectsEscapes()
+    {
+        Directory.CreateDirectory(_directory);
+        Assert.That(DiscordLinkStore.ResolvePath(_directory, "identity-links/discord-links.db"),
+            Is.EqualTo(Path.Combine(Path.GetFullPath(_directory), "identity-links/discord-links.db")));
+        foreach (var path in new[] { "", "../links.db", "private/../links.db", "/tmp/links.db", "./links.db" })
+            Assert.Throws<ArgumentException>(() => DiscordLinkStore.ResolvePath(_directory, path));
+    }
+
     [SetUp]
     public void Setup()
     {
