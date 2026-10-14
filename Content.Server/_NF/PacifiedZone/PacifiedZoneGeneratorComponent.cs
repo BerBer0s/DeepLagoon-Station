@@ -21,6 +21,13 @@ namespace Content.Server._NF.PacifiedZone
         [DataField]
         public int Radius = 5;
 
+        /// <summary>When attached to a grid, cover only that grid, including buckled occupants.</summary>
+        [DataField]
+        public bool WholeGrid;
+
+        [DataField]
+        public bool DisallowAllCombat;
+
         [DataField]
         public List<ProtoId<JobPrototype>> ImmuneRoles = new();
 

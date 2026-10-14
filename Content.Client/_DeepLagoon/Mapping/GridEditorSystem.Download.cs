@@ -1,7 +1,10 @@
 using System.IO;
+using System.Text;
 using Content.Client._DeepLagoon.WebUI;
 using Content.Shared._DeepLagoon.Mapping;
 using Robust.Client.UserInterface;
+using Robust.Shared.Serialization.Markdown.Mapping;
+using Robust.Shared.Serialization.Markdown.Value;
 
 namespace Content.Client._DeepLagoon.Mapping;
 
@@ -12,6 +15,61 @@ public sealed partial class GridEditorSystem
     private Guid _downloadRequest;
     private int _downloadIndex, _downloadCount;
     private bool _downloadBusy;
+    private string? _draftFileId;
+    private StringBuilder? _draftFile;
+    private int _draftFileLength, _draftFileChunks, _draftFileNext;
+
+    // Export the browser's frozen construction draft locally. No apply event, server session,
+    // map initialization check, or mutation of the live grid is involved.
+    private bool DraftFileAction(string action, MappingDataNode root)
+    {
+        if (action is not ("draftFileStart" or "draftFileChunk")) return false;
+        static string Field(MappingDataNode node, string key) => node.TryGet<ValueDataNode>(key, out var value) ? value.Value : "";
+        var id = Field(root, "id");
+        try
+        {
+            if (action == "draftFileStart")
+            {
+                if (_downloadBusy) throw new InvalidOperationException("Дождитесь завершения предыдущего сохранения.");
+                if (id.Length is < 1 or > 64 || !int.TryParse(Field(root, "length"), out var length) || length is < 1 or > 32 * 1024 * 1024 ||
+                    !int.TryParse(Field(root, "chunks"), out var chunks) || chunks != (length + 1023) / 1024)
+                    throw new InvalidDataException("Некорректный размер черновика (максимум 32 МиБ текста).");
+                _draftFileId = id; _draftFileLength = length; _draftFileChunks = chunks; _draftFileNext = 0;
+                _draftFile = new StringBuilder(); _downloadRequest = Guid.NewGuid(); _downloadBusy = true;
+                DownloadState(true);
+            }
+            else
+            {
+                if (_draftFile == null || id != _draftFileId) return true;
+                if (!int.TryParse(Field(root, "index"), out var index) || index != _draftFileNext)
+                    throw new InvalidDataException("Нарушен порядок частей черновика.");
+                var text = Field(root, "text");
+                if (text.Length != Math.Min(1024, _draftFileLength - _draftFile.Length))
+                    throw new InvalidDataException("Неполная часть черновика.");
+                _draftFile.Append(text); _draftFileNext++;
+                if (_draftFileNext == _draftFileChunks)
+                {
+                    if (_draftFile.Length != _draftFileLength) throw new InvalidDataException("Неполный файл черновика.");
+                    var bytes = Encoding.UTF8.GetBytes(_draftFile.ToString());
+                    _draftFile = null;
+                    SaveDownloadedFile(bytes, _downloadRequest);
+                    return true;
+                }
+            }
+            _window?.Panel.Web.Send("update", new TguiData().Object("data", new TguiData()
+                .String("draftFileId", id).Number("draftFileNext", _draftFileNext)).ToString());
+        }
+        catch (Exception e)
+        {
+            if (id == _draftFileId) CancelDownload();
+            else FinishDraftFile(id);
+            Status($"Не удалось сохранить черновик: {e.Message}", false);
+        }
+        return true;
+    }
+
+    private void FinishDraftFile(string id) => _window?.Panel.Web.Send("update", new TguiData().Object("data",
+        new TguiData().String("draftFileFinished", id)).ToString());
 
     private void BeginDownload(bool wholeMap)
     {
@@ -61,6 +119,9 @@ public sealed partial class GridEditorSystem
     private void CancelDownload()
     {
         _download?.Dispose(); _download = null; _downloadBusy = false;
+        _draftFile = null;
+        if (_draftFileId != null) FinishDraftFile(_draftFileId);
+        _draftFileId = null;
         DownloadState(false);
     }
 }

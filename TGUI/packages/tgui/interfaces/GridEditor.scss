@@ -1,3 +1,7 @@
+// Geometry restoration can apply a saved TGUI zoom before React mounts.
+// Keep the viewport editor at CSS pixel scale, including that initial render.
+body:has(.GridEditor) { zoom: 1 !important; }
+
 .GridEditor {
   position: fixed; inset: 0; height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; color: #d8e5ed; background: #141e28; font-size: 12px;
   button, input { font: inherit; }
@@ -10,11 +14,16 @@
   header, footer { flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 8px; background: #1e2d3b; }
   header strong, footer > span { flex: 1; }
   footer > span { overflow-wrap: anywhere; }
+  footer { flex-wrap: wrap; }
+  footer > button { flex-shrink: 0; }
   .primary { background: #21664e; border-color: #4ba888; }
   .error { color: #ff9a90; }
   &__body { display: flex; flex: 1; min-height: 0; }
   aside { padding: 7px; display: flex; flex-direction: column; gap: 7px; min-height: 0; }
-  &__catalog { width: 245px; flex-shrink: 0; border-right: 1px solid #344b5b; }
+  &__catalog { width: var(--catalog-width, 245px); flex-shrink: 0; }
+  &__divider { width: 6px; flex: 0 0 6px; cursor: col-resize; touch-action: none; background: #1c2d3a;
+    &:hover, &:focus-visible { background: #5aadc6; outline: none; }
+  }
   nav { display: flex; flex-wrap: wrap; gap: 3px; }
   &__entries { flex: 1; overflow-y: auto; min-height: 0;
     button { display: flex; width: 100%; gap: 7px; align-items: center; margin-bottom: 3px; text-align: left; }
@@ -28,11 +37,11 @@
     img { position: absolute; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
   }
   &__pages { display: flex; align-items: center; justify-content: space-between; }
-  &__regions { display: flex; gap: 4px; button { flex: 1; } }
   main { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
   &__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; padding: 4px 6px; border-bottom: 1px solid #344b5b; }
-  &__viewport { flex: 1; min-height: 0; overflow: auto; background: #08121c; overscroll-behavior: contain; }
-  &__canvas { position: relative; isolation: isolate; z-index: 0; outline: none; touch-action: none;
+  &__viewport { flex: 1; min-height: 0; overflow: auto; background: #08121c; overscroll-behavior: contain; overflow-anchor: none; scrollbar-width: none; &::-webkit-scrollbar { display: none; } }
+  &__surface { position: relative; touch-action: none; }
+  &__canvas { position: absolute; isolation: isolate; z-index: 0; overflow: hidden; outline: none; touch-action: none;
     &.tool-pan { cursor: grab; } &.panning { cursor: grabbing; }
     &.grid { background-image: linear-gradient(#50677955 1px, transparent 1px), linear-gradient(90deg, #50677955 1px, transparent 1px); background-size: var(--cell) var(--cell); }
     &.tool-brush, &.tool-line, &.tool-rect, &.tool-erase, &.tool-pick { cursor: crosshair; }
@@ -41,11 +50,16 @@
     span { display: block; width: 100%; height: 100%; position: relative; }
     img { position: absolute; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
   }
+  &__scene { position: absolute; pointer-events: none; image-rendering: pixelated; }
+  &__mirrorLine { position: absolute; pointer-events: none; z-index: 99995; &.x { border-left: 2px dashed #efbf64; } &.y { border-top: 2px dashed #efbf64; } }
+  &__reference { position: absolute; z-index: 99990; cursor: move; touch-action: none; outline: 1px dashed #7fdcf6; img { width: 100%; height: 100%; pointer-events: none; image-rendering: pixelated; } }
+  &__expansion { position: absolute; pointer-events: none; background-color: #54e8ef44; outline: 1px solid #54e8ef; opacity: .6; image-rendering: pixelated; }
+  &__item { z-index: 99999; }
   &__tinted { position: absolute; inset: 0; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
   &__item { &.hovered { outline: 2px solid #ffe681; } &.tile { background: #3b454e; } &.selected { box-shadow: inset 0 0 0 2px #54e8ef; background-color: #33cbdf44; } }
   &__cursor { z-index: 100000; outline: 1px solid #a8e8fa; background: #7fdcf633; opacity: .75; &.erase { background: #ff5e5e66; outline-color: #ff7878; } }
   &__status { padding: 5px 7px; color: #90a7b7; font-size: 10px; }
-  &__properties { width: 175px; flex-shrink: 0; border-left: 1px solid #344b5b; overflow-y: auto;
+  &__properties { width: var(--properties-width, 175px); flex-shrink: 0; overflow-y: auto;
     p { margin: 0; overflow-wrap: anywhere; }
     input[type=number] { width: 60px; }
     strong { margin-top: 4px; }
@@ -55,5 +69,28 @@
     > div { padding: 20px; border: 1px solid #70cae4; background: #1e2d3b; }
     button { margin-right: 8px; }
   }
-  @media (max-width: 900px) { &__catalog { width: 190px; } &__properties { width: 140px; } }
+  &__rubberband { position: absolute; pointer-events: none; z-index: 100002; border: 2px solid #54e8ef; background: #33cbdf33;
+    &.erase { border-color: #ff8075; background: #ff5e5e44; }
+  }
+  &__errorBanner { flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; padding: 10px 14px; border-top: 2px solid #ff8176; background: #602b30; color: #fff;
+    strong { font-size: 14px; } span { overflow-wrap: anywhere; }
+  }
+  &__failure { z-index: 40;
+    > div { border: 2px solid #ff8176; max-width: min(520px, 90vw); box-shadow: 0 0 30px #000c; }
+    strong { display: block; font-size: 18px; color: #ffb5a9; }
+    p { line-height: 1.6; overflow-wrap: anywhere; }
+  }
+  &__contextBackdrop { position: absolute; inset: 0; z-index: 25; background: #0003; }
+  &__radial { position: absolute; width: 350px; height: 330px; transform: translate(-50%, -50%);
+    button { border-radius: 8px; box-shadow: 0 3px 12px #0008; }
+  }
+  &__cellItems { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 145px; padding: 8px; border: 1px solid #70cae4; border-radius: 12px; background: #152735;
+    strong { display: block; text-align: center; margin-bottom: 7px; }
+    > div { max-height: 100px; overflow-y: auto; }
+    button { width: 100%; margin-bottom: 3px; padding: 5px; font-size: 10px; overflow-wrap: anywhere; }
+    > button { margin-top: 6px; }
+  }
+  &__radialAction { position: absolute; transform: translate(-50%, -50%); width: 100px; min-height: 36px;
+    &.action-delete { background: #63303a; border-color: #d8757b; }
+  }
 }

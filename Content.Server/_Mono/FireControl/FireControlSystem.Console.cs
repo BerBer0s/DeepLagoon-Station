@@ -179,6 +179,10 @@ public sealed partial class FireControlSystem : EntitySystem
         FireControlConsoleComponent component,
         ActivatableUIOpenAttemptEvent args)
     {
+        // A pilot console exposes one combined UI, rather than opening a second gunner UI.
+        if (_ui.HasUi(uid, Content.Shared.Shuttles.Components.ShuttleConsoleUiKey.Key))
+            return;
+
         var shuttle = _transform.GetParentUid(uid);
         var uiOpen = _crewedShuttle.AnyShuttleConsoleActiveByPlayer(shuttle, args.User);
         var forceOne = HasComp<CrewedShuttleComponent>(shuttle) && !HasComp<AdvancedPilotComponent>(args.User);
@@ -254,16 +258,28 @@ public sealed partial class FireControlSystem : EntitySystem
 
     private void UpdateUi(EntityUid uid, FireControlConsoleComponent? component = null)
     {
-        if (!Resolve(uid, ref component))
+        var state = GetConsoleState(uid);
+        if (state == null)
             return;
+        if (_ui.HasUi(uid, FireControlConsoleUiKey.Key))
+            _ui.SetUiState(uid, FireControlConsoleUiKey.Key, state);
+        if (_ui.HasUi(uid, Content.Shared.Shuttles.Components.ShuttleConsoleUiKey.Key))
+            _shuttleConsoleSystem.RefreshState(uid);
+    }
 
-        NavInterfaceState navState = _shuttleConsoleSystem.GetNavState(uid, _shuttleConsoleSystem.GetAllDocks());
+    public FireControlConsoleBoundInterfaceState? GetConsoleState(EntityUid uid, NavInterfaceState? navState = null)
+    {
+        if (!TryComp<FireControlConsoleComponent>(uid, out var component))
+            return null;
+
+        navState ??= _shuttleConsoleSystem.GetNavState(uid, _shuttleConsoleSystem.GetAllDocks());
 
         List<FireControllableEntry> controllables = new();
-        if (component.ConnectedServer != null && TryComp<FireControlServerComponent>(component.ConnectedServer, out var server))
+        var connected = false;
+        if (component.ConnectedServer != null && TryComp<FireControlServerComponent>(component.ConnectedServer, out var server)
+            && server.Consoles.Contains(uid))
         {
-            if (!server.Consoles.Contains(uid))
-                return;
+            connected = true;
 
             foreach (var controllable in server.Controlled)
             {
@@ -284,8 +300,8 @@ public sealed partial class FireControlSystem : EntitySystem
 
         var array = controllables.ToArray();
 
-        var state = new FireControlConsoleBoundInterfaceState(component.ConnectedServer != null, array, navState);
-        _ui.SetUiState(uid, FireControlConsoleUiKey.Key, state);
+        var state = new FireControlConsoleBoundInterfaceState(connected, array, navState);
+        return state;
     }
 
     /// <summary>

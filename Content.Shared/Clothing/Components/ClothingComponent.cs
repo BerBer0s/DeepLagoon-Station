@@ -20,6 +20,11 @@ public sealed partial class ClothingComponent : Component
     [DataField("clothingVisuals")]
     public Dictionary<string, List<PrototypeLayerData>> ClothingVisuals = new();
 
+    /// <summary>Visual cloth fitting to cosmetic anatomy. Auto excludes armor and pressure suits.</summary>
+    [DataField]
+    [Access(typeof(ClothingSystem), typeof(InventorySystem), Other = AccessPermissions.ReadExecute)]
+    public ClothingBodyFit BodyFit = ClothingBodyFit.Auto;
+
     /// <summary>
     /// The name of the layer in the user that this piece of clothing will map to
     /// </summary>
@@ -132,6 +137,13 @@ public enum ClothingMask : byte
     NoMask = 0,
     UniformFull,
     UniformTop
+}
+
+public enum ClothingBodyFit : byte
+{
+    Auto,
+    Soft,
+    Rigid,
 }
 
 [Serializable, NetSerializable]

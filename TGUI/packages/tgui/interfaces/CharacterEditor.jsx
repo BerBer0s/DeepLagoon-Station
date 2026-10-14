@@ -1,5 +1,5 @@
 import { LazySprite } from '../components/LazySprite';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBackend } from '../backend';
 import { Button, Dropdown, Section } from '../components';
 import './CharacterEditor.scss';
@@ -41,6 +41,10 @@ const HairCarousel = ({options,selected,color,onSelect}) => {
 
 export const CharacterEditor = () => {
   const { data, act } = useBackend();
+  const departments = useMemo(() => (data.departments || []).map(department => ({ ...department,
+    jobs: department.jobs.map(job => ({ ...job, ...data.jobState?.[job.id] })) })), [data.departments, data.jobState]);
+  const traits = useMemo(() => (data.traits || []).map(trait => ({ ...trait, ...data.traitState?.[trait.id] }))
+    .filter(trait => trait.visible !== false), [data.traits, data.traitState]);
   const backgroundRoot = useRef(null);
   const activeBackground = useRef(null);
   const appearance = data.appearance || {};
@@ -93,7 +97,7 @@ export const CharacterEditor = () => {
     </header>
     Выберите персонажа.</div>;
   // DeepLagoon: fuzzy search; one list per search, so the typo rule counts all jobs (or all markings) together
-  const matchedJobs = new Set(fuzzyFilter((data.departments || []).flatMap(department => department.jobs), search, job => job.name));
+  const matchedJobs = new Set(fuzzyFilter(departments.flatMap(department => department.jobs), search, job => job.name));
   const matchedMarkings = new Set(fuzzyFilter(data.markingOptions || [], search, option => option.name));
   const theme = playerTheme(JSON.stringify({ settings: appearance }));
   return <ColorTransferContext.Provider value={transfer}><div ref={backgroundRoot} className={'CharacterEditor Chat ' + theme.className + ' CharacterEditor--' + data.mode +
@@ -210,7 +214,7 @@ export const CharacterEditor = () => {
     {data.mode === 'jobs' && <>
       <Select label="Если предпочтения недоступны" value={data.unavailable}
         options={[{ id: '0', name: 'Остаться в лобби' }, { id: '1', name: 'Выбрать запасную профессию' }]} onChange={change('unavailable')} />
-      {(data.departments || []).map(department => <Section key={department.id} title={department.name}>
+      {departments.map(department => <Section key={department.id} title={department.name}>
         {department.jobs.filter(job => matchedJobs.has(job)).map(job => <div key={job.id} className="CharacterEditor__job">
           <div title={job.description}><strong>{job.name}</strong>{!job.allowed && <small>{job.reason}</small>}</div>
           <Select label={'Приоритет: ' + job.name} value={job.priority} options={priorities} disabled={!job.allowed}
@@ -223,12 +227,12 @@ export const CharacterEditor = () => {
       <Button color="bad" onClick={() => { if (confirmClear) { act('clear-traits'); setConfirmClear(false); } else setConfirmClear(true); }}>
         {confirmClear ? 'Подтвердить удаление всех черт' : 'Очистить все черты'}</Button>
       {confirmClear && <Button onClick={() => setConfirmClear(false)}>Отмена</Button>}
-      {[...new Set((data.traits || []).map(trait => trait.category))].map(category => {
+      {[...new Set(traits.map(trait => trait.category))].map(category => {
         const points = data.traitPoints?.find(item => item.name === category);
         return <Section key={category} title={category}>
           {points && <div className="CharacterEditor__points">Осталось очков: {Math.max(0, points.max - points.used)} / {points.max}
             <progress max={Math.max(1, points.max)} value={Math.max(0, points.max - points.used)} /></div>}
-          <div className="CharacterEditor__traits">{data.traits.filter(trait => trait.category === category).map(trait =>
+          <div className="CharacterEditor__traits">{traits.filter(trait => trait.category === category).map(trait =>
             <Button fluid key={trait.id} selected={trait.selected} tooltip={trait.description} disabled={!trait.selected && points && points.used + trait.cost > points.max}
               onClick={() => act('trait', { id: trait.id })}>{trait.name} ({trait.cost})</Button>)}</div>
         </Section>;

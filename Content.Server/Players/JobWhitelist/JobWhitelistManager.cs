@@ -31,6 +31,9 @@ public sealed partial class JobWhitelistManager : IPostInjectInit
     private readonly Dictionary<NetUserId, HashSet<string>> _whitelists = new();
     private readonly Dictionary<NetUserId, bool> _globalWhitelists = new(); // Frontier
 
+    /// <summary>Published only after the durable whitelist deletion succeeds.</summary>
+    public event Action<NetUserId>? GlobalWhitelistRevoked;
+
     public void Initialize()
     {
         _net.RegisterNetMessage<MsgJobWhitelist>();
@@ -214,6 +217,7 @@ public sealed partial class JobWhitelistManager : IPostInjectInit
     public async Task RemoveGlobalWhitelistAsync(NetUserId player)
     {
         await _db.RemoveFromWhitelistAsync(player);
+        GlobalWhitelistRevoked?.Invoke(player);
         if (_globalWhitelists.ContainsKey(player))
             _globalWhitelists[player] = false;
 

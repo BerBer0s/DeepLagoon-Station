@@ -444,7 +444,8 @@ public sealed partial class ShuttleMapControl : BaseShuttleControl
 
         foreach (var (color, sendEdges) in _edges)
         {
-            handle.DrawPrimitives(DrawPrimitiveTopology.LineList, sendEdges, color);
+            DrawRadarPrimitives(handle, DrawPrimitiveTopology.LineList,
+                System.Runtime.InteropServices.CollectionsMarshal.AsSpan(sendEdges), color);
         }
 
         foreach (var (color, sendStrings) in _strings)
@@ -550,7 +551,7 @@ public sealed partial class ShuttleMapControl : BaseShuttleControl
                     var mouseVerts = GetMapObject(mouseLocalPos, -_ftlAngle, scale: MinimapScale); // Mono Edit: UI controls and the map are in different coordinate orientations, so the angle has to be negated. (shuttle Y is UI control -Y)
 
                     handle.DrawPrimitives(DrawPrimitiveTopology.TriangleFan, mouseVerts.Span, color.WithAlpha(0.05f));
-                    handle.DrawPrimitives(DrawPrimitiveTopology.LineLoop, mouseVerts.Span, color);
+                    DrawRadarPrimitives(handle, DrawPrimitiveTopology.LineLoop, mouseVerts.Span, color);
 
                     // Draw a notch indicating direction.
                     var ftlLength = GetMapObjectRadius() + 16f;
@@ -728,6 +729,16 @@ public sealed partial class ShuttleMapControl : BaseShuttleControl
         var font = _font;
         var dimensions = handle.GetDimensions(font, text, 1f);
         var position = new Vector2(margin, PixelHeight - dimensions.Y - margin);
-        handle.DrawString(font, position, text, color);
+        var scale = 1f;
+        if (FitViewport)
+        {
+            var radius = MathF.Max(1, ScaledMinimapRadius - 10);
+            scale = MathF.Min(1, radius * 1.5f / MathF.Max(1, dimensions.X));
+            dimensions = handle.GetDimensions(font, text, scale);
+            var halfWidth = dimensions.X / 2;
+            var bottom = MathF.Sqrt(MathF.Max(0, radius * radius - halfWidth * halfWidth));
+            position = MidPointVector + new Vector2(-halfWidth, bottom - dimensions.Y);
+        }
+        handle.DrawString(font, position, text, scale, color);
     }
 }

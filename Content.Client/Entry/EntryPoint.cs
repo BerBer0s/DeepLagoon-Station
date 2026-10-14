@@ -154,6 +154,9 @@ namespace Content.Client.Entry
 
         public override void Shutdown()
         {
+            // Content shutdown runs before the stock engine stops CEF. Detach
+            // our browsers here so later entity/UI teardown cannot close twice.
+            Content.Client._DeepLagoon.WebUI.WebViewLifetime.Shutdown();
             base.Shutdown();
             _titleWindowManager.Shutdown();
         }

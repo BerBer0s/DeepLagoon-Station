@@ -10,6 +10,7 @@ using Robust.Client.UserInterface.XAML;
 using Robust.Shared.Map; // Mono
 using Robust.Shared.Map.Components;
 using Robust.Shared.Physics;
+using Robust.Shared.Prototypes;
 using Robust.Shared.Threading;
 using Robust.Shared.Timing;
 using Robust.Shared.Utility;
@@ -32,6 +33,10 @@ public partial class BaseShuttleControl : MapGridControl
     protected readonly Font Font;
 
     private GridDrawJob _drawJob;
+    private ShaderInstance? _surfaceShader;
+    private static readonly Color RadarSurfaceColor = Color.FromHex("#070e09");
+    private static readonly Color WarmFringe = Color.FromHex("#9b5964");
+    private static readonly Color CoolFringe = Color.FromHex("#4a9b80");
 
     // Cache grid drawing data as it can be expensive to build
     public readonly Dictionary<EntityUid, GridDrawData> GridData = new();
@@ -77,6 +82,27 @@ public partial class BaseShuttleControl : MapGridControl
         }
     }
 
+    protected override void DrawBacking(DrawingHandleScreen handle)
+    {
+        if (!FitViewport)
+        {
+            base.DrawBacking(handle);
+            return;
+        }
+        _surfaceShader ??= PrototypeManager.Index<ShaderPrototype>("ShuttleRadarSurface").InstanceUnique();
+        _surfaceShader.SetParameter("viewport_size", (Vector2)PixelSize);
+        handle.UseShader(_surfaceShader);
+        handle.DrawTextureRect(Texture.White, PixelSizeBox);
+        handle.UseShader(null);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            _surfaceShader?.Dispose();
+        base.Dispose(disposing);
+    }
+
     protected void DrawData(DrawingHandleScreen handle, string text)
     {
         var coordsDimensions = handle.GetDimensions(Font, text, 1f);
@@ -91,7 +117,7 @@ public partial class BaseShuttleControl : MapGridControl
     protected void DrawCircles(DrawingHandleScreen handle)
     {
         // Equatorial lines
-        var gridLines = Color.LightGray.WithAlpha(0.01f);
+        var gridLines = FitViewport ? Color.FromHex("#5B8E69") : Color.LightGray;
 
         // Each circle is this x distance of the last one.
         const float EquatorialMultiplier = 2f;
@@ -107,13 +133,19 @@ public partial class BaseShuttleControl : MapGridControl
             if (radius > cornerDistance)
                 continue;
 
-            var color = Color.ToSrgb(gridLines).WithAlpha(0.05f);
+            var color = FitViewport ? gridLines.WithAlpha(0.24f) : Color.ToSrgb(gridLines).WithAlpha(0.05f);
             var scaledRadius = MinimapScale * radius;
             var text = $"{radius:0}m";
             var textDimensions = handle.GetDimensions(Font, text, UIScale);
 
+            if (FitViewport && scaledRadius > 1)
+            {
+                handle.DrawCircle(origin, scaledRadius - 0.55f, WarmFringe.WithAlpha(0.025f), false);
+                handle.DrawCircle(origin, scaledRadius + 0.55f, CoolFringe.WithAlpha(0.03f), false);
+            }
             handle.DrawCircle(origin, scaledRadius, color, false);
-            handle.DrawString(Font, ScalePosition(new Vector2(0f, -radius)) - new Vector2(0f, textDimensions.Y), text, UIScale, color);
+            handle.DrawString(Font, ScalePosition(new Vector2(0f, -radius)) - new Vector2(0f, textDimensions.Y), text, UIScale,
+                FitViewport ? gridLines.WithAlpha(0.7f) : color);
         }
 
         const int gridLinesRadial = 8;
@@ -123,8 +155,8 @@ public partial class BaseShuttleControl : MapGridControl
             Angle angle = (Math.PI / gridLinesRadial) * i;
             // TODO: Handle distance properly.
             var aExtent = angle.ToVec() * ScaledMinimapRadius * 1.42f;
-            var lineColor = Color.MediumSpringGreen.WithAlpha(0.02f);
-            handle.DrawLine(origin - aExtent, origin + aExtent, lineColor);
+            var lineColor = FitViewport ? gridLines.WithAlpha(0.16f) : Color.MediumSpringGreen.WithAlpha(0.02f);
+            DrawRadarGuideLine(handle, origin - aExtent, origin + aExtent, lineColor);
         }
     }
 
@@ -157,14 +189,14 @@ public partial class BaseShuttleControl : MapGridControl
         var origin = MidPointVector;
         var viewportSize = new Vector2(PixelWidth, PixelHeight);
 
-        var subtleGray = Color.FromHex("#676767");
-        var northAccent = Color.FromHex("#7F7442");
-        var eastAccent = Color.FromHex("#456273");
-        var baseTickColor = subtleGray.WithAlpha(0.34f);
-        var majorTickColor = subtleGray.WithAlpha(0.5f);
-        var cardinalTickColor = subtleGray.WithAlpha(0.68f);
-        var regularLabelColor = subtleGray.WithAlpha(0.76f);
-        var cardinalLabelColor = subtleGray.WithAlpha(0.9f);
+        var subtleGray = Color.FromHex(FitViewport ? "#99C3A1" : "#676767");
+        var northAccent = Color.FromHex(FitViewport ? "#B1D6B6" : "#7F7442");
+        var eastAccent = Color.FromHex(FitViewport ? "#7FAB91" : "#456273");
+        var baseTickColor = subtleGray.WithAlpha(FitViewport ? 0.82f : 0.34f);
+        var majorTickColor = subtleGray.WithAlpha(FitViewport ? 0.96f : 0.5f);
+        var cardinalTickColor = subtleGray.WithAlpha(FitViewport ? 1f : 0.68f);
+        var regularLabelColor = subtleGray.WithAlpha(FitViewport ? 0.92f : 0.76f);
+        var cardinalLabelColor = subtleGray.WithAlpha(FitViewport ? 1f : 0.9f);
         var labelShadowColor = Color.Black.WithAlpha(0.36f);
 
         for (var step = 0; step < 360 / azimuthMinorTickStepDegrees; step++)
@@ -181,21 +213,23 @@ public partial class BaseShuttleControl : MapGridControl
                     ? majorTickLength
                     : minorTickLength;
 
-            if (!TryGetViewportEdgePoint(origin, direction, viewportSize, edgeInset, out var edgePoint, out var inwardNormal))
+            var edgePoint = origin + direction * (ScaledMinimapRadius - edgeInset);
+            var inwardNormal = -direction;
+            if (!FitViewport && !TryGetViewportEdgePoint(origin, direction, viewportSize, edgeInset, out edgePoint, out inwardNormal))
                 continue;
 
             var outer = edgePoint + inwardNormal * tickInset;
             var inner = outer + inwardNormal * tickLength;
             var tickColor = isNorth
-                ? northAccent.WithAlpha(0.58f)
+                ? northAccent.WithAlpha(FitViewport ? 1f : 0.58f)
                 : isEast
-                    ? eastAccent.WithAlpha(0.58f)
+                    ? eastAccent.WithAlpha(FitViewport ? 0.96f : 0.58f)
                     : isCardinal
                         ? cardinalTickColor
                         : isMajor
                             ? majorTickColor
                             : baseTickColor;
-            handle.DrawLine(outer, inner, tickColor);
+            DrawRadarGuideLine(handle, outer, inner, tickColor);
             if (isNorth)
             {
                 var sideOffset = new Vector2(-inwardNormal.Y, inwardNormal.X) * 0.35f;
@@ -208,7 +242,7 @@ public partial class BaseShuttleControl : MapGridControl
             var label = degrees.ToString();
             var labelScale = isCardinal ? cardinalLabelScale : regularLabelScale;
             var labelColor = isEast
-                ? eastAccent.WithAlpha(0.76f)
+                ? eastAccent.WithAlpha(FitViewport ? 0.96f : 0.76f)
                 : isCardinal
                     ? cardinalLabelColor
                     : regularLabelColor;
@@ -235,14 +269,14 @@ public partial class BaseShuttleControl : MapGridControl
         var origin = MidPointVector;
         var radius = MathF.Max(8f, SizeFull * 0.5f - ringInset);
 
-        var subtleGray = Color.FromHex("#676767");
-        var northAccent = Color.FromHex("#7F7442");
-        var eastAccent = Color.FromHex("#456273");
-        var baseTickColor = subtleGray.WithAlpha(0.34f);
-        var majorTickColor = subtleGray.WithAlpha(0.5f);
-        var cardinalTickColor = subtleGray.WithAlpha(0.68f);
-        var regularLabelColor = subtleGray.WithAlpha(0.76f);
-        var cardinalLabelColor = subtleGray.WithAlpha(0.9f);
+        var subtleGray = Color.FromHex(FitViewport ? "#99C3A1" : "#676767");
+        var northAccent = Color.FromHex(FitViewport ? "#B1D6B6" : "#7F7442");
+        var eastAccent = Color.FromHex(FitViewport ? "#7FAB91" : "#456273");
+        var baseTickColor = subtleGray.WithAlpha(FitViewport ? 0.82f : 0.34f);
+        var majorTickColor = subtleGray.WithAlpha(FitViewport ? 0.96f : 0.5f);
+        var cardinalTickColor = subtleGray.WithAlpha(FitViewport ? 1f : 0.68f);
+        var regularLabelColor = subtleGray.WithAlpha(FitViewport ? 0.92f : 0.76f);
+        var cardinalLabelColor = subtleGray.WithAlpha(FitViewport ? 1f : 0.9f);
         var labelShadowColor = Color.Black.WithAlpha(0.36f);
 
         handle.DrawCircle(origin, radius, subtleGray.WithAlpha(0.12f), false);
@@ -264,15 +298,15 @@ public partial class BaseShuttleControl : MapGridControl
             var outer = origin + direction * radius;
             var inner = origin + direction * (radius - tickLength);
             var tickColor = isNorth
-                ? northAccent.WithAlpha(0.58f)
+                ? northAccent.WithAlpha(FitViewport ? 1f : 0.58f)
                 : isEast
-                    ? eastAccent.WithAlpha(0.58f)
+                    ? eastAccent.WithAlpha(FitViewport ? 0.96f : 0.58f)
                     : isCardinal
                         ? cardinalTickColor
                         : isMajor
                             ? majorTickColor
                             : baseTickColor;
-            handle.DrawLine(outer, inner, tickColor);
+            DrawRadarGuideLine(handle, outer, inner, tickColor);
             if (isNorth)
             {
                 var sideOffset = new Vector2(-direction.Y, direction.X) * 0.35f;
@@ -285,7 +319,7 @@ public partial class BaseShuttleControl : MapGridControl
             var label = degrees.ToString();
             var labelScale = isCardinal ? cardinalLabelScale : regularLabelScale;
             var labelColor = isEast
-                ? eastAccent.WithAlpha(0.76f)
+                ? eastAccent.WithAlpha(FitViewport ? 0.96f : 0.76f)
                 : isCardinal
                     ? cardinalLabelColor
                     : regularLabelColor;
@@ -296,13 +330,29 @@ public partial class BaseShuttleControl : MapGridControl
         }
     }
 
+    private void DrawRadarGuideLine(DrawingHandleScreen handle, Vector2 start, Vector2 end, Color color)
+    {
+        // Faint separated colour fringes preserve the crisp central stroke. Bounded geometry,
+        // with no blur shader, framebuffer copies or extra render targets.
+        if (FitViewport && Vector2.DistanceSquared(start, end) > 0.01f)
+        {
+            var direction = Vector2.Normalize(end - start);
+            var halo = new Vector2(-direction.Y, direction.X) * 0.55f;
+            handle.DrawLine(start - halo, end - halo, WarmFringe.WithAlpha(color.A * 0.1f));
+            handle.DrawLine(start + halo, end + halo, CoolFringe.WithAlpha(color.A * 0.12f));
+        }
+        handle.DrawLine(start, end, color);
+    }
+
     protected void DrawCompassOverlay(DrawingHandleScreen handle, Angle heading)
     {
         var compassCenter = new Vector2(44f, 44f);
         const float compassRadius = 24f;
-        var ringColor = Color.White.WithAlpha(0.08f);
-        var northColor = Color.FromHex("#776C43");
-        var eastColor = Color.FromHex("#4C6572");
+        if (FitViewport)
+            compassCenter = MidPointVector - new Vector2(0.707107f) * MathF.Max(0, ScaledMinimapRadius - 60f);
+        var ringColor = FitViewport ? Color.FromHex("#99C3A1").WithAlpha(0.3f) : Color.White.WithAlpha(0.08f);
+        var northColor = Color.FromHex(FitViewport ? "#B1D6B6" : "#776C43");
+        var eastColor = Color.FromHex(FitViewport ? "#7FAB91" : "#4C6572");
         handle.DrawCircle(compassCenter, compassRadius, ringColor, false);
         handle.DrawCircle(compassCenter, 2.5f, ringColor.WithAlpha(0.48f), true);
 
@@ -429,7 +479,7 @@ public partial class BaseShuttleControl : MapGridControl
     {
         var rator = Maps.GetAllTilesEnumerator(grid.Owner, grid.Comp);
         var minimapScale = MinimapScale;
-        var midpoint = new Vector2(MidPoint, MidPoint);
+        var midpoint = MidPointVector;
         var tileSize = grid.Comp.TileSize;
 
         // Check if we even have data
@@ -673,7 +723,8 @@ public partial class BaseShuttleControl : MapGridControl
         if (drawFill)
         {
             const float BatchSize = 3f * 4096;
-            var fillColor = Color.ToSrgb(Color.InterpolateBetween(BackingColor, color, alpha)).WithAlpha(1f);
+            var backing = FitViewport ? Color.FromSrgb(RadarSurfaceColor) : BackingColor;
+            var fillColor = Color.ToSrgb(Color.InterpolateBetween(backing, color, alpha)).WithAlpha(1f);
 
             for (var i = 0; i < Math.Ceiling(triCount / BatchSize); i++)
             {
@@ -685,8 +736,26 @@ public partial class BaseShuttleControl : MapGridControl
         }
         else
         {
-            handle.DrawPrimitives(DrawPrimitiveTopology.LineList, new Span<Vector2>(_allVertices, gridData.EdgeIndex, edgeCount), color);
+            DrawRadarPrimitives(handle, DrawPrimitiveTopology.LineList,
+                new Span<Vector2>(_allVertices, gridData.EdgeIndex, edgeCount), color);
         }
+    }
+
+    protected void DrawRadarPrimitives(DrawingHandleScreen handle, DrawPrimitiveTopology topology,
+        ReadOnlySpan<Vector2> vertices, Color color)
+    {
+        // Sub-pixel chromatic aberration on radar outlines only. Reuse the same
+        // cached geometry; hit testing, labels and aiming coordinates stay exact.
+        if (FitViewport && vertices.Length > 0)
+        {
+            var transform = handle.GetTransform();
+            handle.SetTransform(Matrix3x2.CreateTranslation(-0.45f, 0) * transform);
+            handle.DrawPrimitives(topology, vertices, WarmFringe.WithAlpha(color.A * 0.1f));
+            handle.SetTransform(Matrix3x2.CreateTranslation(0.45f, 0) * transform);
+            handle.DrawPrimitives(topology, vertices, CoolFringe.WithAlpha(color.A * 0.12f));
+            handle.SetTransform(transform);
+        }
+        handle.DrawPrimitives(topology, vertices, color);
     }
 
     private static int GetDirIndex(Vector2i dir)

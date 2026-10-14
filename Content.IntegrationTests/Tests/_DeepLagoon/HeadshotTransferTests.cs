@@ -43,8 +43,16 @@ public sealed class HeadshotTransferTests
     {
         await using var pair=await PoolManager.GetServerClient(new PoolSettings {Destructive=true,InLobby=true});
         var client=pair.Client;var server=pair.Server;
+        await server.WaitPost(() =>
+        {
+            var session = server.ResolveDependency<Robust.Server.Player.IPlayerManager>().Sessions.Single();
+            if (server.ResolveDependency<Content.Server.Administration.Managers.IAdminManager>().GetAdminData(session, true) is { } admin)
+                admin.Flags &= ~Content.Shared.Administration.AdminFlags.Host;
+        });
         using var picture=new Image<Rgba32>(32,32);using var png=new MemoryStream();picture.SaveAsPng(png);var original=png.ToArray();
         using var jpeg=new MemoryStream();picture.SaveAsJpeg(jpeg);var replacement=jpeg.ToArray();
+        var cleanOriginal = Content.Server._DeepLagoon.CharacterInfo.HeadshotImage.Normalize(original, false).Bytes;
+        var cleanReplacement = Content.Server._DeepLagoon.CharacterInfo.HeadshotImage.Normalize(replacement, false).Bytes;
         int slot=0;string firstId="";byte[]? read=null;string error="";
         await client.WaitPost(()=>
         {
@@ -63,7 +71,7 @@ public sealed class HeadshotTransferTests
         });
         await client.WaitPost(()=>client.ResolveDependency<IEntityManager>().System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Read(slot,null,(bytes,_,_,message)=>{read=bytes;error=message;}));
         await pair.RunTicksSync(20);
-        Assert.That(error,Is.Empty);Assert.That(read,Is.EqualTo(original));
+        Assert.That(error,Is.Empty);Assert.That(read,Is.EqualTo(cleanOriginal));
         HeadshotGalleryDataEvent? gallery = null;
         await client.WaitPost(() => client.ResolveDependency<IEntityManager>().System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Gallery(slot, null, ev => gallery = ev));
         await pair.RunTicksSync(20);
@@ -84,7 +92,7 @@ public sealed class HeadshotTransferTests
         await client.WaitAssertion(() =>
         {
             client.ResolveDependency<IEntityManager>().System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Read(slot, null, (bytes, _, _, message) => { read = bytes; error = message; });
-            Assert.That(read, Is.EqualTo(original), "Own cached image should be available immediately");
+            Assert.That(read, Is.EqualTo(cleanOriginal), "Own cached image should be available immediately");
         });
         await pair.RunTicksSync(25);
         Assert.That(notModified, Is.True); Assert.That(receivedBytes, Is.Zero);
@@ -95,7 +103,7 @@ public sealed class HeadshotTransferTests
             var cache = (System.Collections.IDictionary)system.GetType().GetField("_cache", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(system)!;
             cache.Clear(); read = null;
             system.Read(slot, null, (bytes, _, _, message) => { read = bytes; error = message; });
-            Assert.That(read, Is.EqualTo(original));
+            Assert.That(read, Is.EqualTo(cleanOriginal));
         });
         await pair.RunTicksSync(25);
         Assert.That(receivedBytes, Is.Zero);
@@ -114,7 +122,7 @@ public sealed class HeadshotTransferTests
         });
         read=null;
         await client.WaitPost(()=>client.ResolveDependency<IEntityManager>().System<Content.Client._DeepLagoon.CharacterInfo.HeadshotSystem>().Read(slot,null,(bytes,_,_,message)=>{read=bytes;error=message;}));
-        await pair.RunTicksSync(20);Assert.That(error,Is.Empty);Assert.That(read,Is.EqualTo(replacement));
+        await pair.RunTicksSync(20);Assert.That(error,Is.Empty);Assert.That(read,Is.EqualTo(cleanReplacement));
         Assert.That(receivedBytes, Is.GreaterThan(0), "Replacement must invalidate the cached content hash");
         await client.WaitPost(()=>
         {

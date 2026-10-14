@@ -62,6 +62,8 @@ public sealed class HeadshotGalleryTests
             await server.WaitPost(() =>
             {
                 slot = preferences.GetPreferences(session.UserId).SelectedCharacterIndex;
+                if (server.ResolveDependency<Content.Server.Administration.Managers.IAdminManager>().GetAdminData(session, true) is { } admin)
+                    admin.Flags &= ~Content.Shared.Administration.AdminFlags.Host;
                 storeField.SetValue(linking, store); enabledField.SetValue(linking, true); auth.SetValue(session, LoginType.LoggedIn);
                 store.Consume("1554565156657299597", store.Issue(session.UserId.UserId, session.Name));
                 store.SetSupporter("1554565156657299597", false, 2, [0xffffff, 0xffffff, 0xffffff, 0xffffff]);
@@ -83,6 +85,7 @@ public sealed class HeadshotGalleryTests
             }
             async Task Change(string action, string id)
             {
+                await pair.RunTicksSync(20); // Respect the production gallery mutation cooldown.
                 await server.WaitAssertion(() =>
                 {
                     typeof(ServerHeadshots).GetMethod("Gallery", flags)!.Invoke(system, [new HeadshotGalleryRequestEvent(Guid.NewGuid(), slot, action: action, imageId: id), sender]);
@@ -93,6 +96,18 @@ public sealed class HeadshotGalleryTests
             Assert.That(gallery!.Images.Count, Is.EqualTo(2)); Assert.That(gallery.Active.Count, Is.EqualTo(2));
             var second = gallery.Images[1];
             await Change("primary", second); Assert.That(gallery!.Active[0], Is.EqualTo(second));
+            long beforeNoOp = 0;
+            await server.WaitAssertion(() =>
+            {
+                beforeNoOp = (long)typeof(ServerHeadshots).GetField("_imageRevision", flags)!.GetValue(system)!;
+                server.ResolveDependency<IResourceManager>().UserData.WriteAllText(new Robust.Shared.Utility.ResPath("/headshots/" + rootId + ".json.bak"), "no-op sentinel");
+            });
+            await Change("primary", second);
+            await server.WaitAssertion(() =>
+            {
+                Assert.That((long)typeof(ServerHeadshots).GetField("_imageRevision", flags)!.GetValue(system)!, Is.EqualTo(beforeNoOp), "No-op primary cannot rewrite image alias");
+                Assert.That(server.ResolveDependency<IResourceManager>().UserData.ReadAllText(new Robust.Shared.Utility.ResPath("/headshots/" + rootId + ".json.bak")), Is.EqualTo("no-op sentinel"), "No-op primary cannot rewrite manifest/backup");
+            });
             await server.WaitAssertion(() =>
             {
                 Assert.That(system.GetActive(rootId)[0], Is.EqualTo(second), "A fresh manifest read must restore the primary selection");

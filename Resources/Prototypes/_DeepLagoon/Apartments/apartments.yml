@@ -69,6 +69,16 @@
 
 # Curated home variants retain useful interactions without construction, salvage or healing.
 - type: entity
+  id: DLApartmentBusStop
+  parent: DefaultStationBeaconService
+  name: residential bus stop
+  description: Residential route return point. Place on the CentCom grid with a public transit dock.
+  components:
+  - type: ApartmentTransitStop
+  - type: NavMapBeacon
+    defaultText: dl-apartment-residential-stop
+
+- type: entity
   id: DLAptSofaEntity
   parent: BenchSofaMiddle
   categories: [HideSpawnMenu]

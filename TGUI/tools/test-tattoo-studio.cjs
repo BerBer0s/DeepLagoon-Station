@@ -61,7 +61,20 @@ const server = http.createServer((request, response) => {
       assert.equal(args.index, bakeChunks.length); bakeChunks.push(args.text);
       if (bakeChunks.length !== args.count) return;
       const baked = JSON.parse(bakeChunks.join('')); assert.equal(baked.id, tattoo.id);
-      tattoo.normalBitmap = baked.normal; tattoo.glowBitmap = baked.glow; tattoo.strokes = [];
+      assert.equal(typeof baked.recipe, 'string'); assert.equal(baked.normal, undefined);
+      // Browser fixture emulates the server reply; server security/rasterization has separate C# tests.
+      const channels = await page.evaluate(async ({ recipe, basis }) => {
+        const { makeLayer, loadBitmap, paint, flatten, encodeBitmap } = window.tattooTools;
+        const layers = [];
+        for (const data of JSON.parse(recipe)) {
+          const layer = makeLayer(); Object.assign(layer, { visible: data.visible, opacity: data.opacity });
+          if (data.useBase) await Promise.all([loadBitmap(layer.normal, basis.normalBitmap), loadBitmap(layer.glow, basis.glowBitmap)]);
+          for (const s of data.strokes) [layer.normal, layer.glow].forEach((c, i) => paint(c.getContext('2d'), s, !!i));
+          layers.push(layer);
+        }
+        return flatten(layers).map(encodeBitmap);
+      }, { recipe: baked.recipe, basis: tattoo });
+      [tattoo.normalBitmap, tattoo.glowBitmap] = channels; tattoo.strokes = []; tattoo.artworkProof = randomUUID();
       for (const key of ['x', 'y', 'scale', 'rotation', 'opacity']) if (baked[key] !== undefined) tattoo[key] = baked[key];
     }
     else if (action === 'tattoo-stroke' && tattoo) tattoo.strokes.push({ color: args.color, width: args.width, glow: args.glow, erase: args.erase, points: args.points });
@@ -80,6 +93,7 @@ const server = http.createServer((request, response) => {
   });
   try {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
+    await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'TGUI/packages/tgui/interfaces/tattooBitmapUtils.js'), 'utf8').replaceAll('export ', '') + '; window.tattooTools = { makeLayer, loadBitmap, paint, flatten, encodeBitmap };' });
     await page.waitForFunction(() => window.__tguiAppBooted__);
     masks = await page.evaluate(async png => {
       const img = new Image(); img.src = 'data:image/png;base64,' + png; await img.decode();
@@ -100,7 +114,7 @@ const server = http.createServer((request, response) => {
     state.parts[0].frames = masks.map((image, direction) => ({ image, direction, previewImage: previews[direction] }));
     await publish();
     await page.getByText('Не смотря на неограниченные возможности импорта татуировок, они должны соблюдать атмосферу и логику игры. За нарушение атмосферы вы будете наказаны', { exact: true }).waitFor();
-    await page.getByText('Импорт сторонних PNG доступен с третьего тира доната. PNG, сохранённые редактором татуировок, можно загрузить без доната.', { exact: true }).waitFor();
+    await page.getByText('Импорт сторонних PNG доступен с третьего тира доната. Собственные PNG, подписанные сервером для вашего аккаунта, можно загрузить без доната.', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Завершить рисунок', exact: true }).waitFor();
     assert.equal(state.tattoos.length, 1, 'Opening an empty editor creates its first editable drawing');
     await page.waitForFunction(() => document.querySelector('.TattooStudio__list button')?.getAttribute('aria-pressed') === 'true');

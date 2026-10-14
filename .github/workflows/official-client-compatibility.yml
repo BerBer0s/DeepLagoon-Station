@@ -1,0 +1,39 @@
+name: Official client compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev, staging, stable]
+
+jobs:
+  stock-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4.1.0
+        with:
+          dotnet-version: 10.0.x
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: TGUI/pnpm-lock.yaml
+      - name: Validate approved server fork and source ownership
+        run: |
+          python3 Tools/test_engine_compatibility.py
+          python3 Tools/check_engine_compatibility.py
+      - name: Use exact official client source for compatibility tests
+        run: |
+          STOCK=$(python3 -c 'import json; print(json.load(open("ENGINE-COMPATIBILITY.json"))["official_engine_commit"])')
+          git -C RobustToolbox checkout --detach "$STOCK"
+          git -C RobustToolbox submodule update --init --recursive
+      - name: Compile production content against stock engine
+        run: dotnet build Content.Client/Content.Client.csproj -c Release /p:FullRelease=true /p:DeepLagoonStockValidation=true
+      - name: Check JSON parser and stock sandbox contracts
+        run: dotnet test Content.Tests/Content.Tests.csproj -c Release /p:DeepLagoonStockValidation=true --filter 'FullyQualifiedName~TguiActionDataTests|FullyQualifiedName~ClientSandboxTest.ClientModulesPassEngineTypeChecks'

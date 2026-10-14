@@ -385,6 +385,12 @@ public sealed partial class ShuttleConsoleSystem : SharedShuttleConsoleSystem
         return result;
     }
 
+    public void RefreshState(EntityUid consoleUid)
+    {
+        DockingInterfaceState? dockState = null;
+        UpdateState(consoleUid, ref dockState);
+    }
+
     private void UpdateState(EntityUid consoleUid, ref DockingInterfaceState? dockState)
     {
         EntityUid? entity = consoleUid;
@@ -421,7 +427,12 @@ public sealed partial class ShuttleConsoleSystem : SharedShuttleConsoleSystem
 
         if (_ui.HasUi(consoleUid, ShuttleConsoleUiKey.Key))
         {
-            _ui.SetUiState(consoleUid, ShuttleConsoleUiKey.Key, new ShuttleBoundUserInterfaceState(navState, mapState, dockState));
+            var state = new ShuttleBoundUserInterfaceState(navState, mapState, dockState)
+            {
+                FireControlState = EntityManager.System<Content.Server._Mono.FireControl.FireControlSystem>()
+                    .GetConsoleState(consoleUid, navState)
+            };
+            _ui.SetUiState(consoleUid, ShuttleConsoleUiKey.Key, state);
         }
     }
 

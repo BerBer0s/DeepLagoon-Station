@@ -41,3 +41,23 @@ test('changing interface and suspending clear retained catalogues', () => {
   assert.equal(Object.keys(state.staticData).length, 0);
   assert.equal(Object.keys(state.partialData).length, 0);
 });
+
+test('editor deltas preserve catalogue references and delete removed fields from replay patches', () => {
+  let state = update(undefined, { replaceData: true, static_data: { hairOptions: ['Hair'] }, data: { name: 'One', jobState: { Job: { priority: 1 } } } });
+  const catalogue = state.data.hairOptions;
+  state = update(state, { data: { name: 'Two', jobState: { Job: { priority: 3 } } } });
+  assert.equal(state.data.hairOptions, catalogue);
+  assert.equal(state.data.jobState.Job.priority, 3);
+  state = update(state, { data: {}, removedData: ['jobState'] });
+  assert.equal(state.data.jobState, undefined);
+  assert.equal(state.partialData.jobState, undefined);
+});
+
+test('switching editor catalogue replaces species choices and clears old dynamic patches', () => {
+  let state = update(undefined, { replaceData: true, static_data: { hairOptions: ['Human'] }, data: { available: true } });
+  state = update(state, { data: { jobState: { Job: { priority: 3 } } } });
+  state = update(state, { replaceData: true, replaceStaticData: true, resetPartialData: true, static_data: { markingOptions: ['Diona'] }, data: { available: true } });
+  assert.equal(state.data.hairOptions, undefined);
+  assert.equal(state.data.jobState, undefined);
+  assert.equal(state.data.markingOptions[0], 'Diona');
+});

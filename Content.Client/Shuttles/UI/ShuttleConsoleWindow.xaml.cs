@@ -16,6 +16,8 @@ public sealed partial class ShuttleConsoleWindow : FancyWindow,
     [Dependency] private IEntityManager _entManager = default!;
 
     private ShuttleConsoleMode _mode = ShuttleConsoleMode.Nav;
+    public Content.Client._Mono.FireControl.UI.FireControlPanel CombatPanel => NavContainer.FireControlPanel;
+    public Content.Client._Mono.FireControl.UI.FireControlNavControl CombatRadar => NavContainer.CombatRadar;
 
     public event Action<MapCoordinates, Angle>? RequestFTL;
     public event Action<NetEntity, Angle>? RequestBeaconFTL;
@@ -85,6 +87,7 @@ public sealed partial class ShuttleConsoleWindow : FancyWindow,
         };
 
         NfInitialize(); // Frontier Initialization for the ShuttleConsoleWindow
+        InitializeTgui();
     }
 
     private void ClearModes(ShuttleConsoleMode mode)
@@ -148,6 +151,7 @@ public sealed partial class ShuttleConsoleWindow : FancyWindow,
         _mode = mode;
         ClearModes(mode);
         SetupMode(_mode);
+        UpdateTguiMode();
     }
 
     public enum ShuttleConsoleMode : byte
@@ -166,6 +170,12 @@ public sealed partial class ShuttleConsoleWindow : FancyWindow,
         MapContainer.SetConsole(owner);
 
         NavContainer.UpdateState(cState.NavState);
+        CombatPanel.Visible = cState.FireControlState != null;
+        if (cState.FireControlState is { } fireState)
+        {
+            CombatPanel.UpdateStatus(fireState);
+            CombatRadar.UpdateControllables(owner, fireState.FireControllables);
+        }
         MapContainer.UpdateState(cState.MapState);
         DockContainer.UpdateState(coordinates?.EntityId, cState.DockState);
     }

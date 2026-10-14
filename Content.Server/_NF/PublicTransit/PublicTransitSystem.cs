@@ -100,8 +100,7 @@ public sealed partial class PublicTransitSystem : EntitySystem
     {
         if (Transform(uid).MapID == _ticker.DefaultMap) //best solution i could find because of componentinit/mapinit race conditions
         {
-            if (!StationList.Contains(uid)) //if the grid isnt already in
-                StationList.Add(uid); //add it to the list
+            RegisterStop(uid);
         }
     }
 
@@ -110,8 +109,24 @@ public sealed partial class PublicTransitSystem : EntitySystem
     /// </summary>
     private void OnStationShutdown(EntityUid uid, StationTransitComponent component, ComponentShutdown args)
     {
-        if (StationList.Contains(uid))
-            StationList.Remove(uid);
+        UnregisterStop(uid);
+    }
+
+    /// <summary>Opt-in stops on other maps (e.g. CentCom). Existing default-map registration is unchanged.</summary>
+    public bool RegisterStop(EntityUid grid)
+    {
+        if (Deleted(grid) || !HasComp<Robust.Shared.Map.Components.MapGridComponent>(grid) || StationList.Contains(grid)) return false;
+        StationList.Add(grid);
+        return true;
+    }
+
+    public void UnregisterStop(EntityUid grid) => StationList.Remove(grid);
+
+    /// <summary>A residential stop may be mapped after round start. Start service if no bus survived the initial setup.</summary>
+    public void EnsureService()
+    {
+        if (!Enabled || _ticker.RunLevel != GameRunLevel.InRound || StationList.Count == 0) return;
+        SetupPublicTransit();
     }
 
     /// <summary>

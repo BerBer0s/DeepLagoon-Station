@@ -164,6 +164,7 @@ public static class ServerPackaging
         AssetGraph.CalculateGraph(passes, logger);
 
         var inputPassCore = graph.InputCore;
+        inputPassCore.InjectFileFromDisk("engine-compatibility.json", EngineCompatibility.MetadataPath);
         var inputPassResources = graph.InputResources;
 
         // Additional assemblies that need to be copied such as EFCore.

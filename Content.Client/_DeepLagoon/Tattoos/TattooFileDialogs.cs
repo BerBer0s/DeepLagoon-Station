@@ -16,6 +16,7 @@ public static class TattooFileDialogs
     {
         try
         {
+            tattoo = await IoCManager.Resolve<IEntityManager>().System<TattooArtworkSystem>().Authorize(tattoo);
             var bytes = TattooPng.Export(tattoo);
             var destination = await IoCManager.Resolve<IFileDialogManager>().SaveFile(new FileDialogFilters(new FileDialogFilters.Group("png")));
             if (destination is not { } output) return "";
@@ -38,7 +39,9 @@ public static class TattooFileDialogs
                 buffer.Write(block, 0, size);
             }
             // Check the current entitlement after file selection, not just when the dialog opened.
-            return (TattooPng.Import(buffer.ToArray(), template, CanImportExternalPng), "Татуировка загружена из PNG.");
+            var imported = TattooPng.Import(buffer.ToArray(), template, CanImportExternalPng);
+            imported = await IoCManager.Resolve<IEntityManager>().System<TattooArtworkSystem>().Authorize(imported);
+            return (imported, "Татуировка загружена из PNG.");
         }
         catch (Exception exception) { return (null, "Не удалось загрузить PNG: " + exception.Message); }
     }

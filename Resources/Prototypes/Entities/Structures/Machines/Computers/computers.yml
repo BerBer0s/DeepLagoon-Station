@@ -218,6 +218,7 @@
       state: generic_keys
     - map: [ "enum.WiresVisualLayers.MaintenancePanel" ]
       state: generic_panel_open
+  - type: FireControlConsole
   - type: Computer
     board: ShuttleConsoleCircuitboard
   # Frontier: shuttle intercom

@@ -16,6 +16,8 @@ namespace Content.Client.Shuttles.UI;
 [GenerateTypedNameReferences]
 public sealed partial class NavScreen : BoxContainer
 {
+    public Content.Client._Mono.FireControl.UI.FireControlPanel FireControlPanel { get; }
+    public Content.Client._Mono.FireControl.UI.FireControlNavControl CombatRadar => NavRadar;
     [Dependency] private IEntityManager _entManager = default!;
     [Dependency] private IPrototypeManager _prototypeManager = default!;
     private SharedTransformSystem _xformSystem;
@@ -26,6 +28,12 @@ public sealed partial class NavScreen : BoxContainer
     public NavScreen()
     {
         RobustXamlLoader.Load(this);
+        FireControlPanel = new Content.Client._Mono.FireControl.UI.FireControlPanel(NavRadar, showRadarControls: false)
+        {
+            Visible = false,
+            VerticalExpand = true
+        };
+        AddChild(FireControlPanel);
         IoCManager.InjectDependencies(this);
         _xformSystem = _entManager.System<SharedTransformSystem>();
 
@@ -168,6 +176,11 @@ public sealed partial class NavScreen : BoxContainer
     protected override void Draw(DrawingHandleScreen handle)
     {
         base.Draw(handle);
+        RefreshTelemetry();
+    }
+
+    public void RefreshTelemetry()
+    {
 
         if (!_entManager.TryGetComponent(_shuttleEntity, out TransformComponent? gridXform) ||
             !_entManager.TryGetComponent(_shuttleEntity, out PhysicsComponent? gridBody))

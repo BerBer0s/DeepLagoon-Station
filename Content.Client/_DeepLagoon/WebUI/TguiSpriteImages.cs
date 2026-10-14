@@ -19,6 +19,7 @@ public sealed class TguiSpriteImages
     private readonly Dictionary<SpriteSpecifier, string> _frames = new();
     private readonly Dictionary<string, List<TguiData>> _items = new();
     private readonly Dictionary<ResPath, string> _tileFrames = new();
+    public void Reset() { _frames.Clear(); _items.Clear(); _tileFrames.Clear(); }
 
     /// <summary>Tile sprites can be variant strips. Catalogue icons use the first 32×32 frame.</summary>
     public string TileFrame(ResPath path)

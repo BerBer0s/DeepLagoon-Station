@@ -115,6 +115,12 @@ const persistUserZoom = () => {
 };
 
 const applyBodyZoom = () => {
+  // This editor fills the viewport and maps client coordinates directly to its
+  // canvas. Page zoom would crop its footer and offset pointer hit testing.
+  if (document.querySelector('.GridEditor')) {
+    document.body.style.zoom = '100%';
+    return;
+  }
   const effectiveZoom = (100 / resolveAppScale(appScale)) * userZoom;
   document.body.style.zoom = `${effectiveZoom}%`;
 };
@@ -138,7 +144,7 @@ const adjustUserZoom = delta => {
 };
 
 const handleZoomWheel = event => {
-  if (!event.ctrlKey) {
+  if (!event.ctrlKey || event.defaultPrevented || document.querySelector('.GridEditor')) {
     return;
   }
 

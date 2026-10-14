@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useBackend } from '../backend';
 import { ColorSquare } from '../components/PlayerColorPicker';
 import { simplifyPoints } from './tattooStrokeUtils';
-import { makeCanvas, makeLayer, paint, flatten, cloneLayers, loadBitmap, encodeBitmap } from './tattooBitmapUtils';
+import { makeCanvas, makeLayer, paint, flatten, cloneLayers, loadBitmap, encodeBitmap, strokeWork } from './tattooBitmapUtils';
 import { initialView, canvasPoint, zoomAt } from './tattooViewportUtils';
 import './TattooStudio.scss';
 
@@ -59,10 +59,10 @@ export const TattooEditor = ({ data = {}, act, active: editorActive = true }) =>
     return () => { active = false; };
   }, [image, previewImage]);
   useEffect(() => {
-    if (saving && tattoo && tattoo.strokes.length === 0 && tattoo.normalBitmap === work.current?.savedNormal && tattoo.glowBitmap === work.current?.savedGlow) {
+    if (saving && tattoo && tattoo.strokes.length === 0 && tattoo.artworkProof && tattoo.artworkProof !== work.current?.savedProof) {
       work.current = null; setSaving(false); setEditing(false); setStatus('Рисунок завершён. Слои и история объединены.');
-    } else if (saving && data.status && !data.pending) { setSaving(false); setStatus(data.status); }
-  }, [tattoos, data.pending, data.status, saving]);
+    } else if (saving && data.status && !data.pending && !data.fileBusy) { setSaving(false); setStatus(data.status); }
+  }, [tattoos, data.pending, data.fileBusy, data.status, saving]);
 
   const bitmap = png => {
     if (!png) return null;
@@ -112,6 +112,7 @@ export const TattooEditor = ({ data = {}, act, active: editorActive = true }) =>
     setLoading(true); setStatus(''); const id = tattoo.id;
     try {
       const layer = makeLayer('Исходный рисунок');
+      layer.useBase = true;
       await Promise.all([loadBitmap(layer.normal, tattoo.normalBitmap), loadBitmap(layer.glow, tattoo.glowBitmap)]);
       (tattoo.strokes || []).forEach(s => [layer.normal, layer.glow].forEach((c, i) => paint(c.getContext('2d'), { ...s, points: decode(s.points) }, !!i)));
       if (!mounted.current || currentTattooId.current !== id) return;
@@ -161,8 +162,12 @@ export const TattooEditor = ({ data = {}, act, active: editorActive = true }) =>
     if (n.length > (data.maxBitmapChars || 131072) || g.length > (data.maxBitmapChars || 131072) || n.length + g.length > (data.maxTattooBitmapChars || 262144)) {
       setStatus('Изображение превышает допустимый объём. Упростите рисунок.'); return;
     }
-    work.current.savedNormal = n; work.current.savedGlow = g; setSaving(true); setStatus('Запекание…');
-    const payload = JSON.stringify({ id: tattoo.id, normal: n, glow: g, ...transform });
+    const recipe = JSON.stringify(work.current.layers.map(({ useBase, visible, opacity, strokes }) => ({ useBase, visible, opacity, strokes })));
+    if (recipe.length > 240000 || work.current.layers.reduce((sum, l) => sum + l.strokes.reduce((n, s) => n + s.points.length, 0), 0) > 16384) {
+      setStatus('Слишком много штрихов. Отмените последние штрихи, завершите рисунок и продолжите редактирование.'); return;
+    }
+    work.current.savedProof = tattoo.artworkProof; setSaving(true); setStatus('Запекание…');
+    const payload = JSON.stringify({ id: tattoo.id, recipe, ...transform });
     const count = Math.ceil(payload.length / 4000);
     for (let index = 0; index < count; index++) act('tattoo-bake-chunk', { id: tattoo.id, index, count, text: payload.slice(index * 4000, (index + 1) * 4000) });
   };
@@ -205,8 +210,21 @@ export const TattooEditor = ({ data = {}, act, active: editorActive = true }) =>
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     if (!cancelled) {
       if (g.kind === 'move') commit(transform);
-      else if (g.kind === 'stroke') { checkpoint(); const layer = work.current.layers[work.current.active];
-        [layer.normal, layer.glow].forEach((c, i) => paint(c.getContext('2d'), { color: color + 'FF', width: width / 512, glow, erase: mode === 'erase', points: g.points }, !!i)); update(); }
+      else if (g.kind === 'stroke') { const layer = work.current.layers[work.current.active];
+        const stroke = { color: color + 'FF', width: width / 512, glow, erase: mode === 'erase', points: g.points };
+        const candidate = work.current.layers.map(l => ({ useBase: l.useBase, visible: l.visible, opacity: l.opacity,
+          strokes: l === layer ? [...l.strokes, stroke] : l.strokes }));
+        const strokes = candidate.flatMap(l => l.strokes);
+        const paintWork = candidate.filter(l => l.visible).reduce((sum, l) => sum
+          + l.strokes.reduce((n, s) => n + strokeWork(s), 0)
+          + (l.useBase ? (tattoo.strokes || []).reduce((n, s) => n + strokeWork({ ...s, points: decode(s.points) }), 0) : 0), 0);
+        if (strokes.length > 1024 || strokes.reduce((sum, s) => sum + s.points.length, 0) > 16384
+            || JSON.stringify(candidate).length > 240000 || paintWork > 7900000) {
+          setStatus('Завершите текущий рисунок, затем продолжите редактирование. Последний штрих не добавлен.'); setDraft(null); return;
+        }
+        checkpoint();
+        layer.strokes.push(stroke);
+        [layer.normal, layer.glow].forEach((c, i) => paint(c.getContext('2d'), stroke, !!i)); update(); }
     }
     setDraft(null);
   };
@@ -236,7 +254,7 @@ export const TattooEditor = ({ data = {}, act, active: editorActive = true }) =>
       <button type="button" disabled={blocked || !w?.redo.length} onClick={() => undo(true)}>Повторить</button>
     </div>
     <div className="TattooStudio__importWarning">
-      <small>{data.externalPngAllowed ? 'Импорт сторонних PNG доступен: третий тир доната.' : 'Импорт сторонних PNG доступен с третьего тира доната. PNG, сохранённые редактором татуировок, можно загрузить без доната.'}</small>
+      <small>{data.externalPngAllowed ? 'Импорт сторонних PNG доступен: третий тир доната.' : 'Импорт сторонних PNG доступен с третьего тира доната. Собственные PNG, подписанные сервером для вашего аккаунта, можно загрузить без доната.'}</small>
       <p>Не смотря на неограниченные возможности импорта татуировок, они должны соблюдать атмосферу и логику игры. За нарушение атмосферы вы будете наказаны</p>
     </div>
     <div className="TattooStudio__workspace">

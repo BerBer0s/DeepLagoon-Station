@@ -12,6 +12,9 @@ namespace Content.Server._DeepLagoon.CharacterInfo;
 
 public sealed partial class HeadshotSystem
 {
+    private TimeSpan _galleryBudgetAt;
+    private int _galleryReads;
+    private int _galleryWrites;
     public sealed class ImageGallery
     {
         public List<string> Images { get; set; } = new();
@@ -71,6 +74,7 @@ public sealed partial class HeadshotSystem
     }
     private void CopyPrimary(string id, ImageGallery gallery)
     {
+        InvalidateImage(id);
         if (gallery.Active.FirstOrDefault() is not {} primary) { _resources.UserData.Delete(PathFor(id)); return; }
         var bytes = ImageBytes(primary);
         using var file = _resources.UserData.Open(PathFor(id), FileMode.Create); file.Write(bytes);
@@ -80,6 +84,15 @@ public sealed partial class HeadshotSystem
     private void Gallery(HeadshotGalleryRequestEvent ev, EntitySessionEventArgs args)
     {
         var session = args.SenderSession;
+        if (_timing.RealTime >= _galleryBudgetAt) { _galleryBudgetAt = _timing.RealTime + TimeSpan.FromSeconds(1); _galleryReads = _galleryWrites = 0; }
+        if (_imageBusy.Contains(session.UserId) || _galleryRequests.GetValueOrDefault(session.UserId) > _timing.CurTime
+            || _galleryReads >= 64 || ev.Action.Length > 0 && _galleryWrites >= 8)
+        {
+            RaiseNetworkEvent(new HeadshotGalleryDataEvent(ev.Request, [], [], 0, 0, "Библиотека занята. Повторите через секунду."), session.Channel);
+            return;
+        }
+        _galleryReads++; if (ev.Action.Length > 0) _galleryWrites++;
+        _galleryRequests[session.UserId] = _timing.CurTime + TimeSpan.FromMilliseconds(250);
         if (ev.Target is {} target)
         {
             var entity = GetEntity(target);
@@ -91,6 +104,8 @@ public sealed partial class HeadshotSystem
         var profile = Profile(session, ev.Slot);
         if (profile == null) return;
         var gallery = LoadGallery(profile.HeadshotId);
+        var previousImages = gallery.Images.ToArray();
+        var previousActive = gallery.Active.ToArray();
         var error = "";
         try
         {
@@ -116,9 +131,10 @@ public sealed partial class HeadshotSystem
                     default: throw new InvalidDataException();
                 }
                 gallery.Active = gallery.Active.Take(ActiveCapacity(session)).ToList();
-                SaveGallery(profile.HeadshotId, gallery);
-                CopyPrimary(profile.HeadshotId, gallery);
-                if (ev.Action == "delete") _resources.UserData.Delete(PathFor(ev.ImageId));
+                if (!previousImages.SequenceEqual(gallery.Images) || !previousActive.SequenceEqual(gallery.Active))
+                    SaveGallery(profile.HeadshotId, gallery);
+                if (previousActive.FirstOrDefault() != gallery.Active.FirstOrDefault()) CopyPrimary(profile.HeadshotId, gallery);
+                if (ev.Action == "delete") { InvalidateImage(ev.ImageId); _resources.UserData.Delete(PathFor(ev.ImageId)); }
             }
         }
         catch (Exception) { error = "Не удалось изменить библиотеку изображений."; }

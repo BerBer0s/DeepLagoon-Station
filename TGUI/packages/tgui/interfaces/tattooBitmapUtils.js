@@ -1,6 +1,16 @@
 const size = 256;
 export const makeCanvas = () => { const c = document.createElement('canvas'); c.width = c.height = size; return c; };
-export const makeLayer = (name = 'Слой') => ({ name, visible: true, opacity: 1, normal: makeCanvas(), glow: makeCanvas() });
+export const makeLayer = (name = 'Слой') => ({ name, visible: true, opacity: 1, useBase: false, strokes: [], normal: makeCanvas(), glow: makeCanvas() });
+export function strokeWork(stroke) {
+  let work = 0; const radius = Math.max(.5, stroke.width * size / 2);
+  const bound = value => Math.max(0, Math.min(size, value));
+  for (let i = 0; i < Math.max(1, stroke.points.length - 1); i++) {
+    const a = stroke.points[i], b = stroke.points[Math.min(i + 1, stroke.points.length - 1)];
+    work += (bound(Math.ceil(Math.max(a[0], b[0]) * size + radius + 1)) - bound(Math.floor(Math.min(a[0], b[0]) * size - radius - 1)))
+      * (bound(Math.ceil(Math.max(a[1], b[1]) * size + radius + 1)) - bound(Math.floor(Math.min(a[1], b[1]) * size - radius - 1)));
+  }
+  return work;
+}
 export function paint(ctx, stroke, luminous) {
   const points = stroke.points;
   ctx.globalCompositeOperation = stroke.erase || stroke.glow !== luminous ? 'destination-out' : 'source-over';
@@ -29,6 +39,7 @@ export function flatten(layers, active = -1, draft = null) {
 }
 export const cloneLayers = layers => layers.map(l => {
   const copy = makeLayer(l.name); copy.visible = l.visible; copy.opacity = l.opacity;
+  copy.useBase = l.useBase; copy.strokes = l.strokes.map(s => ({ ...s, points: s.points.map(p => [...p]) }));
   copy.normal.getContext('2d').drawImage(l.normal, 0, 0); copy.glow.getContext('2d').drawImage(l.glow, 0, 0); return copy;
 });
 export async function loadBitmap(canvas, png) {

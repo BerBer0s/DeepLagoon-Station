@@ -15,6 +15,7 @@ public sealed partial class PersonalLoadoutEditor
 {
     public bool TguiMode;
     private readonly TguiSpriteImages _images = new();
+    public void ResetTguiCache() { _images.Reset(); _cachedTguiState = null; }
 
     public IEnumerable<TguiData> CreateTguiSlots(EntityUid preview)
     {

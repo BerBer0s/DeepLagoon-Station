@@ -2,11 +2,12 @@
               HorizontalExpand="True"
               xmlns:controls="https://spacestation14.io"
               xmlns:ui="clr-namespace:Content.Client.Shuttles.UI"
+              xmlns:combat="clr-namespace:Content.Client._DeepLagoon.Shuttles"
               xmlns:controls1="clr-namespace:Content.Client.UserInterface.Controls"
               xmlns:graphics="clr-namespace:Robust.Client.Graphics;assembly=Robust.Client">
                 <!-- Mono - wrap -->
-                <controls:LayoutContainer Margin="5 4 10 5">
-                    <ui:ShuttleNavControl Name="NavRadar"
+                <controls:LayoutContainer Margin="5 4 10 5" HorizontalExpand="True" VerticalExpand="True">
+                    <combat:CombatShuttleNavControl Name="NavRadar"
                                      MouseFilter="Stop"
                                      VerticalAlignment="Stretch"
                                      VerticalExpand="True"

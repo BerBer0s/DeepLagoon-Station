@@ -85,6 +85,7 @@ public sealed class BodyCustomizationVisualizerSystem : EntitySystem
             { MoveLayer(uid, sprite, hand, anchor, after: true); anchor = hand; }
         }
         UpdateVisibility(uid, humanoid, sprite);
+        EntityManager.System<ClothingBodyFitSystem>().Refresh(uid, humanoid, sprite);
     }
 
     public void UpdateVisibility(EntityUid uid, HumanoidAppearanceComponent humanoid, SpriteComponent sprite)

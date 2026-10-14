@@ -163,6 +163,8 @@ public sealed class DiscordLobbyAdmissionTests
             });
             async Task Revoke()
             {
+                // DummyChannel has no Disconnect transport. A separate mock-channel test verifies the immediate disconnect.
+                session.Channel.GetType().GetProperty("IsConnected")!.SetValue(session.Channel, false);
                 await whitelists.RemoveGlobalWhitelistAsync(session.UserId);
                 Assert.That(await database.GetWhitelistStatusAsync(session.UserId), Is.False);
                 await linking.RefreshAdmission(session);

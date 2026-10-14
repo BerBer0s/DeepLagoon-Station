@@ -20,7 +20,7 @@ public partial class ChatBox
     // allocate a new native texture. Closing releases this extra browser.
     private sealed class ComposerWindow : BaseWindow
     {
-        public readonly TguiPanel Panel = new();
+        public readonly TguiPanel Panel = new(inheritChatAppearance: false);
         public ComposerWindow()
         {
             Resizable = false;

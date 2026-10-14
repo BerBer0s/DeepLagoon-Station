@@ -10,8 +10,12 @@ public static class WebViewCapabilities
     private static bool DetectNativeLifecycle()
     {
         // GetManifestResourceStream is allowed by the stock engine's content sandbox.
-        using var capabilities = typeof(WebViewControl).Assembly
-            .GetManifestResourceStream("Robust.Client.WebView.NativeLifecycle.v1");
+        return Detect("Robust.Client.WebView.NativeLifecycle.v1");
+    }
+
+    private static bool Detect(string resource)
+    {
+        using var capabilities = typeof(WebViewControl).Assembly.GetManifestResourceStream(resource);
         return capabilities != null;
     }
 }

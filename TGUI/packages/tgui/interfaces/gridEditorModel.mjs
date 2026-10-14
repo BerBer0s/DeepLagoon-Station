@@ -25,26 +25,41 @@ export function cellsBetween(a, b, rectangle = false) {
 }
 
 export function stamp(items, cells, brush, options, nextId) {
-  let result = copyItems(items);
+  const targets = new Set(cells.map(cell => `${cell.x}:${cell.y}`));
+  const kind = brush.kind;
+  const result = copyItems(items).filter(item => {
+    if (!targets.has(`${Math.floor(item.x)}:${Math.floor(item.y)}`)) return true;
+    if (kind === 'tile' && item.kind === 'tile') return false;
+    return !(options.replace && brush.category === 'wall' && item.kind === 'entity' && options.isWall(item.prototype));
+  });
+  const occupied = new Set(result.map(item => `${item.kind}:${item.prototype}:${Math.floor(item.x)}:${Math.floor(item.y)}`));
   for (const cell of cells) {
-    const kind = brush.kind;
-    const id = kind === 'tile' ? tileId(cell.x, cell.y) : nextId();
-    // Repainting a tile replaces it; walls replace only walls, never unrelated objects in the cell.
-    if (kind === 'tile') result = result.filter((item) => item.id !== id);
-    if (options.replace && brush.category === 'wall') result = result.filter((item) =>
-      !(item.kind === 'entity' && options.isWall(item.prototype) && Math.floor(item.x) === cell.x && Math.floor(item.y) === cell.y));
-    if (kind !== 'tile' && result.some((item) => item.kind === kind && item.prototype === brush.id &&
-        Math.floor(item.x) === cell.x && Math.floor(item.y) === cell.y)) continue;
-    result.push({ id, kind, prototype: brush.id, x: cell.x + (kind === 'entity' ? 0.5 : 0),
-      y: cell.y + (kind === 'entity' ? 0.5 : 0), rotation: kind === 'tile' ? 0 : options.rotation,
-      color: options.color, z: options.z, cleanable: options.cleanable, anchored: !!brush.anchored,
-      variant: 0, flags: 0, mirror: 0 });
+    const key = `${kind}:${brush.id}:${cell.x}:${cell.y}`;
+    if (occupied.has(key)) continue;
+    occupied.add(key);
+    result.push({ id: kind === 'tile' ? tileId(cell.x, cell.y) : nextId(), kind, prototype: brush.id,
+      x: cell.x + (kind === 'entity' ? .5 : 0), y: cell.y + (kind === 'entity' ? .5 : 0),
+      rotation: kind === 'tile' ? 0 : options.rotation, color: options.color, z: options.z,
+      cleanable: options.cleanable, anchored: !!brush.anchored, variant: 0, flags: 0, mirror: 0 });
   }
   return result;
 }
 
+// Only cells receiving a construction are normalized; untouched legacy map stacks stay intact.
+export function replaceConflicts(previous, next, isExclusive) {
+  const before = new Map(previous.map(item => [item.id, item]));
+  const winners = new Map();
+  for (const item of next) {
+    if (item.kind !== 'entity' || !isExclusive(item.prototype)) continue;
+    const old = before.get(item.id);
+    if (!old || old.prototype !== item.prototype || old.x !== item.x || old.y !== item.y)
+      winners.set(`${Math.floor(item.x)}:${Math.floor(item.y)}`, item.id);
+  }
+  return next.filter(item => item.kind !== 'entity' || !isExclusive(item.prototype) ||
+    !winners.has(`${Math.floor(item.x)}:${Math.floor(item.y)}`) || winners.get(`${Math.floor(item.x)}:${Math.floor(item.y)}`) === item.id);
+}
+
 export function validateDraft(items, area) {
-  if (items.length > 12000) return 'В области не может быть больше 12000 элементов.';
   const ids = new Set();
   const tiles = new Set(items.filter((i) => i.kind === 'tile').map((i) => i.id));
   for (const item of items) {
@@ -54,7 +69,7 @@ export function validateDraft(items, area) {
       return 'Закреплённые объекты должны находиться в центре тайла.';
     if (!Number.isFinite(item.x) || !Number.isFinite(item.y) || !inside(item, area)) return 'Элемент вышел за границы области редактирования.';
     if ((item.kind === 'decal' || item.anchored) && !tiles.has(tileId(Math.floor(item.x), Math.floor(item.y))))
-      return 'Под декалями и закреплёнными объектами должен быть пол.';
+      return `Под ${item.kind === 'decal' ? 'декалью' : 'закреплённым объектом'} ${item.prototype} (${Math.floor(item.x)}, ${Math.floor(item.y)}) должен быть пол.`;
   }
   return '';
 }
@@ -64,6 +79,53 @@ export const changeCount = (original, draft) => {
   const after = new Map(draft.map((i) => [i.id, JSON.stringify(i)]));
   return [...after].filter(([id, item]) => before.get(id) !== item).length + [...before.keys()].filter((id) => !after.has(id)).length;
 };
+
+export function ensureWallFloors(items, isWall, original = [], isDiagonal = () => false) {
+  const tiles = new Map(items.filter(item => item.kind === 'tile').map(item => [item.id, item]));
+  const previous = new Map(original.filter(item => item.kind === 'tile').map(item => [item.id, item]));
+  const walls = items.filter(item => item.kind === 'entity' && isWall(item.prototype));
+  const occupied = new Set([...tiles.keys(), ...walls.map(item => tileId(Math.floor(item.x), Math.floor(item.y)))]);
+  const changes = new Map();
+  for (const wall of walls) {
+    const x = Math.floor(wall.x), y = Math.floor(wall.y), id = tileId(x, y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const existing = tiles.get(id) || previous.get(id);
+    const diagonal = isDiagonal(wall.prototype);
+    const neighbors = [[-1, 0], [1, 0], [0, -1], [0, 1]].filter(([dx, dy]) => occupied.has(tileId(x + dx, y + dy))).length;
+    // Preserve authored floors and full inner corners. Only auto support uses a clipped tile.
+    const authoredFull = existing && existing.prototype !== 'DLPlatingDiagonal' && existing.prototype !== 'Plating';
+    let floor = existing;
+    if (!authoredFull && diagonal) floor = { ...(existing || {}), prototype: neighbors >= 3 ? 'Plating' : 'DLPlatingDiagonal',
+      variant: 0, mirror: neighbors >= 3 ? 0 : ((Math.round(wall.rotation / 90) % 4) + 4) % 4 };
+    else if (existing?.prototype === 'DLPlatingDiagonal' && !diagonal) floor = { ...existing, prototype: 'Plating', mirror: 0, variant: 0 };
+    if (!floor) floor = { prototype: 'Plating' };
+    if (tiles.has(id) && existing.prototype === floor.prototype && (existing.mirror || 0) === (floor.mirror || 0) && (existing.variant || 0) === (floor.variant || 0)) continue;
+    floor = existing ? { ...existing, ...floor, id, kind: 'tile', x, y } : { id, kind: 'tile', prototype: floor.prototype, x, y, rotation: 0, color: '#FFFFFFFF', z: 0, cleanable: false, anchored: false, variant: 0, flags: 0, mirror: 0, ...floor };
+    if (JSON.stringify(tiles.get(id)) !== JSON.stringify(floor)) changes.set(id, floor);
+  }
+  if (!changes.size) return items;
+  return [...items.map(item => changes.get(item.id) || item), ...[...changes.values()].filter(item => !tiles.has(item.id))];
+}
+
+export const cellRectangle = (a, b) => ({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x) + 1, height: Math.abs(a.y - b.y) + 1 });
+
+export function eraseRectangle(items, rectangle, layers) {
+  return items.filter(item => !layers[item.kind] || !inside(cellOf(item), rectangle));
+}
+
+export function moveSelection(items, ids, dx, dy, area) {
+  const selected = new Set(ids), moved = items.filter(item => selected.has(item.id));
+  if (!moved.length) return { items, ids };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const item of moved) { const cell = cellOf(item); minX = Math.min(minX, cell.x); minY = Math.min(minY, cell.y); maxX = Math.max(maxX, cell.x); maxY = Math.max(maxY, cell.y); }
+  dx = Math.max(area.x - minX, Math.min(dx, area.x + area.width - 1 - maxX));
+  dy = Math.max(area.y - minY, Math.min(dy, area.y + area.height - 1 - maxY));
+  const targets = new Set(moved.filter(item => item.kind === 'tile').map(item => tileId(item.x + dx, item.y + dy)));
+  const translated = new Map(moved.map(item => [item.id, { ...item, x: item.x + dx, y: item.y + dy,
+    id: item.kind === 'tile' ? tileId(item.x + dx, item.y + dy) : item.id }]));
+  return { items: items.filter(item => selected.has(item.id) || item.kind !== 'tile' || !targets.has(item.id)).map(item => translated.get(item.id) || item),
+    ids: moved.map(item => translated.get(item.id).id) };
+}
 export function makePatch(original, draft) {
   const before = new Map(original.map(i => [i.id, JSON.stringify(i)]));
   const after = new Set(draft.map(i => i.id));
@@ -105,16 +167,68 @@ export function insertTemplate(draft, items, target, turns, nextId) {
   return result;
 }
 // Match the rendered sprite, including rotation and transparent pixels, rather than its tile.
+export function indexItems(items) {
+  const buckets = new Map();
+  buckets.order = new Map(items.map((item, index) => [item.id, index]));
+  for (const item of items) {
+    const key = `${Math.floor(item.x)}:${Math.floor(item.y)}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(item);
+  }
+  return buckets;
+}
+
+export function nearbyItems(index, point) {
+  const result = [];
+  // A rotated decal with a fractional origin can reach two buckets beyond its origin.
+  for (let x = Math.floor(point.x) - 2; x <= Math.floor(point.x) + 2; x++)
+    for (let y = Math.floor(point.y) - 2; y <= Math.floor(point.y) + 2; y++)
+      result.push(...(index.get(`${x}:${y}`) || []));
+  return result.sort((a, b) => index.order.get(a.id) - index.order.get(b.id));
+}
+
+export function itemsInRect(index, rect) {
+  const left = Math.floor(rect.x) - 2, bottom = Math.floor(rect.y) - 2;
+  const right = Math.ceil(rect.x + rect.width) + 2, top = Math.ceil(rect.y + rect.height) + 2;
+  const result = [];
+  if ((right - left + 1) * (top - bottom + 1) > index.size) {
+    for (const [key, items] of index) {
+      const [x, y] = key.split(':').map(Number);
+      if (x >= left && x <= right && y >= bottom && y <= top) result.push(...items);
+    }
+  } else {
+    for (let x = left; x <= right; x++) for (let y = bottom; y <= top; y++)
+      result.push(...(index.get(`${x}:${y}`) || []));
+  }
+  return result.sort((a, b) => index.order.get(a.id) - index.order.get(b.id));
+}
+
+export function expansionCount(bounds, expansion) {
+  return (bounds.width + expansion.left + expansion.right) * (bounds.height + expansion.bottom + expansion.top) - bounds.width * bounds.height;
+}
+
+export function expansionRects(bounds, expansion) {
+  const x = bounds.x - expansion.left, width = bounds.width + expansion.left + expansion.right;
+  return [
+    { x, y: bounds.y - expansion.bottom, width, height: expansion.bottom },
+    { x, y: bounds.y + bounds.height, width, height: expansion.top },
+    { x, y: bounds.y, width: expansion.left, height: bounds.height },
+    { x: bounds.x + bounds.width, y: bounds.y, width: expansion.right, height: bounds.height },
+  ].filter(rect => rect.width && rect.height);
+}
+
 export function itemsAtPoint(items, point, layers, visual, opaque = () => true) {
   return items.map((item, index) => ({ item, index })).filter(({ item }) => {
     if (!layers[item.kind]) return false;
     const left = item.x - (item.kind === 'entity' ? .5 : 0);
     const bottom = item.y - (item.kind === 'entity' ? .5 : 0);
     const x = point.x - left - .5, y = point.y - bottom - .5;
-    const angle = -(item.rotation || 0) * Math.PI / 180;
-    const u = x * Math.cos(angle) - y * Math.sin(angle) + .5;
+    const rotateTile = item.kind === 'tile' && visual(item)?.allowRotationMirror;
+    const angle = -(item.kind === 'tile' ? rotateTile ? (item.mirror & 3) * 90 : 0 : item.rotation || 0) * Math.PI / 180;
+    let u = x * Math.cos(angle) - y * Math.sin(angle) + .5;
     const v = 1 - (x * Math.sin(angle) + y * Math.cos(angle) + .5);
-    return u >= 0 && u < 1 && v >= 0 && v < 1 && (item.kind === 'tile' || opaque(visual(item)?.images || [], u, v));
+    if (rotateTile && (item.mirror & 4)) u = 1 - u;
+    return u >= 0 && u < 1 && v >= 0 && v < 1 && opaque(visual(item)?.images || [], u, v);
   }).sort((a, b) => drawOrder(b.item, visual(b.item)) - drawOrder(a.item, visual(a.item)) || b.index - a.index).map(({ item }) => item);
 }
 
@@ -124,5 +238,53 @@ export function drawOrder(item, definition) {
 
 export function editorKey(event) {
   if (/^Key[A-Z]$/.test(event.code || '')) return event.code.slice(3).toLowerCase();
+  if (/^Digit[0-9]$/.test(event.code || '')) return event.code.slice(5);
   return ({ Escape: 'escape', Delete: 'delete', Space: ' ', ShiftLeft: 'shift', ShiftRight: 'shift' })[event.code] || (event.key || '').toLowerCase();
+}
+
+
+export function reflectedItem(item, mirror, isDiagonal = () => false) {
+  const axis = mirror.axis || 'x', offset = item.kind === 'entity' ? 0 : 1;
+  const coordinate = 2 * mirror.center - item[axis] - offset;
+  const rotation = ((axis === 'x' ? (isDiagonal(item.prototype) ? 270 : 0) : (isDiagonal(item.prototype) ? 90 : 180)) - (item.rotation || 0) + 3600) % 360;
+  return { ...item, [axis]: coordinate, rotation: item.kind === 'tile' ? 0 : rotation,
+    mirror: item.kind === 'tile' ? (((axis === 'x' ? 0 : 2) - (item.mirror & 3) + 4) % 4) | ((item.mirror || 0) ^ 4) & 4 : item.mirror };
+}
+
+export function mirrorChanges(previous, next, mirror, area, nextId, pairs = new Map(), isDiagonal = () => false) {
+  if (!mirror.enabled) return next;
+  const before = new Map(previous.map(item => [item.id, item]));
+  const result = new Map(next.map(item => [item.id, item]));
+  const touched = new Set();
+  const samePosition = (a, b) => a.kind === b.kind && a.prototype === b.prototype && Math.abs(a.x - b.x) < .0001 && Math.abs(a.y - b.y) < .0001;
+  const positionKey = item => `${item.kind}:${item.prototype}:${item.x.toFixed(4)}:${item.y.toFixed(4)}`;
+  const positions = new Map(previous.map(item => [positionKey(item), item]));
+  const counterpart = item => {
+    const reflected = reflectedItem(item, mirror, isDiagonal);
+    return before.get(pairs.get(item.id)) || positions.get(positionKey(reflected));
+  };
+  for (const item of previous) if (!result.has(item.id)) {
+    const target = item.kind === 'tile' ? before.get(tileId(reflectedItem(item, mirror).x, reflectedItem(item, mirror).y)) : counterpart(item);
+    if (target) result.delete(target.id);
+  }
+  for (const item of next) {
+    if (touched.has(item.id) || JSON.stringify(before.get(item.id)) === JSON.stringify(item)) continue;
+    const reflected = reflectedItem(item, mirror, isDiagonal);
+    if (!inside(reflected, area) || samePosition(item, reflected)) continue;
+    const old = before.get(item.id), target = item.kind === 'tile' ? null : old ? counterpart(old) : counterpart(item);
+    reflected.id = item.kind === 'tile' ? tileId(reflected.x, reflected.y) : target?.id || pairs.get(item.id) || nextId();
+    result.set(reflected.id, reflected); touched.add(reflected.id);
+    if (item.kind === 'decal' || item.kind === 'entity' && item.anchored) {
+      const x = Math.floor(item.x), y = Math.floor(item.y);
+      for (const [dx, dy] of [[0,0],[-1,0],[1,0],[0,-1],[0,1]]) {
+        const floor = result.get(tileId(x + dx, y + dy));
+        if (!floor) continue;
+        const reflectedFloor = reflectedItem(floor, mirror);
+        reflectedFloor.id = tileId(reflectedFloor.x, reflectedFloor.y);
+        if (inside(reflectedFloor, area) && !result.has(reflectedFloor.id)) result.set(reflectedFloor.id, reflectedFloor);
+      }
+    }
+    if (item.kind !== 'tile') { pairs.set(item.id, reflected.id); pairs.set(reflected.id, item.id); }
+  }
+  return [...result.values()];
 }

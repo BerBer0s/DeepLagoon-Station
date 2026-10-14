@@ -18,6 +18,8 @@ public sealed class TguiPanel : Control
     private string _interface = "";
     private string _data = "{}";
     private string _title = "DeepLagoon";
+    private string? _staticData;
+    private TguiData? _incrementalData;
     private IInputManager? _input;
     private BaseWindow? _dragWindow;
     private ScreenCoordinates _dragPointer;
@@ -27,11 +29,14 @@ public sealed class TguiPanel : Control
     private string? _chatSettings;
     private float _appearanceRefresh;
     private readonly bool _inheritChatAppearance;
+    private readonly bool _showWindowControls;
+    private TguiWindowControls? _windowControls;
     private readonly BoxContainer _failure = new() { Orientation = BoxContainer.LayoutOrientation.Vertical, Visible = false };
 
-    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true, bool captureKeyboard = false)
+    public TguiPanel(bool suspendWhenHidden = false, bool inheritChatAppearance = true, bool captureKeyboard = false, bool showWindowControls = true)
     {
         _inheritChatAppearance = inheritChatAppearance;
+        _showWindowControls = showWindowControls;
         Web = new GameWebView(suspendWhenHidden: suspendWhenHidden, captureKeyboard: captureKeyboard);
         HorizontalExpand = VerticalExpand = true;
         AddChild(Web);
@@ -43,6 +48,9 @@ public sealed class TguiPanel : Control
         Web.Failed += () => _failure.Visible = true;
         Web.Ready += () => _failure.Visible = false;
         Web.Ready += Publish;
+        // A hidden document may outlive the bounded outgoing queue. Replay the
+        // latest snapshot on resume so dropped deltas cannot leave stale fields.
+        Web.Resumed += Publish;
         Web.Message += (type, payload) =>
         {
             if (type == "close") { OnClose?.Invoke(); return; }
@@ -61,11 +69,44 @@ public sealed class TguiPanel : Control
         Publish();
     }
 
+    public void SetStaticData(string dataJson)
+    {
+        if (_staticData == dataJson) return;
+        _staticData = dataJson;
+        _incrementalData = null;
+    }
+
+    /// <summary>Keep a full replay snapshot, but send only changed dynamic fields while the document is alive.</summary>
+    public void SetIncrementalState(string interfaceName, TguiData data, string title = "DeepLagoon")
+    {
+        var previous = _incrementalData;
+        _incrementalData = data;
+        _data = data.ToString();
+        if (previous == null || _interface != interfaceName || _title != title)
+        {
+            _interface = interfaceName;
+            _title = title;
+            Publish();
+            return;
+        }
+        if (!Web.IsReady) return;
+        var changes = data.ChangesFrom(previous).ToString();
+        var removed = data.RemovedSince(previous);
+        if (changes == "{}" && removed == "[]") return;
+        Web.Send("update", "{\"data\":" + changes + ",\"removedData\":" + removed + "}");
+    }
+
     protected override void EnteredTree()
     {
         base.EnteredTree();
         _input = IoCManager.Resolve<IInputManager>();
         _input.FirstChanceOnKeyEvent += OnWindowPointer;
+        UserInterfaceManager.DeferAction(() =>
+        {
+            if (!_showWindowControls || Disposed || !IsInsideTree || FloatingWindow() is not { } window) return;
+            _windowControls = TguiWindowControls.Attach(window);
+            _windowControls.SetTitle(_title);
+        });
     }
 
     protected override void ExitedTree()
@@ -94,7 +135,7 @@ public sealed class TguiPanel : Control
             return;
         }
         if (args.Handled || args.IsRepeat || type != KeyEventType.Down || !VisibleInTree || !Web.IsReady ||
-            FloatingWindow() is not { } window) return;
+            FloatingWindow() is not { } window || TguiWindowControls.IsMaximized(window)) return;
         var pointer = _input.MouseScreenPosition;
         // Color wheels, sliders, selections and scrollbars own drags in the body.
         if (pointer.Position.Y / UIScale - GlobalPosition.Y > 52) return;
@@ -164,6 +205,8 @@ public sealed class TguiPanel : Control
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
+        _windowControls?.SetTitle(_title);
+        _windowControls?.Update();
         _appearanceRefresh -= args.DeltaSeconds;
         if (_inheritChatAppearance && VisibleInTree && _appearanceRefresh <= 0)
         {
@@ -199,7 +242,8 @@ public sealed class TguiPanel : Control
         if (_interface.Length == 0 || !Web.IsReady) return;
         var data = _data.Trim();
         if (data.Length < 2 || data[0] != '{' || data[^1] != '}') data = "{}";
-        Web.Send("update", "{\"replaceData\":true,\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
+        Web.Send("update", "{\"replaceData\":true," + (_staticData == null ? "" : "\"replaceStaticData\":true,\"resetPartialData\":true,\"static_data\":" + _staticData + ",") +
+            "\"config\":{\"interface\":" + GameWebView.Quote(_interface) +
             ",\"title\":" + GameWebView.Quote(_title) +
             ",\"status\":2,\"window\":{\"key\":\"deeplagoon\",\"fancy\":false}},\"data\":" + data[..^1] +
             (string.IsNullOrWhiteSpace(data[1..^1]) ? "" : ",") + "\"chatState\":" + GameWebView.Quote(_chatState) + "}}");

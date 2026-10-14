@@ -47,6 +47,8 @@ public sealed partial class DiscordLinkSystem
                 var target = _store.FindDiscord(request.DiscordId);
                 if (target == null)
                     return new ApiResult(HttpStatusCode.NotFound, new { error = "not_linked" });
+                if (!history && _store.MergePending(target.Uid))
+                    return new ApiResult(HttpStatusCode.Conflict, new { error = "merge_pending" });
                 if (history)
                 {
                     var rows = await _database.GetLagoonCoinHistoryAsync(new NetUserId(target.Uid), request.Page);

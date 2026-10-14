@@ -18,6 +18,7 @@ using Robust.Shared.Enums;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Timing;
 using Robust.Shared.Utility;
+using Robust.Shared.Localization;
 
 namespace Content.Client.Lobby.UI;
 
@@ -40,6 +41,26 @@ public sealed partial class HumanoidProfileEditor
     private readonly Content.Client._DeepLagoon.Tattoos.TattooEditorData _tattooEditor = new();
     private string _tattooStatus = "";
     private bool _tattooFileBusy;
+
+    private async void HandleTattooBake(TguiActionData args)
+    {
+        if (Profile == null || args.String("recipe") is not { } recipe
+            || !Content.Client._DeepLagoon.Tattoos.TattooEditorData.TryApply("tattoo-transform", args, Profile.Appearance.Tattoos, out var next, out _tattooStatus)
+            || next.FirstOrDefault(t => t.Id == args.String("id")) is not { } basis) return;
+        var slot = CharacterSlot; var original = Profile;
+        _tattooFileBusy = true; _tattooStatus = "Сервер подтверждает рисунок…"; PublishTguiProfile();
+        try
+        {
+            var result = await IoCManager.Resolve<IEntityManager>().System<Content.Client._DeepLagoon.Tattoos.TattooArtworkSystem>().Authorize(basis, recipe);
+            if (_profileWeb == null || Profile != original || CharacterSlot != slot
+                || !_cfgManager.GetCVar(Content.Shared._DeepLagoon.Tattoos.TattooCVars.Enabled)) return;
+            var appearance = Profile.Appearance.Clone(); next[next.FindIndex(t => t.Id == basis.Id)] = result;
+            appearance.Tattoos = next; Profile = Profile.WithCharacterAppearance(appearance);
+            _tattooStatus = ""; ReloadProfilePreview(); SetDirty();
+        }
+        catch (Exception e) { _tattooStatus = e.Message; }
+        finally { _tattooFileBusy = false; if (_profileWeb != null && CharacterSlot == slot) PublishTguiProfile(); }
+    }
 
     private async void HandleTattooFileAction(string action, Content.Shared._DeepLagoon.Tattoos.Tattoo template)
     {
@@ -67,14 +88,21 @@ public sealed partial class HumanoidProfileEditor
     private readonly Control _editorSettingsTab = new();
     private CharacterEditorAppearance _editorAppearance = new();
     private readonly Dictionary<string, string> _companyWebImages = new();
+    private string? _catalogKey;
+    private static readonly HashSet<string> CatalogFields = new()
+    {
+        "tabs", "speciesOptions", "sexOptions", "genderOptions", "spawnOptions", "hairOptions", "beardOptions",
+        "markingOptions", "departments", "traits", "companyOptions"
+    };
     private readonly Dictionary<Control, bool> _nativeTabVisibility = new();
     private Control? _nativeSpriteParent;
 
     private void InitializeTguiEditor()
     {
+        _prototypeManager.PrototypesReloaded += ReloadTguiCatalog;
         _editorAppearance.Load(_resManager);
         TabContainer.AddChild(_editorSettingsTab);
-        _profileWeb = new TguiPanel(suspendWhenHidden: true, inheritChatAppearance: false) { Name = "CharacterTgui" };
+        _profileWeb = new TguiPanel(suspendWhenHidden: true, inheritChatAppearance: false, showWindowControls: false) { Name = "CharacterTgui" };
         _profileWeb.OnAction += (action, payload) => HandleTguiProfileAction(action, payload);
         _personalLoadoutEditor.TguiMode = true;
         _nativeSpriteParent = SpriteView.Parent;
@@ -97,6 +125,21 @@ public sealed partial class HumanoidProfileEditor
         _profileWeb.Web.Failed += RestoreNativeEditor;
         TabContainer.OnTabChanged += SelectTguiTab;
         SelectTguiTab(TabContainer.CurrentTab);
+    }
+
+    private void ReloadTguiCatalog(PrototypesReloadedEventArgs args)
+    {
+        _catalogKey = null;
+        _tguiImages.Reset();
+        _personalLoadoutEditor.ResetTguiCache();
+        _companyWebImages.Clear();
+        UserInterfaceManager.DeferAction(() => { if (!Disposed) PublishTguiProfile(); });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _prototypeManager.PrototypesReloaded -= ReloadTguiCatalog;
+        base.Dispose(disposing);
     }
 
     private void RestoreNativeEditor()
@@ -160,11 +203,19 @@ public sealed partial class HumanoidProfileEditor
         _publishedTguiClothes = ShowClothes.Pressed;
         _publishedSupporterBonus = _entManager.System<Content.Shared._DeepLagoon.DiscordLink.SharedDiscordBoostSystem>().GetLoadoutPointBonus(_playerManager.LocalSession);
         if (_tguiMode != "native")
-            _profileWeb.SetState("CharacterEditor", CreateTguiProfileState(_tguiMode).ToString());
+        {
+            var catalogKey = $"{_tguiMode}|{Profile?.Species.Id}|{Profile?.Sex}|{TabContainer.ChildCount}|{_publishedSupporterBonus}|{IoCManager.Resolve<ILocalizationManager>().DefaultCulture?.Name}";
+            if (catalogKey != _catalogKey)
+            {
+                _catalogKey = catalogKey;
+                _profileWeb.SetStaticData(CreateTguiProfileState(_tguiMode).SelectFields(CatalogFields).ToString());
+            }
+            _profileWeb.SetIncrementalState("CharacterEditor", CreateTguiProfileState(_tguiMode, includeCatalogs: false));
+        }
     }
 
     /// <summary>Current draft state; saving still uses LobbyUIController and server preferences.</summary>
-    public TguiData CreateTguiProfileState(string mode)
+    public TguiData CreateTguiProfileState(string mode, bool includeCatalogs = true)
     {
         var data = new TguiData().String("mode", mode).Bool("available", Profile != null)
             .Bool("dirty", IsDirty).Bool("showClothes", ShowClothes.Pressed).Bool("libraryOpen", _libraryWindow != null);
@@ -175,7 +226,7 @@ public sealed partial class HumanoidProfileEditor
         if (Profile is not { } p) return data;
         if (mode == "appearance") data.Array("bodyFeatures", BodyCustomizationData());
         data.Array("previewSlots", _personalLoadoutEditor.CreateTguiSlots(PreviewDummy));
-        data.Array("tabs", Enumerable.Range(0, TabContainer.ChildCount).Select(i => new TguiData().Number("id", i)
+        if (includeCatalogs) data.Array("tabs", Enumerable.Range(0, TabContainer.ChildCount).Select(i => new TguiData().Number("id", i)
             .String("name", TguiTabMode(i) switch { "settings" => "Настройки", "appearance" => "Основное", "jobs" => "Профессии", "traits" => "Черты", "company" => "Компания", "markings" => "Внешность", "equipment" => "Снаряжение", "saved" => "Сохранённые предметы", _ => "Описание" })
             .String("mode", TguiTabMode(i))));
         if (mode == "saved") data.Array("savedItems", _savedItemEntities.Where(_entManager.EntityExists).Select(entity =>
@@ -197,7 +248,7 @@ public sealed partial class HumanoidProfileEditor
                 new TguiData().Number("index", index).String("name", Loc.GetString($"marking-{marking.MarkingId}"))
                     .Bool("locked", !_markingManager.TryGetMarking(marking, out var proto) || proto.ForcedColoring || _markingManager.MustMatchSkin(p.Species, proto.BodyPart, out _, _prototypeManager))
                     .Array("colors", marking.MarkingColors.Select(color => Choice("", color.ToHexNoAlpha())))));
-            data.Array("markingOptions", _markingManager.Markings.Values.Where(m => m.MarkingCategory is not (MarkingCategories.Hair or MarkingCategories.FacialHair)
+            if (includeCatalogs) data.Array("markingOptions", _markingManager.Markings.Values.Where(m => m.MarkingCategory is not (MarkingCategories.Hair or MarkingCategories.FacialHair)
                 && _markingManager.CanBeApplied(p.Species, p.Sex, m, _prototypeManager))
                 .Select(m => Choice(m.ID, Loc.GetString($"marking-{m.ID}")).String("category", Loc.GetString($"markings-category-{m.MarkingCategory}"))
                     .String("iconId", "marking/" + m.ID)));
@@ -215,7 +266,7 @@ public sealed partial class HumanoidProfileEditor
             .Number("minAge", species.MinAge).Number("maxAge", species.MaxAge)
             .Number("erp", (int) p.ERPConsent).Number("noncon", (int) p.NonConConsent).Number("vore", (int) p.VoreConsent)
             .Number("unavailable", (int) p.PreferenceUnavailable).String("company", p.Company);
-        if (mode == "appearance")
+        if (mode == "appearance" && includeCatalogs)
         {
             data.Array("speciesOptions", _species.Select(s => Choice(s.ID, Loc.GetString(s.Name))))
                 .Array("sexOptions", species.Sexes.Select(s => Choice(((int) s).ToString(), Loc.GetString($"humanoid-profile-editor-sex-{s.ToString().ToLowerInvariant()}-text"))))
@@ -225,19 +276,35 @@ public sealed partial class HumanoidProfileEditor
         }
         else if (mode == "jobs")
         {
-            data.Array("departments", _prototypeManager.EnumeratePrototypes<DepartmentPrototype>().Where(d => !d.EditorHidden)
+            if (includeCatalogs) data.Array("departments", _prototypeManager.EnumeratePrototypes<DepartmentPrototype>().Where(d => !d.EditorHidden)
                 .OrderBy(d => Loc.GetString(d.Name)).Select(d => new TguiData().String("id", d.ID).String("name", Loc.GetString(d.Name))
                     .Array("jobs", d.Roles.Select(id => _prototypeManager.Index(id)).Where(j => j.SetPreference)
                         .OrderBy(j => j.LocalizedName).Select(JobData))));
+            else
+            {
+                var jobs = new TguiData();
+                foreach (var job in _prototypeManager.EnumeratePrototypes<JobPrototype>().Where(job => job.SetPreference))
+                    jobs.Object(job.ID, JobDynamicData(job));
+                data.Object("jobState", jobs);
+            }
         }
         else if (mode == "traits")
         {
-            data.Array("traits", _prototypeManager.EnumeratePrototypes<TraitPrototype>().OrderBy(t => Loc.GetString(t.Name))
-                .Where(t => !t.Disabled && (p.TraitPreferences.Contains(t.ID) || CanSelectTguiTrait(t)))
+            if (includeCatalogs) data.Array("traits", _prototypeManager.EnumeratePrototypes<TraitPrototype>().OrderBy(t => Loc.GetString(t.Name))
+                .Where(t => !t.Disabled && !t.SpeciesBlacklist.Contains(p.Species))
                 .Select(t => new TguiData().String("id", t.ID).String("name", Loc.GetString(t.Name))
                     .String("description", t.Description is { } description ? Loc.GetString(description) : "")
                     .String("category", t.Category is { } category && _prototypeManager.TryIndex(category, out var cat) ? Loc.GetString(cat.Name) : Loc.GetString("humanoid-profile-editor-traits-default-category"))
-                    .Number("cost", t.Cost).Bool("selected", p.TraitPreferences.Contains(t.ID))));
+                    .Number("cost", t.Cost).Bool("selected", p.TraitPreferences.Contains(t.ID))
+                    .Bool("visible", p.TraitPreferences.Contains(t.ID) || CanSelectTguiTrait(t))));
+            else
+            {
+                var traits = new TguiData();
+                foreach (var trait in _prototypeManager.EnumeratePrototypes<TraitPrototype>().Where(t => !t.Disabled && !t.SpeciesBlacklist.Contains(p.Species)))
+                    traits.Object(trait.ID, new TguiData().Bool("selected", p.TraitPreferences.Contains(trait.ID))
+                        .Bool("visible", p.TraitPreferences.Contains(trait.ID) || CanSelectTguiTrait(trait)));
+                data.Object("traitState", traits);
+            }
             data.Array("traitPoints", _prototypeManager.EnumeratePrototypes<TraitCategoryPrototype>().Where(c => c.MaxTraitPoints is >= 0)
                 .Select(c => new TguiData().String("name", Loc.GetString(c.Name)).Number("max", c.MaxTraitPoints!.Value)
                     .Number("used", p.TraitPreferences.Select(id => _prototypeManager.Index(id)).Where(t => t.Category == c.ID).Sum(t => t.Cost))));
@@ -245,7 +312,7 @@ public sealed partial class HumanoidProfileEditor
         else if (mode == "company")
         {
             var companies = _prototypeManager.EnumeratePrototypes<CompanyPrototype>().Where(c => !c.Disabled && _companyManager.IsAllowed(c.ID));
-            data.Array("companyOptions", companies.OrderBy(c => c.ID == "None" ? "" : c.Name).Select(c => Choice(c.ID, c.Name)
+            if (includeCatalogs) data.Array("companyOptions", companies.OrderBy(c => c.ID == "None" ? "" : c.Name).Select(c => Choice(c.ID, c.Name)
                 .String("descriptionHtml", WebChatMessageFormatter.ToHtml(FormattedMessage.FromMarkupPermissive(string.IsNullOrEmpty(c.Description) ? "" : Loc.GetString(c.Description))))
                 .String("image", CompanyDataImage(c)).String("wikiUrl", c.WikiUrl)));
             if (_prototypeManager.TryIndex<CompanyPrototype>(p.Company, out var company))
@@ -303,9 +370,13 @@ public sealed partial class HumanoidProfileEditor
 
     private TguiData JobData(JobPrototype job)
     {
+        return JobDynamicData(job).String("id", job.ID).String("name", job.LocalizedName).String("description", job.LocalizedDescription);
+    }
+
+    private TguiData JobDynamicData(JobPrototype job)
+    {
         var allowed = _requirements.IsAllowed(job, (HumanoidCharacterProfile?) _preferencesManager.Preferences?.SelectedCharacter, out var reason);
-        return new TguiData().String("id", job.ID).String("name", job.LocalizedName).String("description", job.LocalizedDescription)
-            .Bool("allowed", allowed).String("reason", reason?.ToString() ?? "")
+        return new TguiData().Bool("allowed", allowed).String("reason", reason?.ToString() ?? "")
             .Number("priority", (int) (Profile?.JobPriorities.GetValueOrDefault(job.ID, JobPriority.Never) ?? JobPriority.Never));
     }
 
@@ -379,6 +450,7 @@ public sealed partial class HumanoidProfileEditor
         var valid = true;
         if (action.StartsWith("tattoo-", StringComparison.Ordinal))
         {
+            if (action == "tattoo-bake") { HandleTattooBake(args!); return true; }
             if (action == "tattoo-preview-direction" && args!.TryInt("direction", out var tattooDirection) && tattooDirection is >= 0 and < 4)
             {
                 _previewRotation = tattooDirection switch { 1 => Direction.North, 2 => Direction.East, 3 => Direction.West, _ => Direction.South };

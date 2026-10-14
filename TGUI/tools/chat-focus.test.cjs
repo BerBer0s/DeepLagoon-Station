@@ -11,8 +11,15 @@ function createPage(name = 'chat.html', options = {}) {
   const listeners = {};
   const messages = [];
   const transports = [];
-  const record = url => {
-    const [type, payload] = url.split('?')[1].split('&');
+  const record = (url, requestOptions) => {
+    const [type, payload] = requestOptions?.method === 'POST'
+      ? [requestOptions.body.slice(0, requestOptions.body.indexOf('\n')), requestOptions.body.slice(requestOptions.body.indexOf('\n') + 1)]
+      : url.split('?')[1].split('&');
+    if (requestOptions?.method === 'POST') {
+      assert.equal(url, 'res://deeplagoon/Web/DeepLagoon/bridge');
+      messages.push({ type, ...JSON.parse(payload) });
+      return;
+    }
     messages.push({ type: decodeURIComponent(type), ...JSON.parse(decodeURIComponent(payload)) });
   };
   const document = {
@@ -30,17 +37,19 @@ function createPage(name = 'chat.html', options = {}) {
   const window = {
     addEventListener: (type, callback) => (windowListeners[type] ??= []).push(callback),
     __deeplagoonFetchBridge: Boolean(options.native),
+    __deeplagoonPostBridge: Boolean(options.post),
     fetch: async (url, requestOptions) => {
       transports.push('fetch');
       assert.equal(requestOptions.mode, 'same-origin');
       assert.equal(requestOptions.credentials, 'omit');
       if (options.failFetch) throw new Error('Unsupported custom scheme');
-      record(url);
+      record(url, requestOptions);
       return { ok: true, arrayBuffer: async () => new ArrayBuffer(0) };
     },
   };
   vm.runInNewContext(bridge, {
-    window, document, Image, location: { pathname: `/Web/DeepLagoon/${name}` }, queueMicrotask, setTimeout, console,
+    window, document, Image, location: { pathname: `/Web/DeepLagoon/${name}` }, queueMicrotask,
+    setTimeout: options.failFetch ? callback => queueMicrotask(callback) : setTimeout, console,
   });
   return {
     messages,
@@ -92,6 +101,24 @@ test('native bridge sends a large ASCII state in one fetch request', async () =>
   assert.equal(page.messages[0].value.length, 16000);
 });
 
+test('POST bridge transmits large Unicode settings without URL encoding or chunks', async () => {
+  const page = createPage('interface.html', { native: true, post: true });
+  const value = 'абв🙂'.repeat(4000);
+  await page.topic({ type: 'panel/state_set', panel_state: JSON.stringify({ value }) });
+  assert.deepEqual(page.transports, ['fetch']);
+  assert.equal(page.messages[0].type, 'panel/state_set');
+  assert.equal(page.messages[0].value, value);
+});
+
+test('failed POST bridge safely chunks large Unicode settings for the image fallback', async () => {
+  const page = createPage('interface.html', { native: true, post: true, failFetch: true });
+  const value = 'абв🙂'.repeat(4000);
+  await page.topic({ type: 'panel/state_set', panel_state: JSON.stringify({ value }) });
+  assert.deepEqual(page.transports.slice(0, 4), ['fetch', 'fetch', 'fetch', 'fetch']);
+  assert.ok(page.messages.every(message => message.type === 'bridge/chunk'));
+  assert.equal(JSON.parse(page.messages.map(message => message.text).join('')).value, value);
+});
+
 test('native bridge still chunks percent-encoded Unicode states within the URL limit', async () => {
   const page = createPage('interface.html', { native: true });
   const value = 'абв🙂'.repeat(4000);
@@ -117,7 +144,6 @@ test('native bridge preserves message order', async () => {
 test('unsupported native fetch falls back to the old image bridge', async () => {
   const page = createPage('interface.html', { native: true, failFetch: true });
   await page.topic({ type: 'act/test', payload: { value: 1 } });
-  await new Promise(resolve => setTimeout(resolve, 220));
   assert.deepEqual(page.transports, ['fetch', 'fetch', 'fetch', 'fetch', 'image']);
   assert.equal(page.messages[0].type, 'act/test');
   await page.topic({ type: 'act/second', payload: { value: 2 } });

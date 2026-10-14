@@ -11,6 +11,7 @@ using Content.Shared.Administration.Logs;
 using Content.Shared.Database;
 using Content.Shared.Decals;
 using Content.Shared.Maps;
+using Content.Shared.Tag;
 using Robust.Server.GameObjects;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
@@ -22,11 +23,10 @@ using Robust.Shared.EntitySerialization.Systems;
 
 namespace Content.Server._DeepLagoon.Mapping;
 
-/// <summary>A bounded mapper draft. Existing entities are moved in place, preserving their components.</summary>
+/// <summary>A full-grid mapper draft. Existing entities are moved in place, preserving their components.</summary>
 public sealed partial class GridEditorSystem : EntitySystem
 {
-    public const int MaxItems = 12000;
-    public const int MaxSide = 96;
+    public const int MaxChanges = 2048;
     [Dependency] private IAdminManager _admins = default!;
     [Dependency] private IPrototypeManager _prototypes = default!;
     [Dependency] private ITileDefinitionManager _tiles = default!;
@@ -36,15 +36,16 @@ public sealed partial class GridEditorSystem : EntitySystem
     [Dependency] private ISharedAdminLogManager _logs = default!;
     [Dependency] private IGameTiming _timing = default!;
     [Dependency] private MapLoaderSystem _loader = default!;
+    [Dependency] private TagSystem _tags = default!;
     private readonly Dictionary<ICommonSession, Draft> _drafts = new();
-    private sealed class Draft(EntityUid grid, int x, int y, int width, int height, TimeSpan expires)
+    private sealed class Draft(EntityUid grid, int x, int y, int width, int height)
     {
         public readonly EntityUid Grid = grid;
         public readonly int X = x, Y = y, Width = width, Height = height;
-        public readonly TimeSpan Expires = expires;
         public readonly Guid Token = Guid.NewGuid();
         public List<GridEditorItem> Items = new();
         public TimeSpan LastDownload;
+        public int GridX, GridY, GridWidth, GridHeight;
         public readonly Dictionary<string, EntityUid> Entities = new();
         public bool Contains(float px, float py) => px >= X && py >= Y && px < X + Width && py < Y + Height;
     }
@@ -67,7 +68,7 @@ public sealed partial class GridEditorSystem : EntitySystem
     {
         base.Update(frameTime);
         foreach (var (session, draft) in _drafts.ToArray())
-            if (session.Status != SessionStatus.InGame || draft.Expires < _timing.RealTime || !Exists(draft.Grid))
+            if (session.Status != SessionStatus.InGame || !Exists(draft.Grid))
                 _drafts.Remove(session);
     }
 
@@ -77,25 +78,51 @@ public sealed partial class GridEditorSystem : EntitySystem
         if (!TryComp<MapGridComponent>(grid, out var component)) return "Grid не найден.";
         if (HasComp<ApartmentGridComponent>(grid)) return "Квартиры редактируются через apartment edit.";
         var bounds = component.LocalAABB;
-        var x = regionX ?? (int) MathF.Floor(bounds.Left) - 4;
-        var y = regionY ?? (int) MathF.Floor(bounds.Bottom) - 4;
-        var width = regionWidth ?? (regionX.HasValue ? MaxSide : Math.Min(MaxSide, Math.Max(16, (int) MathF.Ceiling(bounds.Width) + 8)));
-        var height = regionHeight ?? (regionY.HasValue ? MaxSide : Math.Min(MaxSide, Math.Max(16, (int) MathF.Ceiling(bounds.Height) + 8)));
-        if (Math.Abs((long) x) > 8192 || Math.Abs((long) y) > 8192) return "Координаты области должны быть в пределах ±8192.";
-        var draft = new Draft(grid, x, y, width, height, _timing.RealTime + TimeSpan.FromMinutes(30));
+        var x = (int) MathF.Floor(bounds.Left) - 4;
+        var y = (int) MathF.Floor(bounds.Bottom) - 4;
+        var right = Math.Max(x + 16, (int) MathF.Ceiling(bounds.Right) + 4);
+        var top = Math.Max(y + 16, (int) MathF.Ceiling(bounds.Top) + 4);
+        // Grid-owned sprites and decals may be outside its current tile footprint.
+        void Include(float px, float py)
+        {
+            if (!float.IsFinite(px) || !float.IsFinite(py)) return;
+            x = Math.Min(x, (int) MathF.Floor(px) - 4);
+            y = Math.Min(y, (int) MathF.Floor(py) - 4);
+            right = Math.Max(right, (int) MathF.Ceiling(px) + 5);
+            top = Math.Max(top, (int) MathF.Ceiling(py) + 5);
+        }
+        var query = AllEntityQuery<TransformComponent, MetaDataComponent>();
+        while (query.MoveNext(out var uid, out var transform, out var meta))
+            if (transform.ParentUid == grid && !HasComp<ActorComponent>(uid) && meta.EntityPrototype != null)
+                Include(transform.LocalPosition.X, transform.LocalPosition.Y);
+        if (TryComp<DecalGridComponent>(grid, out var decals))
+            foreach (var chunk in decals.ChunkCollection.ChunkCollection.Values)
+            foreach (var (_, decal) in chunk.Decals)
+                Include(decal.Coordinates.X, decal.Coordinates.Y);
+        // Legacy explicit coordinates may extend the view, but never crop the real grid.
+        if (regionX is { } rx && regionY is { } ry) Include(rx, ry);
+        var width = right - x;
+        var height = top - y;
+        // The browser owns the unsaved edits and may stay open for hours. Keep
+        // its bounded, one-per-player baseline until close, disconnect or grid deletion.
+        var draft = new Draft(grid, x, y, width, height);
+        draft.GridX = (int) MathF.Floor(bounds.Left / component.TileSize);
+        draft.GridY = (int) MathF.Floor(bounds.Bottom / component.TileSize);
+        draft.GridWidth = (int) MathF.Ceiling(bounds.Right / component.TileSize) - draft.GridX;
+        draft.GridHeight = (int) MathF.Ceiling(bounds.Top / component.TileSize) - draft.GridY;
         draft.Items = Capture(draft);
-        if (draft.Items.Count > MaxItems) return "В области слишком много объектов. Выберите другую область.";
         _drafts[player] = draft;
         var initialized = Transform(grid).MapUid is { } map && TryComp<MapComponent>(map, out var mapComp) && mapComp.MapInitialized;
-        RaiseNetworkEvent(new GridEditorStateEvent(GetNetEntity(grid), draft.Token, x, y, width, height, draft.Items, initialized), player);
-        return $"Редактор grid открыт: ({x}, {y}), {width}×{height}. Черновик действует 30 минут.";
+        RaiseNetworkEvent(new GridEditorStateEvent(GetNetEntity(grid), draft.Token, x, y, width, height, draft.Items, initialized,
+            draft.GridX, draft.GridY, draft.GridWidth, draft.GridHeight), player);
+        return $"Редактор grid открыт: ({x}, {y}), {width}×{height}.";
     }
 
     public string? Export(ICommonSession player, Guid token, bool wholeMap, out string error)
     {
         error = "";
         if (!_admins.HasAdminFlag(player, AdminFlags.Mapping) || !_drafts.TryGetValue(player, out var draft) ||
-            draft.Token != token || draft.Expires < _timing.RealTime || !Exists(draft.Grid))
+            draft.Token != token || !Exists(draft.Grid))
         { error = "Нет действующей сессии Mapping."; return null; }
         var map = Transform(draft.Grid).MapUid;
         if (map == null || !TryComp<MapComponent>(map, out var component) || component.MapInitialized)
@@ -167,9 +194,9 @@ public sealed partial class GridEditorSystem : EntitySystem
         var player = args.SenderSession;
         void Result(string message, bool success = false) => RaiseNetworkEvent(new GridEditorResultEvent(message, success), player);
         if (!_admins.HasAdminFlag(player, AdminFlags.Mapping) || !_drafts.TryGetValue(player, out var draft) ||
-            ev.Token != draft.Token || draft.Expires < _timing.RealTime || !Exists(draft.Grid))
-        { Result("Сессия редактора истекла или права Mapping отозваны. Откройте редактор заново."); return; }
-        if (ev.Items.Count > MaxItems) { Result("Слишком много элементов."); return; }
+            ev.Token != draft.Token || !Exists(draft.Grid))
+        { Result("Сессия редактора недействительна или права Mapping отозваны. Черновик остаётся в окне редактора."); return; }
+        if ((long) ev.Items.Count > (long) draft.Items.Count + MaxChanges) { Result("Слишком много новых элементов."); return; }
         var current = Capture(draft);
         if (current.Count != draft.Items.Count || !current.Zip(draft.Items).All(pair => pair.First.Same(pair.Second)))
         { Result("Grid изменился после открытия редактора. Закройте и откройте редактор заново."); return; }
@@ -198,13 +225,44 @@ public sealed partial class GridEditorSystem : EntitySystem
             };
             if (!valid) { Result("Неизвестный прототип или недопустимые параметры."); return; }
         }
+        // Incoming constructions replace incompatible occupancy, never small carried items or decals.
+        var incoming = final.Values.Where(item => item.Kind == "entity" && GridEditorPlacement.IsExclusive(_prototypes.Index<EntityPrototype>(item.Prototype), _tags) &&
+            (!original.TryGetValue(item.Id, out var old) || old.Prototype != item.Prototype || old.X != item.X || old.Y != item.Y))
+            .GroupBy(item => new Vector2i((int) MathF.Floor(item.X), (int) MathF.Floor(item.Y)))
+            .ToDictionary(group => group.Key, group => group.Last().Id);
+        foreach (var item in final.Values.ToArray())
+            if (item.Kind == "entity" && GridEditorPlacement.IsExclusive(_prototypes.Index<EntityPrototype>(item.Prototype), _tags) &&
+                incoming.TryGetValue(new Vector2i((int) MathF.Floor(item.X), (int) MathF.Floor(item.Y)), out var winner) && winner != item.Id)
+                final.Remove(item.Id);
+        var walls = final.Values.Where(item => item.Kind == "entity" && GridEditorPlacement.IsWall(_prototypes.Index<EntityPrototype>(item.Prototype), _tags)).ToArray();
+        var occupied = final.Values.Where(item => item.Kind == "tile").Select(item => new Vector2i((int) item.X, (int) item.Y))
+            .Concat(walls.Select(item => new Vector2i((int) MathF.Floor(item.X), (int) MathF.Floor(item.Y)))).ToHashSet();
+        foreach (var wall in walls)
+        {
+            var x = (int) MathF.Floor(wall.X); var y = (int) MathF.Floor(wall.Y); var id = $"t:{x}:{y}";
+            final.TryGetValue(id, out var existing);
+            if (existing == null && original.TryGetValue(id, out var oldFloor)) existing = oldFloor;
+            var diagonal = GridEditorPlacement.IsDiagonalWall(_prototypes.Index<EntityPrototype>(wall.Prototype), _tags);
+            var authoredFull = existing != null && existing.Prototype != GridEditorPlacement.DiagonalFloor &&
+                existing.Prototype != "Plating";
+            var neighbors = new[] { new Vector2i(x - 1, y), new Vector2i(x + 1, y), new Vector2i(x, y - 1), new Vector2i(x, y + 1) }.Count(occupied.Contains);
+            var prototype = !authoredFull && diagonal && neighbors < 3 ? GridEditorPlacement.DiagonalFloor :
+                existing != null && existing.Prototype != GridEditorPlacement.DiagonalFloor ? existing.Prototype : "Plating";
+            var mirror = prototype == GridEditorPlacement.DiagonalFloor ? unchecked((byte) (((int) MathF.Round(wall.Rotation / 90) % 4 + 4) % 4)) :
+                existing != null && existing.Prototype == prototype ? existing.Mirror : (byte) 0;
+            if (!_tiles.TryGetDefinition(prototype, out var support) || support is not ContentTileDefinition floor || floor.Abstract || floor.TileId == 0)
+            { Result($"Не удалось поставить пол под стеной: отсутствует прототип {prototype}."); return; }
+            if (existing != null && existing.Prototype == prototype && existing.Mirror == mirror) { final[id] = existing; continue; }
+            final[id] = new GridEditorItem { Id = id, Kind = "tile", Prototype = prototype, X = x, Y = y,
+                Flags = existing?.Flags ?? 0, Variant = existing != null && existing.Prototype == prototype ? existing.Variant : (byte) 0, Mirror = mirror };
+        }
         // Decals and anchored entities require a supporting tile in the FINAL draft, not just in the old grid.
         bool HasFloor(GridEditorItem item) => final.ContainsKey($"t:{(int) MathF.Floor(item.X)}:{(int) MathF.Floor(item.Y)}");
-        if (final.Values.Any(i => (i.Kind == "decal" || i.Kind == "entity" && i.Anchored) && !HasFloor(i)))
-        { Result("Под декалями и закреплёнными объектами должен быть пол."); return; }
+        if (final.Values.FirstOrDefault(i => (i.Kind == "decal" || i.Kind == "entity" && i.Anchored) && !HasFloor(i)) is { } unsupported)
+        { Result($"Под элементом {unsupported.Prototype} ({(int) MathF.Floor(unsupported.X)}, {(int) MathF.Floor(unsupported.Y)}) должен быть пол."); return; }
         var removed = original.Values.Where(i => !final.ContainsKey(i.Id)).ToList();
         var changed = final.Values.Where(i => !original.TryGetValue(i.Id, out var old) || !i.Same(old)).ToList();
-        if (removed.Count + changed.Count > 2048) { Result("Применяйте не более 2048 изменений за один раз."); return; }
+        if (removed.Count + changed.Count > MaxChanges) { Result("Применяйте не более 2048 изменений за один раз."); return; }
         var gridComp = Comp<MapGridComponent>(draft.Grid);
         var remaining = _map.GetAllTiles(draft.Grid, gridComp).Count() - removed.Count(i => i.Kind == "tile") +
             changed.Count(i => i.Kind == "tile" && !original.ContainsKey(i.Id));
@@ -212,6 +270,43 @@ public sealed partial class GridEditorSystem : EntitySystem
         var tileChanges = removed.Where(i => i.Kind == "tile").Select(i => (new Vector2i((int) i.X, (int) i.Y), Tile.Empty)).ToList();
         tileChanges.AddRange(changed.Where(i => i.Kind == "tile").Select(i =>
             (new Vector2i((int) i.X, (int) i.Y), new Tile(_tiles[i.Prototype].TileId, i.Flags, i.Variant, i.Mirror))));
+        var expandedTiles = 0;
+        if (ev.Expansion is { } expansion)
+        {
+            var bounds = gridComp.LocalAABB;
+            if ((int) MathF.Floor(bounds.Left / gridComp.TileSize) != draft.GridX ||
+                (int) MathF.Floor(bounds.Bottom / gridComp.TileSize) != draft.GridY ||
+                (int) MathF.Ceiling(bounds.Right / gridComp.TileSize) != draft.GridX + draft.GridWidth ||
+                (int) MathF.Ceiling(bounds.Top / gridComp.TileSize) != draft.GridY + draft.GridHeight)
+            { Result("Границы grid изменились. Откройте редактор заново."); return; }
+            if (expansion.Left is < 0 or > 32 || expansion.Right is < 0 or > 32 ||
+                expansion.Bottom is < 0 or > 32 || expansion.Top is < 0 or > 32 ||
+                expansion.Tile.Length > 200 || !_tiles.TryGetDefinition(expansion.Tile, out var definition) ||
+                definition is not ContentTileDefinition floor || floor.Abstract || floor.TileId == 0)
+            { Result("Некорректное расширение grid или прототип пола."); return; }
+            var left = draft.GridX - expansion.Left;
+            var bottom = draft.GridY - expansion.Bottom;
+            var right = draft.GridX + draft.GridWidth + expansion.Right;
+            var top = draft.GridY + draft.GridHeight + expansion.Top;
+            var added = (long) (right - left) * (top - bottom) - (long) draft.GridWidth * draft.GridHeight;
+            if (added > 8192 || left < -8192 || bottom < -8192 || right > 8192 || top > 8192)
+            { Result("Расширение: не более 8192 новых тайлов за раз, координаты в пределах ±8192."); return; }
+            var edited = tileChanges.Select(i => i.Item1).ToHashSet();
+            for (var tx = left; tx < right; tx++)
+            {
+                // Only the new border is filled. Preserve holes and all edits in the original footprint.
+                var interiorColumn = tx >= draft.GridX && tx < draft.GridX + draft.GridWidth;
+                for (var ty = bottom; ty < top; ty++)
+                {
+                    if (interiorColumn && ty == draft.GridY) ty += draft.GridHeight;
+                    if (ty >= top) break;
+                    var position = new Vector2i(tx, ty);
+                    if (edited.Contains(position) || !_map.GetTileRef(draft.Grid, gridComp, position).Tile.IsEmpty) continue;
+                    tileChanges.Add((position, new Tile(floor.TileId)));
+                    expandedTiles++;
+                }
+            }
+        }
         try
         {
             if (tileChanges.Count > 0)
@@ -246,8 +341,8 @@ public sealed partial class GridEditorSystem : EntitySystem
                     throw new InvalidOperationException("Decal placement failed");
             }
             _logs.Add(LogType.AdminMessage, LogImpact.High,
-                $"{player.Name} applied grid editor draft to {ToPrettyString(draft.Grid)}: {changed.Count} changed, {removed.Count} removed");
-            Open(player, draft.Grid, draft.X, draft.Y, draft.Width, draft.Height);
+                $"{player.Name} applied grid editor draft to {ToPrettyString(draft.Grid)}: {changed.Count} changed, {removed.Count} removed, {expandedTiles} expansion tiles");
+            Open(player, draft.Grid);
             Result("Изменения применены к grid. Сохраните карту штатной командой savemap / savegrid.", true);
         }
         catch (Exception e)

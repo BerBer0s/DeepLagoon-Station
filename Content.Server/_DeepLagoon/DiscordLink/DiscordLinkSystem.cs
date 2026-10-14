@@ -36,6 +36,7 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
     [Dependency] private readonly IConnectionManager _connections = default!;
     [Dependency] private readonly Content.Server.Players.PlayTimeTracking.PlayTimeTrackingManager _playTime = default!;
     private readonly HashSet<ICommonSession> _admitted = new();
+    private readonly Dictionary<ICommonSession, long> _admissionRevisions = new();
     private DiscordLinkStore? _store;
     private string _token = "";
     private DateTime _nextBoostUpdate;
@@ -87,11 +88,26 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
         _config.OnValueChanged(CCVars.DiscordLinkToken, UpdateToken, true);
         _config.OnValueChanged(CCVars.DiscordLinkEnabled, UpdateEnabled, true);
         _players.PlayerStatusChanged += OnStatusChanged;
+        _whitelist.GlobalWhitelistRevoked += OnWhitelistRevoked;
         _status.AddHandler(HandleApi);
     }
 
     public static bool AdmissionAllowed(bool enabled, bool authenticated, bool linked, bool approved)
         => !enabled || (authenticated && linked && approved);
+
+    private void OnWhitelistRevoked(NetUserId user)
+    {
+        if (AdmissionRequired && _players.TryGetSessionById(user, out var session))
+            RevokeAdmission(session, "Допуск на сервер отозван. Обратитесь к регистраторам в Discord.", forceDisconnect: true);
+    }
+
+    public void RevokeAdmission(ICommonSession session, string reason, bool forceDisconnect = false)
+    {
+        _admissionRevisions[session] = _admissionRevisions.GetValueOrDefault(session) + 1;
+        var hadAdmission = _admitted.Remove(session);
+        if ((hadAdmission || forceDisconnect) && session.Channel.IsConnected)
+            session.Channel.Disconnect(reason);
+    }
 
     public bool CanEnterRound(ICommonSession session)
         => AdmissionAllowed(AdmissionRequired,
@@ -113,12 +129,14 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
         if (!AdmissionRequired || !_enabled || _store == null ||
             session.Channel.AuthType != LoginType.LoggedIn || !_store.IsLinked(session.UserId.UserId))
         {
-            _admitted.Remove(session);
+            RevokeAdmission(session, "Привязка или авторизация аккаунта изменились. Войдите снова.");
             return;
         }
         try
         {
+            var revision = _admissionRevisions.GetValueOrDefault(session);
             var approved = await _connections.CheckDiscordLobbyWhitelist(session.Channel.UserData);
+            if (revision != _admissionRevisions.GetValueOrDefault(session) || !session.Channel.IsConnected) return;
             if (approved && session.Status == SessionStatus.InGame)
             {
                 var newlyAdmitted = _admitted.Add(session);
@@ -128,10 +146,11 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
                     EntityManager.System<Content.Server.GameTicking.GameTicker>().CompleteDiscordAdmission(session);
             }
             else
-                _admitted.Remove(session);
+                RevokeAdmission(session, "Допуск на сервер отозван. Обратитесь к регистраторам в Discord.");
         }
         catch (Exception e)
         {
+            RevokeAdmission(session, "Не удалось подтвердить допуск. Переподключитесь позже.");
             Log.Error($"Discord lobby admission failed: {e.GetType().Name}");
         }
     }
@@ -192,6 +211,7 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
     {
         _enabled = false;
         _players.PlayerStatusChanged -= OnStatusChanged;
+        _whitelist.GlobalWhitelistRevoked -= OnWhitelistRevoked;
         _config.UnsubValueChanged(CCVars.DiscordLinkToken, UpdateToken);
         _config.UnsubValueChanged(CCVars.DiscordLinkEnabled, UpdateEnabled);
         _store?.Dispose();
@@ -206,6 +226,7 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             _boostPublished.Remove(args.Session);
             _prompts.Remove(args.Session);
             _admitted.Remove(args.Session);
+            _admissionRevisions.Remove(args.Session);
             return;
         }
         if (!_enabled || _store == null || args.NewStatus != SessionStatus.InGame ||
@@ -284,6 +305,18 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             await context.RespondJsonAsync(new { error = "invalid_request" }, HttpStatusCode.BadRequest);
             return true;
         }
+        // A durable merge has its own per-account lock/job. Never hold the API gate
+        // while waiting for an external worker or for players/database saves to drain.
+        if (path.EndsWith("/link", StringComparison.Ordinal) &&
+            request.Code?.Trim().ToUpperInvariant() is { Length: 24 } mergeCode && mergeCode.All(char.IsAsciiHexDigit))
+        {
+            var handled = await OnMainThread(() => HandleMergeRequest(request.DiscordId, mergeCode));
+            if (handled.Status != HttpStatusCode.Continue)
+            {
+                await context.RespondJsonAsync(handled.Body, handled.Status);
+                return true;
+            }
+        }
         await _apiLock.WaitAsync();
         try
         {
@@ -338,15 +371,16 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
                         var code = request.Code?.Trim().ToUpperInvariant() ?? "";
                         if (code.Length != 24 || code.Any(c => !char.IsAsciiHexDigit(c)))
                             return new ApiResult(HttpStatusCode.BadRequest, new { error = "invalid_code" });
-                        merged = _store.IsMergeCode(code);
-                        link = merged
-                            ? await MergeAccounts(request.DiscordId, code)
-                            : _store.Consume(request.DiscordId, code);
+                        // Merge requests are handled above without the shared API semaphore.
+                        if (_store.IsMergeCode(code)) return new ApiResult(HttpStatusCode.Conflict, new { error = "merge_pending" });
+                        link = _store.Consume(request.DiscordId, code);
                     }
                     else
                         link = _store.FindDiscord(request.DiscordId);
                     if (link == null)
                         return new ApiResult(HttpStatusCode.NotFound, new { error = "not_linked" });
+                    if (_store.MergePending(link.Uid) && !path.EndsWith("/lookup", StringComparison.Ordinal))
+                        return new ApiResult(HttpStatusCode.Conflict, new { error = "merge_pending" });
                     var existing = false;
                     if (path.EndsWith("/whitelist", StringComparison.Ordinal))
                     {
@@ -436,12 +470,25 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             if (preflight == null) throw new DiscordLinkStore.LinkException("merge_unavailable");
             var checkOut = preflight.StandardOutput.ReadToEndAsync();
             var checkError = preflight.StandardError.ReadToEndAsync();
-            await preflight.WaitForExitAsync();
+            try { await preflight.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (TimeoutException)
+            {
+                // --check is read-only; unlike the real worker it is safe to terminate.
+                if (!preflight.HasExited) preflight.Kill(entireProcessTree: true);
+                await preflight.WaitForExitAsync();
+                await checkOut;
+                await checkError;
+                throw new DiscordLinkStore.LinkException("merge_unavailable");
+            }
             await checkOut;
             await checkError;
             if (preflight.ExitCode != 0) throw new DiscordLinkStore.LinkException("merge_unavailable");
         }
-        var plan = _store.PrepareMerge(discordId, code);
+        // Drain earlier administrative mutations before installing the durable account barrier.
+        DiscordLinkStore.MergePlan plan;
+        await _apiLock.WaitAsync();
+        try { plan = _store.PrepareMerge(discordId, code); }
+        finally { _apiLock.Release(); }
         if (_store.MergeCompleted(discordId, plan))
             return new DiscordLinkStore.Link(plan.CanonicalUid, plan.Username);
         foreach (var session in _players.Sessions.Where(s => s.UserId.UserId == plan.OfficialUid || s.UserId.UserId == plan.CanonicalUid).ToArray())
@@ -454,7 +501,7 @@ public sealed partial class DiscordLinkSystem : SharedDiscordBoostSystem
             if (DateTime.UtcNow > deadline) throw new DiscordLinkStore.LinkException("merge_pending");
             await Task.Delay(100);
         }
-        await _playTime.WaitPendingSavesAsync();
+        await _playTime.WaitPendingSavesAsync().WaitAsync(TimeSpan.FromSeconds(30));
         var start = new System.Diagnostics.ProcessStartInfo(python)
         {
             UseShellExecute = false,

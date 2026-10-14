@@ -1,0 +1,2768 @@
+# Frozen residential stop. Prepared from the original GridEditor export.
+meta:
+  format: 7
+  category: Grid
+  entityCount: 336
+maps: []
+grids:
+  - 1
+orphans:
+  - 1
+nullspace: []
+tilemap:
+  '0': Space
+  '1': FloorSteelHerringbone
+  '2': Plating
+  '3': DLPlatingDiagonal
+  '4': FloorGrass
+  '5': FloorWood
+  '6': FloorLino
+  '7': FloorRGlass
+  '8': PlatingDamaged
+  '9': FloorMetalDiamond
+  '10': FloorGreenCircuit
+entities:
+  - proto: ''
+    entities:
+      - uid: 1
+        components:
+          - type: MetaData
+            name: Жилой квартал Lagoon
+          - type: Transform
+            parent: invalid
+          - type: MapGrid
+            chunks:
+              '-1,-1':
+                ind: '-1,-1'
+                tiles: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAABAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAYAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAAFAAAAAAAABQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAQAAAAAAAAIAAAAAAAAHAAAAAAAAAQAAAAAAAAcAAAAAAAACAAAAAAAABgAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAABwAAAAAAAAEAAAAAAAAHAAAAAAAAAgAAAAAAAAYAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAcAAAAAAAABAAAAAAAABwAAAAAAAAIAAAAAAAAGAAAAAAAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAACAAAAAAAAAQAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAQAAAAAAAAEAAAAAAAAHAAAAAAAABwAAAAAAAAcAAAAAAAAHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAEAAAAAAAABAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAA==
+                version: 7
+              '-1,0':
+                ind: '-1,0'
+                tiles: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAEAAAAAAAABAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAABAAAAAAAAAQAAAAAAAAcAAAAAAAAHAAAAAAAABwAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAACAAAAAAAAAQAAAAAAAAIAAAAAAAACAAAAAAAAAQAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAQIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAgAAAAAAAAgAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAAIAAAAAAAAAgAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+                version: 7
+              0,-1:
+                ind: 0,-1
+                tiles: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAABgAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAGAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAABgAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAAAAAAAAYAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAABQAAAAAAAAUAAAAAAAAFAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAIAAAAAAAAKAAAAAAAACgAAAAAAAAoAAAAAAAAKAAAAAAAACgAAAAAAAAIAAAAAAAAHAAAAAAAABwAAAAAAAAcAAAAAAAAHAAAAAAAABwAAAAAAAAcAAAAAAAAHAAAAAAAABwAAAAAAAAcAAAAAAAACAAAAAAAACQAAAAAAAAkAAAAAAAAJAAAAAAAACQAAAAAAAAkAAAAAAAACAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAHAAAAAAAACQAAAAAAAAkAAAAAAAAJAAAAAAAACQAAAAAAAAkAAAAAAAAJAAAAAAAAAgAAAAAAAA==
+                version: 7
+              0,0:
+                ind: 0,0
+                tiles: BAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAHAAAAAAAACQAAAAAAAAkAAAAAAAAJAAAAAAAACQAAAAAAAAkAAAAAAAAJAAAAAAAAAgAAAAAAAAcAAAAAAAAHAAAAAAAABwAAAAAAAAcAAAAAAAAHAAAAAAAABwAAAAAAAAcAAAAAAAAHAAAAAAAABwAAAAAAAAIAAAAAAAAJAAAAAAAACQAAAAAAAAkAAAAAAAAJAAAAAAAACQAAAAAAAAIAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAACAAAAAAAACgAAAAAAAAoAAAAAAAAKAAAAAAAACgAAAAAAAAoAAAAAAAACAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAABAAAAAAAAAgAAAAAAAAIAAAAAAAABAAAAAAAAAgAAAAAAAAIAAAAAAAABAAAAAAAAAgAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAgAAAAAAAAIAAAAAAAABAAAAAAAAAgAAAAAAAAgAAAAAAAABAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAIAAAAAAAACAAAAAAAAAQAAAAAAAAIAAAAAAAACAAAAAAAAAQAAAAAAAAIAAAAAAAAIAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAACAAAAAAAACAAAAAAAAAEAAAAAAAACAAAAAAAAAgAAAAAAAAEAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAgAAAAAAAAIAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+                version: 7
+          - type: Shuttle
+          - type: Gravity
+            enabled: true
+            inherent: true
+          - type: ImplicitRoof
+          - type: DecalGrid
+            chunkCollection:
+              version: 2
+              nodes:
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '0': '-3,5'
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '1': '-3,6'
+                - node:
+                    id: Grassd3
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '2': 4,-1
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '3': '-2,6'
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '4': '-1,6'
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '5': '-2,7'
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '6': 1,5
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '7': 1,6
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '8': 1,7
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '9': 4,6
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '10': 5,6
+                - node:
+                    id: Dirt
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '11': 5,7
+                - node:
+                    id: DirtHeavyMonotile
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '12': 7,5
+                - node:
+                    id: DirtHeavyMonotile
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '13': 7,7
+                - node:
+                    id: BushCrocusGreen9
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '14': '-4,-1'
+                - node:
+                    id: BushCrocusGreen8
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '15': 7,-1
+                - node:
+                    id: BushCrocusGreen5
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '16': '-1,-1'
+                - node:
+                    id: BushCrocusGreen9
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '17': 3,0
+                - node:
+                    id: GrassCrocusGreen8
+                    color: '#FFFFFFFF'
+                    angle: 0
+                    zIndex: 0
+                    cleanable: false
+                  decals:
+                    '18': 1,0
+          - type: GridAtmosphere
+            version: 2
+            data:
+              chunkSize: 4
+              tiles:
+                '-3,-3':
+                  '0': 65535
+                '-2,-3':
+                  '0': 65535
+                '-1,-3':
+                  '0': 65535
+                '-2,-2':
+                  '0': 61166
+                '-1,-2':
+                  '0': 65535
+                '-2,-1':
+                  '0': 61166
+                '-1,-1':
+                  '0': 65535
+                '-2,0':
+                  '0': 61166
+                '-1,0':
+                  '0': 65535
+                '-2,1':
+                  '0': 65534
+                '-1,1':
+                  '0': 65535
+                '-3,1':
+                  '0': 65520
+                '-3,2':
+                  '0': 15
+                '-2,2':
+                  '0': 15
+                '-1,2':
+                  '0': 15
+                0,-3:
+                  '0': 65535
+                1,-3:
+                  '0': 65535
+                2,-3:
+                  '0': 13107
+                0,-2:
+                  '0': 65535
+                1,-2:
+                  '0': 65535
+                2,-2:
+                  '0': 13107
+                0,-1:
+                  '0': 65535
+                1,-1:
+                  '0': 65535
+                2,-1:
+                  '0': 65535
+                3,-1:
+                  '0': 65535
+                0,0:
+                  '0': 65535
+                1,0:
+                  '0': 65535
+                2,0:
+                  '0': 65535
+                3,0:
+                  '0': 65535
+                0,1:
+                  '0': 65535
+                1,1:
+                  '0': 65535
+                2,1:
+                  '0': 13107
+                0,2:
+                  '0': 15
+                1,2:
+                  '0': 15
+                2,2:
+                  '0': 3
+              uniqueMixes:
+                - volume: 2500
+                  temperature: 293.15
+                  moles:
+                    Oxygen: 21.824879
+                    Nitrogen: 82.10312
+          - type: ProtectedGrid
+            preventFloorRemoval: true
+            preventFloorPlacement: true
+            preventRCDUse: true
+            preventEmpEvents: true
+            preventExplosions: true
+            preventArtifactTriggers: true
+            killHostileMobs: true
+          - type: PacifiedZoneGenerator
+            wholeGrid: true
+            disallowAllCombat: true
+          - type: ApartmentProtectedGrid
+  - proto: AirlockExternalGlassShuttleTransit
+    entities:
+      - uid: 2
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,0.5'
+            rot: 270
+            anchored: true
+      - uid: 3
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-0.5'
+            rot: 270
+            anchored: true
+  - proto: WallPlastitaniumIndestructible
+    entities:
+      - uid: 4
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-1.5'
+            rot: 0
+            anchored: true
+      - uid: 5
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,1.5'
+            rot: 0
+            anchored: true
+      - uid: 6
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-5.5'
+            rot: 0
+            anchored: true
+      - uid: 7
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,4.5'
+            rot: 0
+            anchored: true
+      - uid: 8
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-7.5'
+            rot: 0
+            anchored: true
+      - uid: 9
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-6.5'
+            rot: 0
+            anchored: true
+      - uid: 10
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-7.5,5.5'
+            rot: 0
+            anchored: true
+      - uid: 11
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-7.5,8.5'
+            rot: 0
+            anchored: true
+      - uid: 12
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-7.5,-11.5'
+            rot: 0
+            anchored: true
+      - uid: 13
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-11.5'
+            rot: 270
+            anchored: true
+      - uid: 14
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,-11.5'
+            rot: 270
+            anchored: true
+      - uid: 15
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-4.5,-11.5'
+            rot: 270
+            anchored: true
+      - uid: 16
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,-11.5'
+            rot: 270
+            anchored: true
+      - uid: 17
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,-11.5'
+            rot: 270
+            anchored: true
+      - uid: 18
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,-11.5'
+            rot: 270
+            anchored: true
+      - uid: 19
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,-11.5'
+            rot: 270
+            anchored: true
+      - uid: 20
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 21
+        components:
+          - type: Transform
+            parent: 1
+            pos: 1.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 22
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 23
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 24
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 25
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 26
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 27
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 28
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 29
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-11.5
+            rot: 270
+            anchored: true
+      - uid: 30
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,8.5'
+            rot: 270
+            anchored: true
+      - uid: 31
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,8.5'
+            rot: 270
+            anchored: true
+      - uid: 32
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-4.5,8.5'
+            rot: 270
+            anchored: true
+      - uid: 33
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,8.5'
+            rot: 270
+            anchored: true
+      - uid: 34
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,8.5'
+            rot: 270
+            anchored: true
+      - uid: 35
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,8.5'
+            rot: 270
+            anchored: true
+      - uid: 36
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,8.5'
+            rot: 270
+            anchored: true
+      - uid: 37
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 38
+        components:
+          - type: Transform
+            parent: 1
+            pos: 1.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 39
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 40
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 41
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 42
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 43
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 44
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 45
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 46
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,8.5
+            rot: 270
+            anchored: true
+      - uid: 47
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-10.5
+            rot: 270
+            anchored: true
+      - uid: 48
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 49
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-3.5
+            rot: 270
+            anchored: true
+      - uid: 50
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-2.5
+            rot: 270
+            anchored: true
+      - uid: 51
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-1.5
+            rot: 270
+            anchored: true
+      - uid: 52
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,1.5
+            rot: 270
+            anchored: true
+      - uid: 53
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,2.5
+            rot: 270
+            anchored: true
+      - uid: 54
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,3.5
+            rot: 270
+            anchored: true
+      - uid: 55
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,5.5
+            rot: 270
+            anchored: true
+      - uid: 56
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,6.5
+            rot: 270
+            anchored: true
+      - uid: 57
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,7.5
+            rot: 270
+            anchored: true
+      - uid: 58
+        components:
+          - type: Transform
+            parent: 1
+            pos: 10.5,3.5
+            rot: 270
+            anchored: true
+      - uid: 59
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,3.5
+            rot: 270
+            anchored: true
+      - uid: 60
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,3.5
+            rot: 270
+            anchored: true
+      - uid: 61
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,-3.5
+            rot: 270
+            anchored: true
+      - uid: 62
+        components:
+          - type: Transform
+            parent: 1
+            pos: 10.5,-3.5
+            rot: 270
+            anchored: true
+      - uid: 63
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,-3.5
+            rot: 270
+            anchored: true
+      - uid: 64
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,4.5'
+            rot: 270
+            anchored: true
+      - uid: 65
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,4.5'
+            rot: 270
+            anchored: true
+      - uid: 66
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,4.5'
+            rot: 270
+            anchored: true
+      - uid: 67
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,4.5
+            rot: 270
+            anchored: true
+      - uid: 68
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,4.5
+            rot: 270
+            anchored: true
+      - uid: 69
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,4.5
+            rot: 270
+            anchored: true
+      - uid: 70
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,4.5
+            rot: 270
+            anchored: true
+      - uid: 71
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,4.5
+            rot: 270
+            anchored: true
+      - uid: 72
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,4.5
+            rot: 270
+            anchored: true
+      - uid: 73
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,4.5
+            rot: 270
+            anchored: true
+      - uid: 74
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,-5.5'
+            rot: 270
+            anchored: true
+      - uid: 75
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,-5.5'
+            rot: 270
+            anchored: true
+      - uid: 76
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,-5.5'
+            rot: 270
+            anchored: true
+      - uid: 77
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,-5.5'
+            rot: 270
+            anchored: true
+      - uid: 78
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,-5.5'
+            rot: 270
+            anchored: true
+      - uid: 79
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 80
+        components:
+          - type: Transform
+            parent: 1
+            pos: 1.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 81
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 82
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 83
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 84
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 85
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 86
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 87
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-5.5
+            rot: 270
+            anchored: true
+      - uid: 88
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,-10.5'
+            rot: 270
+            anchored: true
+      - uid: 89
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,-8.5'
+            rot: 270
+            anchored: true
+      - uid: 90
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,6.5'
+            rot: 270
+            anchored: true
+      - uid: 91
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,7.5'
+            rot: 270
+            anchored: true
+      - uid: 92
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,4.5'
+            rot: 270
+            anchored: true
+      - uid: 93
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,5.5'
+            rot: 270
+            anchored: true
+      - uid: 94
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-9.5
+            rot: 270
+            anchored: true
+      - uid: 95
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-8.5
+            rot: 270
+            anchored: true
+      - uid: 96
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-7.5
+            rot: 270
+            anchored: true
+      - uid: 97
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-6.5
+            rot: 270
+            anchored: true
+      - uid: 98
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,5.5
+            rot: 270
+            anchored: true
+      - uid: 99
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,6.5
+            rot: 270
+            anchored: true
+      - uid: 100
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,7.5
+            rot: 270
+            anchored: true
+      - uid: 101
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,5.5
+            rot: 270
+            anchored: true
+      - uid: 102
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,6.5
+            rot: 270
+            anchored: true
+      - uid: 103
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,7.5
+            rot: 270
+            anchored: true
+      - uid: 104
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,5.5
+            rot: 270
+            anchored: true
+      - uid: 105
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,6.5
+            rot: 270
+            anchored: true
+      - uid: 106
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,7.5
+            rot: 270
+            anchored: true
+      - uid: 107
+        components:
+          - type: Transform
+            parent: 1
+            pos: 13.5,3.5
+            rot: 270
+            anchored: true
+      - uid: 108
+        components:
+          - type: Transform
+            parent: 1
+            pos: 14.5,3.5
+            rot: 270
+            anchored: true
+      - uid: 109
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,-2.5
+            rot: 270
+            anchored: true
+      - uid: 110
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,-1.5
+            rot: 270
+            anchored: true
+      - uid: 111
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,-0.5
+            rot: 270
+            anchored: true
+      - uid: 112
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,0.5
+            rot: 270
+            anchored: true
+      - uid: 113
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,1.5
+            rot: 270
+            anchored: true
+      - uid: 114
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,2.5
+            rot: 270
+            anchored: true
+      - uid: 115
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,3.5
+            rot: 270
+            anchored: true
+      - uid: 116
+        components:
+          - type: Transform
+            parent: 1
+            pos: 13.5,-3.5
+            rot: 270
+            anchored: true
+      - uid: 117
+        components:
+          - type: Transform
+            parent: 1
+            pos: 14.5,-3.5
+            rot: 270
+            anchored: true
+      - uid: 118
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,-3.5
+            rot: 270
+            anchored: true
+      - uid: 316
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-4.5
+            rot: 270
+            anchored: true
+      - uid: 317
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-4.5'
+            rot: 270
+            anchored: true
+      - uid: 321
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-7.5,-8.5'
+            rot: 0
+            anchored: true
+      - uid: 322
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-11.5,-8.5'
+            rot: 0
+            anchored: true
+  - proto: PlastitaniumWindowOutpost
+    entities:
+      - uid: 119
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,2.506218'
+            rot: 0
+            anchored: false
+      - uid: 120
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5149536,3.493782'
+            rot: 0
+            anchored: false
+      - uid: 121
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-3.4888916'
+            rot: 0
+            anchored: false
+      - uid: 122
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-2.5050354'
+            rot: 0
+            anchored: false
+      - uid: 123
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-9.502014,5.5'
+            rot: 0
+            anchored: false
+      - uid: 124
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-8.507141,5.5'
+            rot: 0
+            anchored: false
+      - uid: 125
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-9.50238,-11.5'
+            rot: -90.00001
+            anchored: false
+      - uid: 126
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-8.507263,-11.5'
+            rot: -90.00001
+            anchored: false
+      - uid: 127
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-9.50238,8.5'
+            rot: -90.00001
+            anchored: false
+      - uid: 128
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-8.507263,8.5'
+            rot: -90.00001
+            anchored: false
+      - uid: 309
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-10.504745,8.513715'
+            rot: -90.00001
+            anchored: false
+      - uid: 310
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-11.5,7.493779'
+            rot: -90.00001
+            anchored: false
+      - uid: 311
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-11.512487,6.506219'
+            rot: -90.00001
+            anchored: false
+      - uid: 312
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-10.497492,5.5'
+            rot: -90.00001
+            anchored: false
+      - uid: 313
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-11.5,-9.471503'
+            rot: -90.00001
+            anchored: false
+      - uid: 314
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-11.507422,-10.485448'
+            rot: -90.00001
+            anchored: false
+      - uid: 315
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-10.504745,-11.505553'
+            rot: -90.00001
+            anchored: false
+      - uid: 323
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-10.5,-8.5'
+            rot: -90.00001
+            anchored: false
+      - uid: 324
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-9.5,-8.5'
+            rot: -90.00001
+            anchored: false
+      - uid: 325
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-8.5,-8.5'
+            rot: -90.00001
+            anchored: false
+  - proto: WallPlastitaniumDiagonalOutpost
+    entities:
+      - uid: 129
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-8.5'
+            rot: 180
+            anchored: true
+      - uid: 130
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-11.5,-11.5'
+            rot: 90
+            anchored: true
+      - uid: 131
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-11.5,5.5'
+            rot: 90
+            anchored: true
+      - uid: 132
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-11.5,8.5'
+            rot: 0
+            anchored: true
+      - uid: 133
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,5.5'
+            rot: 270
+            anchored: true
+  - proto: BlastDoorExterior1
+    entities:
+      - uid: 134
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,0.5
+            rot: 270
+            anchored: true
+      - uid: 135
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-0.5
+            rot: 270
+            anchored: true
+  - proto: ReinforcedWindowOutpost
+    entities:
+      - uid: 136
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,-7.5'
+            rot: 270
+            anchored: true
+      - uid: 137
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,-6.5'
+            rot: 270
+            anchored: true
+  - proto: VendingMachineBoozePOI
+    entities:
+      - uid: 138
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-6.5
+            rot: 0
+            anchored: true
+  - proto: VendingMachineDrGibb
+    entities:
+      - uid: 139
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,2.5
+            rot: 0
+            anchored: true
+  - proto: VendingMachineSnackOrange
+    entities:
+      - uid: 140
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-2.5
+            rot: 0
+            anchored: true
+      - uid: 141
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,3.5
+            rot: 0
+            anchored: true
+  - proto: VendingMachineGamesPOI
+    entities:
+      - uid: 142
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-3.5
+            rot: 0
+            anchored: true
+  - proto: VendingMachineAutoTuneVend
+    entities:
+      - uid: 143
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,-6.5
+            rot: 0
+            anchored: true
+  - proto: Jukebox
+    entities:
+      - uid: 144
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-6.5
+            rot: 0
+            anchored: true
+  - proto: N14TableCounterBar
+    entities:
+      - uid: 145
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,-8.5'
+            rot: 0
+            anchored: false
+      - uid: 146
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,-10.5'
+            rot: 0
+            anchored: false
+  - proto: N14ChairWoodPadded
+    entities:
+      - uid: 147
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,-8.5'
+            rot: 90
+            anchored: true
+      - uid: 148
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-8.5
+            rot: 270
+            anchored: true
+      - uid: 149
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,-10.5'
+            rot: 90
+            anchored: true
+      - uid: 150
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-10.5
+            rot: 270
+            anchored: true
+  - proto: N14ChairBarRetro
+    entities:
+      - uid: 151
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,-9.5
+            rot: 90
+            anchored: true
+      - uid: 152
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,-8.5
+            rot: 90
+            anchored: true
+      - uid: 153
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,-7.5
+            rot: 90
+            anchored: true
+      - uid: 154
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,-6.5
+            rot: 90
+            anchored: true
+  - proto: N14TableWoodLow
+    entities:
+      - uid: 155
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,-9.5
+            rot: 0
+            anchored: false
+      - uid: 156
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,-8.5
+            rot: 0
+            anchored: false
+      - uid: 157
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,-7.5
+            rot: 0
+            anchored: false
+      - uid: 158
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,-6.5
+            rot: 0
+            anchored: false
+  - proto: WoodenBarrel
+    entities:
+      - uid: 159
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,-6.5'
+            rot: 0
+            anchored: true
+  - proto: SignBar
+    entities:
+      - uid: 160
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,-8.5'
+            rot: 0
+            anchored: false
+  - proto: ToyFigurineBartender
+    entities:
+      - uid: 161
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,-6.5
+            rot: 0
+            anchored: false
+  - proto: StatueVenusBlue
+    entities:
+      - uid: 162
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,0.5'
+            rot: 0
+            anchored: false
+  - proto: StatueVenusRed
+    entities:
+      - uid: 163
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,0.5
+            rot: 0
+            anchored: false
+  - proto: CarpStatue
+    entities:
+      - uid: 164
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,0.5'
+            rot: 0
+            anchored: false
+      - uid: 165
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,0.5
+            rot: 0
+            anchored: false
+  - proto: VendingMachineTankDispenserEVAPOI
+    entities:
+      - uid: 166
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,3.5'
+            rot: 0
+            anchored: true
+  - proto: ClosetEmergency
+    entities:
+      - uid: 167
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,-3.5'
+            rot: 0
+            anchored: true
+  - proto: CrateEmergencyInternals
+    entities:
+      - uid: 168
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,2.5'
+            rot: 0
+            anchored: true
+  - proto: ToolboxEmergencyFilled
+    entities:
+      - uid: 169
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,2.5'
+            rot: 0
+            anchored: false
+  - proto: AirlockCommand
+    entities:
+      - uid: 170
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,4.5'
+            rot: 180
+            anchored: true
+      - uid: 171
+        components:
+          - type: Transform
+            parent: 1
+            pos: 1.5,4.5
+            rot: 180
+            anchored: true
+      - uid: 172
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,4.5
+            rot: 180
+            anchored: true
+      - uid: 173
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,4.5
+            rot: 180
+            anchored: true
+  - proto: DLApartmentBusStop
+    entities:
+      - uid: 174
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-4.5,0.5'
+            rot: 0
+            anchored: true
+  - proto: N14BedMattressDirty5
+    entities:
+      - uid: 175
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,7.5'
+            rot: 0
+            anchored: true
+  - proto: N14BedMattressDirty4
+    entities:
+      - uid: 176
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,5.5
+            rot: 0
+            anchored: true
+  - proto: N14BedDirty
+    entities:
+      - uid: 177
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,7.5
+            rot: 0
+            anchored: true
+  - proto: N14BedWoodBunk
+    entities:
+      - uid: 178
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,7.5'
+            rot: 0
+            anchored: true
+  - proto: DogBed
+    entities:
+      - uid: 179
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,7.5
+            rot: 0
+            anchored: true
+  - proto: N14SignBar
+    entities:
+      - uid: 180
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,-10.5'
+            rot: 0
+            anchored: false
+  - proto: NFSignDock
+    entities:
+      - uid: 181
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,1.5'
+            rot: 0
+            anchored: false
+      - uid: 182
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-1.5'
+            rot: 0
+            anchored: false
+  - proto: N14SignForRent
+    entities:
+      - uid: 183
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,4.5'
+            rot: 0
+            anchored: false
+  - proto: N14SignOpenOn1
+    entities:
+      - uid: 184
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,4.5
+            rot: 0
+            anchored: false
+  - proto: SignEngine
+    entities:
+      - uid: 185
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,1.5
+            rot: 0
+            anchored: false
+      - uid: 186
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,-1.5
+            rot: 0
+            anchored: false
+  - proto: SignNanotrasen2
+    entities:
+      - uid: 187
+        components:
+          - type: Transform
+            parent: 1
+            pos: 1.5,-1.5
+            rot: 0
+            anchored: false
+  - proto: SignNanotrasen3
+    entities:
+      - uid: 188
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,-1.5
+            rot: 0
+            anchored: false
+  - proto: SignNanotrasen4
+    entities:
+      - uid: 189
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,-1.5
+            rot: 0
+            anchored: false
+  - proto: SignNanotrasen5
+    entities:
+      - uid: 190
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,-1.5
+            rot: 0
+            anchored: false
+  - proto: SignNanotrasen1
+    entities:
+      - uid: 191
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-1.5
+            rot: 0
+            anchored: false
+  - proto: SubstationBasic
+    entities:
+      - uid: 192
+        components:
+          - type: Transform
+            parent: 1
+            pos: 10.5,2.5
+            rot: 0
+            anchored: true
+          - type: Battery
+            maxCharge: 2500000
+            startingCharge: 2500000
+          - type: PowerNetworkBattery
+            maxChargeRate: 100000
+            maxSupply: 150000
+  - proto: SMESAdvanced
+    entities:
+      - uid: 193
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,-2.5
+            rot: 0
+            anchored: true
+          - type: Battery
+            maxCharge: 16000000
+            startingCharge: 16000000
+  - proto: AtmosDeviceFanDirectional
+    entities:
+      - uid: 194
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,0.5'
+            rot: 270
+            anchored: true
+      - uid: 195
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-0.5'
+            rot: 270
+            anchored: true
+  - proto: AlwaysPoweredLightLED
+    entities:
+      - uid: 196
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,3.5'
+            rot: 0
+            anchored: true
+      - uid: 197
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,3.5
+            rot: 0
+            anchored: true
+      - uid: 198
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,3.5
+            rot: 0
+            anchored: true
+      - uid: 199
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,3.5
+            rot: -90
+            anchored: true
+      - uid: 200
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-2.5
+            rot: -90
+            anchored: true
+      - uid: 201
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,-10.5
+            rot: 180
+            anchored: true
+      - uid: 202
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,-6.5
+            rot: 0
+            anchored: true
+      - uid: 203
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-9.5
+            rot: -90
+            anchored: true
+      - uid: 204
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-6.5
+            rot: -90
+            anchored: true
+      - uid: 205
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,-8.5'
+            rot: 90
+            anchored: true
+      - uid: 206
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,-7.5'
+            rot: 90
+            anchored: true
+      - uid: 207
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-10.5'
+            rot: 180
+            anchored: true
+      - uid: 208
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,-10.5'
+            rot: -90
+            anchored: true
+      - uid: 209
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,-1.5'
+            rot: 90
+            anchored: true
+      - uid: 210
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,1.5'
+            rot: 90
+            anchored: true
+      - uid: 211
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,5.5'
+            rot: 180
+            anchored: true
+      - uid: 212
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-7.5,7.5'
+            rot: 0
+            anchored: true
+      - uid: 213
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,7.5'
+            rot: 0
+            anchored: true
+      - uid: 214
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,7.5
+            rot: 0
+            anchored: true
+      - uid: 215
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,7.5
+            rot: 0
+            anchored: true
+      - uid: 216
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,7.5
+            rot: 0
+            anchored: true
+      - uid: 318
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,-4.5'
+            rot: 180
+            anchored: true
+      - uid: 319
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-4.5
+            rot: 180
+            anchored: true
+      - uid: 320
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,-4.5
+            rot: 180
+            anchored: true
+  - proto: PoweredLightPostSmall
+    entities:
+      - uid: 217
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,-0.5'
+            rot: 0
+            anchored: true
+      - uid: 218
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,-0.5
+            rot: 0
+            anchored: true
+      - uid: 219
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,-0.5
+            rot: 0
+            anchored: true
+  - proto: ComputerStationRadar
+    entities:
+      - uid: 220
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,-2.5'
+            rot: 90
+            anchored: true
+  - proto: DLApartmentStopGenerator
+    entities:
+      - uid: 221
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,2.5
+            rot: 0
+            anchored: true
+  - proto: StationAnchorIndestructible
+    entities:
+      - uid: 222
+        components:
+          - type: Transform
+            parent: 1
+            pos: 13.5,-1.5
+            rot: 90
+            anchored: true
+  - proto: GravityGeneratorMini
+    entities:
+      - uid: 223
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,2.5
+            rot: 0
+            anchored: true
+  - proto: SignGravity
+    entities:
+      - uid: 224
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,3.5
+            rot: 90
+            anchored: false
+  - proto: APCSuperCapacity
+    entities:
+      - uid: 225
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,0.5
+            rot: -90
+            anchored: true
+          - type: PowerNetworkBattery
+            maxChargeRate: 50000
+            maxSupply: 100000
+  - proto: AlwaysPoweredlightRed
+    entities:
+      - uid: 226
+        components:
+          - type: Transform
+            parent: 1
+            pos: 14.5,1.5
+            rot: -90
+            anchored: true
+      - uid: 227
+        components:
+          - type: Transform
+            parent: 1
+            pos: 14.5,-1.5
+            rot: -90
+            anchored: true
+      - uid: 228
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,-2.5
+            rot: 180
+            anchored: true
+      - uid: 229
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,3.5
+            rot: 0
+            anchored: true
+      - uid: 230
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,2.5
+            rot: 0
+            anchored: true
+  - proto: CableHV
+    entities:
+      - uid: 231
+        components:
+          - type: Transform
+            parent: 1
+            pos: 10.5,2.5
+            rot: 0
+            anchored: true
+      - uid: 232
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,-0.5
+            rot: 0
+            anchored: true
+      - uid: 233
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,-1.5
+            rot: 0
+            anchored: true
+      - uid: 234
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,-2.5
+            rot: 0
+            anchored: true
+      - uid: 235
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 236
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,1.5
+            rot: 0
+            anchored: true
+      - uid: 237
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,2.5
+            rot: 0
+            anchored: true
+  - proto: CableMV
+    entities:
+      - uid: 238
+        components:
+          - type: Transform
+            parent: 1
+            pos: 10.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 239
+        components:
+          - type: Transform
+            parent: 1
+            pos: 10.5,1.5
+            rot: 0
+            anchored: true
+      - uid: 240
+        components:
+          - type: Transform
+            parent: 1
+            pos: 10.5,2.5
+            rot: 0
+            anchored: true
+      - uid: 241
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 242
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 243
+        components:
+          - type: Transform
+            parent: 1
+            pos: 13.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 244
+        components:
+          - type: Transform
+            parent: 1
+            pos: 14.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 245
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,0.5
+            rot: 0
+            anchored: true
+  - proto: CableApcExtension
+    entities:
+      - uid: 246
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,0.5'
+            rot: 0
+            anchored: true
+      - uid: 247
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-0.5,4.5'
+            rot: 0
+            anchored: true
+      - uid: 248
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,0.5'
+            rot: 0
+            anchored: true
+      - uid: 249
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,1.5'
+            rot: 0
+            anchored: true
+      - uid: 250
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,2.5'
+            rot: 0
+            anchored: true
+      - uid: 251
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,3.5'
+            rot: 0
+            anchored: true
+      - uid: 252
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-1.5,4.5'
+            rot: 0
+            anchored: true
+      - uid: 253
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-2.5,0.5'
+            rot: 0
+            anchored: true
+      - uid: 254
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,-0.5'
+            rot: 0
+            anchored: true
+      - uid: 255
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-3.5,0.5'
+            rot: 0
+            anchored: true
+      - uid: 256
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-4.5,0.5'
+            rot: 0
+            anchored: true
+      - uid: 257
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,-2.5'
+            rot: 0
+            anchored: true
+      - uid: 258
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,0.5'
+            rot: 0
+            anchored: true
+      - uid: 259
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,1.5'
+            rot: 0
+            anchored: true
+      - uid: 260
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,2.5'
+            rot: 0
+            anchored: true
+      - uid: 261
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-5.5,3.5'
+            rot: 0
+            anchored: true
+      - uid: 262
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-0.5'
+            rot: 0
+            anchored: true
+      - uid: 263
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-1.5'
+            rot: 0
+            anchored: true
+      - uid: 264
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,-2.5'
+            rot: 0
+            anchored: true
+      - uid: 265
+        components:
+          - type: Transform
+            parent: 1
+            pos: '-6.5,0.5'
+            rot: 0
+            anchored: true
+      - uid: 266
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-0.5
+            rot: 0
+            anchored: true
+      - uid: 267
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-1.5
+            rot: 0
+            anchored: true
+      - uid: 268
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-2.5
+            rot: 0
+            anchored: true
+      - uid: 269
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-3.5
+            rot: 0
+            anchored: true
+      - uid: 270
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 271
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,4.5
+            rot: 0
+            anchored: true
+      - uid: 272
+        components:
+          - type: Transform
+            parent: 1
+            pos: 1.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 273
+        components:
+          - type: Transform
+            parent: 1
+            pos: 1.5,4.5
+            rot: 0
+            anchored: true
+      - uid: 274
+        components:
+          - type: Transform
+            parent: 1
+            pos: 10.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 275
+        components:
+          - type: Transform
+            parent: 1
+            pos: 11.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 276
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 277
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,1.5
+            rot: 0
+            anchored: true
+      - uid: 278
+        components:
+          - type: Transform
+            parent: 1
+            pos: 12.5,2.5
+            rot: 0
+            anchored: true
+      - uid: 279
+        components:
+          - type: Transform
+            parent: 1
+            pos: 13.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 280
+        components:
+          - type: Transform
+            parent: 1
+            pos: 14.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 281
+        components:
+          - type: Transform
+            parent: 1
+            pos: 15.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 282
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,-0.5
+            rot: 0
+            anchored: true
+      - uid: 283
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 284
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,4.5
+            rot: 0
+            anchored: true
+      - uid: 285
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 286
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,4.5
+            rot: 0
+            anchored: true
+      - uid: 287
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 288
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,4.5
+            rot: 0
+            anchored: true
+      - uid: 289
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 290
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 291
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,-0.5
+            rot: 0
+            anchored: true
+      - uid: 292
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 293
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,4.5
+            rot: 0
+            anchored: true
+      - uid: 294
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-0.5
+            rot: 0
+            anchored: true
+      - uid: 295
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-1.5
+            rot: 0
+            anchored: true
+      - uid: 296
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-2.5
+            rot: 0
+            anchored: true
+      - uid: 297
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-3.5
+            rot: 0
+            anchored: true
+      - uid: 298
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 299
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,1.5
+            rot: 0
+            anchored: true
+      - uid: 300
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,2.5
+            rot: 0
+            anchored: true
+      - uid: 301
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,3.5
+            rot: 0
+            anchored: true
+      - uid: 302
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,4.5
+            rot: 0
+            anchored: true
+      - uid: 303
+        components:
+          - type: Transform
+            parent: 1
+            pos: 9.5,0.5
+            rot: 0
+            anchored: true
+      - uid: 326
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-6.5
+            anchored: true
+      - uid: 327
+        components:
+          - type: Transform
+            parent: 1
+            pos: 1.5,-6.5
+            anchored: true
+      - uid: 328
+        components:
+          - type: Transform
+            parent: 1
+            pos: 2.5,-6.5
+            anchored: true
+      - uid: 329
+        components:
+          - type: Transform
+            parent: 1
+            pos: 3.5,-6.5
+            anchored: true
+      - uid: 330
+        components:
+          - type: Transform
+            parent: 1
+            pos: 4.5,-6.5
+            anchored: true
+      - uid: 331
+        components:
+          - type: Transform
+            parent: 1
+            pos: 5.5,-6.5
+            anchored: true
+      - uid: 332
+        components:
+          - type: Transform
+            parent: 1
+            pos: 6.5,-6.5
+            anchored: true
+      - uid: 333
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.5,-6.5
+            anchored: true
+      - uid: 334
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-4.5
+            anchored: true
+      - uid: 335
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-5.5
+            anchored: true
+      - uid: 336
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-6.5
+            anchored: true
+  - proto: CableApcStack1
+    entities:
+      - uid: 304
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.5,-4.5
+            rot: 0
+            anchored: false
+      - uid: 305
+        components:
+          - type: Transform
+            parent: 1
+            pos: 0.025942912,-5.504153
+            rot: 1.5339597
+            anchored: false
+      - uid: 306
+        components:
+          - type: Transform
+            parent: 1
+            pos: 7.0259438,-5.504153
+            rot: 1.5339239
+            anchored: false
+      - uid: 307
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.5,-4.5
+            rot: 0
+            anchored: false
+      - uid: 308
+        components:
+          - type: Transform
+            parent: 1
+            pos: 8.025945,-5.504153
+            rot: 1.5339981
+            anchored: false

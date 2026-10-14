@@ -6,6 +6,7 @@ using Robust.Shared.Map;
 using Robust.Shared.Timing;
 using Robust.Shared.Network;
 using Robust.Shared.Prototypes;
+using Content.Shared.Tiles;
 
 namespace Content.Shared.Emp;
 
@@ -105,6 +106,10 @@ public abstract partial class SharedEmpSystem : EntitySystem
     /// <returns>If the entity was affected by the EMP.</returns>
     public bool DoEmpEffects(EntityUid uid, float energyConsumption, TimeSpan duration, EntityUid? user = null)
     {
+        if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(Transform(uid).GridUid) ||
+            TryComp<ProtectedGridComponent>(Transform(uid).GridUid, out var protection) && protection.PreventEmpEvents)
+            return false;
+
         var ev = new EmpPulseEvent(energyConsumption, false, false, duration, user);
         RaiseLocalEvent(uid, ref ev);
 

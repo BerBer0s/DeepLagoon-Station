@@ -100,7 +100,7 @@ public sealed class TattooEditorData
     private static TguiData ToData(Tattoo t) => new TguiData().String("id", t.Id).String("part", t.BodyPart.ToString())
         .String("name", PartName(t.BodyPart)).Number("direction", t.Direction).Number("x", t.X).Number("y", t.Y)
         .Number("scale", t.Scale).Number("rotation", t.Rotation).Number("opacity", t.Opacity).Bool("mirrored", t.Mirrored)
-        .String("normalBitmap", t.NormalBitmap).String("glowBitmap", t.GlowBitmap)
+        .String("normalBitmap", t.NormalBitmap).String("glowBitmap", t.GlowBitmap).String("artworkProof", t.ArtworkProof)
         .Array("strokes", t.Strokes.Select(s => new TguiData().String("color", s.Color).Number("width", s.Width)
             .Bool("glow", s.Glow).Bool("erase", s.Erase).String("points", TattooVisualizerSystem.Points(s))));
 

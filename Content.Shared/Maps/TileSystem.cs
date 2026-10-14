@@ -149,6 +149,9 @@ public sealed partial class TileSystem : EntitySystem
 
     public bool DeconstructTile(TileRef tileRef)
     {
+        if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(tileRef.GridUid))
+            return false;
+
         if (tileRef.Tile.IsEmpty)
             return false;
 

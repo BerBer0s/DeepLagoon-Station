@@ -26,6 +26,16 @@ body {
   box-sizing: inherit;
 }
 
+// Keep useful scrolling affordances without bright platform-default scrollbars.
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #476373 #101b25;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: #101b25; }
+::-webkit-scrollbar-thumb { background: #476373; border: 2px solid #101b25; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #6d98af; }
+
 h1, h2, h3, h4, h5, h6 {
   display: block;
   margin: 0;

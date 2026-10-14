@@ -1,0 +1,59 @@
+light_mode unshaded;
+
+// Dimensions in metres keep the cells consistent across small ships and large outposts.
+uniform highp vec2 shield_size;
+uniform highp float hex_size;
+uniform highp float fill_opacity;
+uniform highp float line_opacity;
+uniform highp float rim_opacity;
+uniform highp float animation_speed;
+uniform highp float inner_width_ratio;
+uniform highp float inner_height_ratio;
+
+highp float cellHash(highp vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+void fragment() {
+    highp vec2 p = (UV - vec2(0.5)) * 2.0;
+    // Variant 8: a smooth oval cut-out, independent of the grid's tile contour.
+    // Ratios preserve the selected 38x26 cut-out within the 58x44 preview shield.
+    highp vec2 inner = max(vec2(inner_width_ratio, inner_height_ratio), vec2(0.001));
+    if (length(p / inner) < 1.0) discard;
+    highp float radius = min(length(p), 1.0);
+    // Project the lattice onto a dome: cells curve and compress towards the perimeter.
+    highp float warp = asin(radius) / max(radius, 0.0001);
+    warp = max(warp, 1.0);
+    highp vec2 lattice = p * warp * shield_size * 0.5 / max(hex_size, 0.1);
+
+    // Nearest centre in two offset rectangular lattices gives a seamless hexagonal tiling.
+    highp vec2 repeat = vec2(1.0, 1.732051);
+    highp vec2 halfRepeat = repeat * 0.5;
+    highp vec2 a = mod(lattice, repeat) - halfRepeat;
+    highp vec2 b = mod(lattice - halfRepeat, repeat) - halfRepeat;
+    highp vec2 cell = mix(a, b, step(dot(b, b), dot(a, a)));
+    highp vec2 cellId = floor((lattice - cell) / halfRepeat + vec2(0.5));
+    highp vec2 edgePos = abs(cell);
+    highp float edge = max(dot(edgePos, vec2(0.5, 0.8660254)), edgePos.x);
+
+    highp float aa = 0.015;
+#ifdef HAS_DFDX
+    aa = max(fwidth(edge), 0.005);
+#endif
+    highp float lines = smoothstep(0.46 - aa, 0.46 + aa, edge);
+    highp float t = TIME * animation_speed;
+    highp float shimmer = 0.85 + 0.15 * sin(t + cellHash(cellId) * 6.2831853);
+    // A broad, slow energy wave keeps the pattern itself fixed to the ship.
+    highp float wave = pow(0.5 + 0.5 * sin(radius * 18.0 - t * 1.4), 6.0);
+    highp float limb = 1.0 - sqrt(max(1.0 - radius * radius, 0.0));
+    highp float rim = smoothstep(0.94, 1.0, radius);
+    highp float alpha = fill_opacity * (0.8 + wave * 0.2)
+        + line_opacity * lines * shimmer * (0.65 + limb * 0.35 + wave * 0.15)
+        + rim_opacity * rim * rim;
+
+    // COLOR is an uninitialized output in Clyde. The engine applies the generator's
+    // vertex colour (MODULATE) after this fragment, so start from the white texture.
+    highp vec4 baseColor = zTexture(UV);
+    COLOR = vec4(baseColor.rgb * (1.0 + lines * 0.15 + wave * 0.08),
+        baseColor.a * clamp(alpha, 0.0, 0.8));
+}

@@ -34,6 +34,9 @@ namespace Content.Server.Construction
 
         private void AddDeconstructVerb(EntityUid uid, ConstructionComponent component, GetVerbsEvent<Verb> args)
         {
+            if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(Transform(uid).GridUid))
+                return;
+
             if (!args.CanAccess || !args.CanInteract || args.Hands == null)
                 return;
 
@@ -62,6 +65,9 @@ namespace Content.Server.Construction
 
             verb.Act = () =>
             {
+                if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(Transform(uid).GridUid))
+                    return;
+
                 SetPathfindingTarget(uid, component.DeconstructionNode, component);
                 if (component.TargetNode == null)
                 {

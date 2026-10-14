@@ -26,20 +26,29 @@ public sealed class GridEditorItem
 
 [Serializable, NetSerializable]
 public sealed class GridEditorStateEvent(NetEntity grid, Guid token, int x, int y, int width, int height,
-    List<GridEditorItem> items, bool initialized = false) : EntityEventArgs
+    List<GridEditorItem> items, bool initialized = false, int gridX = 0, int gridY = 0, int gridWidth = 0, int gridHeight = 0) : EntityEventArgs
 {
     public readonly NetEntity Grid = grid;
     public readonly Guid Token = token;
     public readonly int X = x, Y = y, Width = width, Height = height;
     public readonly List<GridEditorItem> Items = items;
     public readonly bool Initialized = initialized;
+    public readonly int GridX = gridX, GridY = gridY, GridWidth = gridWidth, GridHeight = gridHeight;
 }
 
 [Serializable, NetSerializable]
-public sealed class GridEditorApplyEvent(Guid token, List<GridEditorItem> items) : EntityEventArgs
+public sealed class GridEditorExpansion
+{
+    public int Left, Right, Bottom, Top;
+    public string Tile = "Plating";
+}
+
+[Serializable, NetSerializable]
+public sealed class GridEditorApplyEvent(Guid token, List<GridEditorItem> items, GridEditorExpansion? expansion = null) : EntityEventArgs
 {
     public readonly Guid Token = token;
     public readonly List<GridEditorItem> Items = items;
+    public readonly GridEditorExpansion? Expansion = expansion;
 }
 
 [Serializable, NetSerializable]

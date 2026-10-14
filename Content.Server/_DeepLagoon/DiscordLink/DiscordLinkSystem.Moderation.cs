@@ -71,6 +71,7 @@ public sealed partial class DiscordLinkSystem
     private async Task<ApiResult> Moderate(ModerationRequest request, NetUserId uid, NetUserId actor)
     {
         if (!_enabled) return ModerationError("unavailable");
+        if (_store?.MergePending(uid.UserId) == true) return ModerationError("merge_pending");
         var admin = await _database.GetAdminDataForAsync(uid);
         if (request.Operation == "staff_status")
         {

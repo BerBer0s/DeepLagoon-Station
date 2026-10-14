@@ -36,7 +36,7 @@ using static Content.Shared.Damage.DamageableSystem;
 
 namespace Content.Server._DeepLagoon.Apartments;
 
-/// <summary>Opt-in local prototype. Runtime instances, visits and layout storage have separate lifetimes.</summary>
+/// <summary>Apartment prototype. Runtime instances, visits and layout storage have separate lifetimes.</summary>
 public sealed partial class ApartmentSystem : EntitySystem
 {
     [Dependency] private IConfigurationManager _config = default!;
@@ -61,7 +61,7 @@ public sealed partial class ApartmentSystem : EntitySystem
         public required ApartmentTemplatePrototype Template;
         public required ApartmentDelta Delta;
         public readonly Dictionary<string, EntityUid> Furniture = new();
-        public readonly HashSet<NetUserId> Invited = new();
+        public required ApartmentGuestAccess Guests;
         public bool Frozen;
         public TimeSpan IdleSince;
     }
@@ -71,11 +71,15 @@ public sealed partial class ApartmentSystem : EntitySystem
         public required Instance Apartment;
         public required EntityUid Body;
         public required EntityCoordinates Return;
+        public bool ResidentialTransit;
         public readonly List<(EntityUid Item, string? Slot, string? Hand)> Gear = new();
         public EntityUid? Uniform;
     }
 
     private readonly Dictionary<NetUserId, Instance> _instances = new();
+    // Small round metadata survives grid unloading. Invitations never keep empty grids alive.
+    private readonly Dictionary<NetUserId, ApartmentGuestAccess> _guestAccess = new();
+    private readonly Dictionary<NetUserId, string> _templates = new();
     private readonly Dictionary<NetUserId, Visit> _visits = new();
     private readonly Dictionary<NetUserId, Guid> _editors = new();
     private readonly Dictionary<NetUserId, TimeSpan> _lastApply = new();
@@ -87,6 +91,10 @@ public sealed partial class ApartmentSystem : EntitySystem
 
     public bool Enabled => _config.GetCVar(ApartmentCVars.Enabled);
     public IReadOnlyDictionary<NetUserId, Instance> Instances => _instances;
+    public IReadOnlyDictionary<NetUserId, ApartmentGuestAccess> GuestPolicies => _guestAccess;
+
+    // Invitations can be prepared on the bus without loading an apartment grid.
+    public void EnsureGuestPolicy(NetUserId owner) => _guestAccess.TryAdd(owner, new ApartmentGuestAccess());
 
     public override void Initialize()
     {
@@ -134,7 +142,7 @@ public sealed partial class ApartmentSystem : EntitySystem
     private ApartmentFurniturePrototype? Catalog(string id) =>
         _prototypes.TryIndex<ApartmentFurniturePrototype>(id, out var furniture) ? furniture : null;
 
-    public bool Enter(ICommonSession session, NetUserId owner, out string message, string templateId = "DLApartmentStudio")
+    public bool Enter(ICommonSession session, NetUserId owner, out string message, string templateId = "DLApartmentStudio", EntityCoordinates? returnPoint = null)
     {
         message = "";
         if (!Enabled) { message = "Прототип отключён: cvar deeplagoon.apartments_enabled true"; return false; }
@@ -146,18 +154,25 @@ public sealed partial class ApartmentSystem : EntitySystem
         EnsureMaps();
         if (!_instances.TryGetValue(owner, out var instance))
         {
-            if (owner != session.UserId) { message = "Хозяин ещё не открыл квартиру."; return false; }
+            if (owner != session.UserId && (!_guestAccess.TryGetValue(owner, out var access) || !access.MayEnter(session.UserId.UserId, _timing.RealTime)))
+            { message = "Приглашение отсутствует или истекло."; return false; }
             if (_instances.Count >= Math.Max(1, _config.GetCVar(ApartmentCVars.LoadedLimit)))
             { message = "Достигнут лимит загруженных квартир. Подождите выгрузки пустых помещений."; return false; }
-            try { instance = Create(owner, templateId); }
+            try { instance = Create(owner, _templates.GetValueOrDefault(owner, templateId)); }
             catch (Exception e) { Log.Error($"Apartment load failed for {owner}: {e}"); message = "Не удалось загрузить квартиру; сохранение оставлено без изменений."; return false; }
             _instances.Add(owner, instance);
+            _guestAccess[owner] = instance.Guests;
+            _templates[owner] = instance.Template.ID;
         }
-        if (owner != session.UserId && !instance.Invited.Contains(session.UserId))
+        if (owner != session.UserId && !instance.Guests.MayEnter(session.UserId.UserId, _timing.RealTime))
         { message = "Хозяин не приглашал вас в эту квартиру."; return false; }
         if (_visits.Values.Count(v => v.Apartment == instance) >= instance.Template.MaxVisitors)
         { message = "В квартире больше нет мест."; return false; }
-        var visit = new Visit { Apartment = instance, Body = body, Return = Transform(body).Coordinates };
+        if (returnPoint is { } returnCoordinates && !returnCoordinates.IsValid(EntityManager))
+        { message = "Точка возвращения недоступна."; return false; }
+        var visit = new Visit { Apartment = instance, Body = body, Return = returnPoint ?? Transform(body).Coordinates,
+            ResidentialTransit = returnPoint != null };
+        var originalCoordinates = Transform(body).Coordinates;
         try
         {
             DepositGear(visit);
@@ -170,7 +185,7 @@ public sealed partial class ApartmentSystem : EntitySystem
         {
             Log.Error($"Apartment entry failed: {e}");
             RemComp<ApartmentResidentComponent>(body);
-            if (visit.Return.IsValid(EntityManager)) _transform.SetCoordinates(body, visit.Return);
+            if (originalCoordinates.IsValid(EntityManager)) _transform.SetCoordinates(body, originalCoordinates);
             RestoreGear(visit);
             message = "Переход отменён, снаряжение возвращено.";
             return false;
@@ -189,13 +204,15 @@ public sealed partial class ApartmentSystem : EntitySystem
         if (ApartmentLayout.Validate(template, layout, Catalog) is { } error) throw new InvalidOperationException(error);
         var grid = _maps.CreateGridEntity(Comp<MapComponent>(_activeMap).MapId);
         EnsureComp<ApartmentGridComponent>(grid);
+        EnsureComp<ApartmentProtectedGridComponent>(grid);
         // Grid initialization installs a black implicit roof. Apartments use constant
         // indoor illumination instead of simulated lamps or daylight shadows.
         var roof = EnsureComp<ImplicitRoofComponent>(grid);
         roof.Color = Color.White;
         Dirty(grid, roof);
         var position = new Vector2((_slot++ % 100) * 64, (_slot / 100) * 64);
-        var instance = new Instance { Owner = owner, Grid = grid.Owner, Position = position, Template = template, Delta = delta };
+        var instance = new Instance { Owner = owner, Grid = grid.Owner, Position = position, Template = template, Delta = delta,
+            Guests = _guestAccess.GetValueOrDefault(owner) ?? new ApartmentGuestAccess() };
         try
         {
             _transform.SetCoordinates(grid, new EntityCoordinates(_activeMap, position));
@@ -230,9 +247,30 @@ public sealed partial class ApartmentSystem : EntitySystem
 
     public bool Invite(NetUserId owner, NetUserId guest)
     {
-        if (!_instances.TryGetValue(owner, out var instance)) return false;
-        instance.Invited.Add(guest);
-        return true;
+        return owner != guest && _guestAccess.TryGetValue(owner, out var access) && access.Invite(guest.UserId, _timing.RealTime);
+    }
+
+    public bool TryGetVisit(NetUserId user, out Instance instance, out EntityUid body)
+    {
+        instance = default!; body = default;
+        if (!_visits.TryGetValue(user, out var visit)) return false;
+        instance = visit.Apartment; body = visit.Body; return true;
+    }
+
+    public NetUserId[] Visitors(Instance instance) => _visits.Where(p => p.Value.Apartment == instance).Select(p => p.Key).ToArray();
+    public bool UsesResidentialTransit(NetUserId user) => _visits.TryGetValue(user, out var visit) && visit.ResidentialTransit;
+    public bool SetReturnPoint(NetUserId user, EntityCoordinates point)
+    {
+        if (!_visits.TryGetValue(user, out var visit) || !point.IsValid(EntityManager)) return false;
+        visit.Return = point; return true;
+    }
+
+    public bool RequestLeave(NetUserId user, out string message)
+    {
+        var request = new ApartmentLeaveRequestedEvent(user);
+        RaiseLocalEvent(request);
+        if (request.Handled) { message = request.Message; return true; }
+        return Leave(user, out message);
     }
 
     public bool Leave(NetUserId user, out string message)
@@ -306,7 +344,8 @@ public sealed partial class ApartmentSystem : EntitySystem
 
     public bool OpenEditor(ICommonSession session)
     {
-        if (!Enabled || !_visits.TryGetValue(session.UserId, out var visit) || visit.Apartment.Owner != session.UserId || session.AttachedEntity != visit.Body) return false;
+        if (!Enabled || !_visits.TryGetValue(session.UserId, out var visit) || visit.Apartment.Owner != session.UserId || session.AttachedEntity != visit.Body ||
+            HasComp<ApartmentTripPendingComponent>(visit.Body) || Transform(visit.Body).GridUid != visit.Apartment.Grid) return false;
         var instance = visit.Apartment;
         var token = Guid.NewGuid();
         _editors[session.UserId] = token;
@@ -320,7 +359,7 @@ public sealed partial class ApartmentSystem : EntitySystem
         if (!args.CanAccess || !args.CanInteract || !TryComp<ActorComponent>(args.User, out var actor) ||
             !_visits.TryGetValue(actor.PlayerSession.UserId, out var visit) || Transform(terminal).GridUid != visit.Apartment.Grid) return;
         var session = actor.PlayerSession;
-        args.Verbs.Add(new AlternativeVerb { Text = Loc.GetString("dl-apartment-exit"), Act = () => { Leave(session.UserId, out var message); Result(session, false, message, visit.Apartment.Delta.Revision); } });
+        args.Verbs.Add(new AlternativeVerb { Text = Loc.GetString("dl-apartment-exit"), Act = () => { RequestLeave(session.UserId, out var message); Result(session, false, message, _visits.ContainsKey(session.UserId) ? visit.Apartment.Delta.Revision : -1); } });
         if (visit.Apartment.Owner == session.UserId)
             args.Verbs.Add(new AlternativeVerb { Text = Loc.GetString("dl-apartment-edit"), Act = () => OpenEditor(session) });
     }
@@ -329,7 +368,7 @@ public sealed partial class ApartmentSystem : EntitySystem
     {
         var session = args.SenderSession;
         if (ev.Action == "close") { _editors.Remove(session.UserId); return; }
-        if (ev.Action == "exit") { Leave(session.UserId, out var message); Result(session, false, message, -1); }
+        if (ev.Action == "exit") { RequestLeave(session.UserId, out var message); Result(session, false, message, _visits.TryGetValue(session.UserId, out var visit) ? visit.Apartment.Delta.Revision : -1); }
     }
 
     private void OnApply(ApartmentApplyEvent ev, EntitySessionEventArgs args)
@@ -350,6 +389,7 @@ public sealed partial class ApartmentSystem : EntitySystem
             session.AttachedEntity != visit.Body || Transform(visit.Body).GridUid != visit.Apartment.Grid)
             return "Нет доступа к редактированию квартиры.";
         var instance = visit.Apartment;
+        if (HasComp<ApartmentTripPendingComponent>(visit.Body)) return "Дождитесь завершения поездки.";
         if (revision != instance.Delta.Revision) return "Обстановка изменилась. Откройте редактор заново.";
         if (_lastApply.TryGetValue(session.UserId, out var last) && _timing.RealTime - last < TimeSpan.FromMilliseconds(500)) return "Подождите перед повторным сохранением.";
         _lastApply[session.UserId] = _timing.RealTime;
@@ -453,7 +493,7 @@ public sealed partial class ApartmentSystem : EntitySystem
         foreach (var visit in _visits.Values)
             if (Exists(visit.Body) && visit.Return.IsValid(EntityManager))
             { _transform.SetCoordinates(visit.Body, visit.Return); RemComp<ApartmentResidentComponent>(visit.Body); RestoreGear(visit); }
-        _visits.Clear(); _instances.Clear(); _editors.Clear(); _lastApply.Clear();
+        _visits.Clear(); _instances.Clear(); _editors.Clear(); _lastApply.Clear(); _guestAccess.Clear(); _templates.Clear();
         if (Exists(_activeMap)) Del(_activeMap);
         if (Exists(_sleepMap)) Del(_sleepMap);
         _activeMap = _sleepMap = EntityUid.Invalid;

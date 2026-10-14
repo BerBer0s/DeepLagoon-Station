@@ -1,48 +1,148 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useBackend } from '../backend';
-import { cellsBetween, changeCount, copyItems, inside, stamp, validateDraft, makeTemplate, projectTemplate, insertTemplate, makePatch, itemsAtPoint, drawOrder, editorKey } from './gridEditorModel.mjs';
+import { cellsBetween, changeCount, copyItems, inside, stamp, validateDraft, makeTemplate, projectTemplate, insertTemplate, makePatch, itemsAtPoint, editorKey, indexItems, nearbyItems, expansionCount, expansionRects, ensureWallFloors, cellRectangle, eraseRectangle, moveSelection, drawOrder, replaceConflicts, mirrorChanges } from './gridEditorModel.mjs';
 import './GridEditor.scss';
+import { useGridEditorReference } from './GridEditorReference';
+import { GridEditorScene } from './GridEditorScene';
+import { exportGridDraft, draftFileChunks } from './gridEditorExport.mjs';
 
 const categories = [['tile', 'Полы'], ['wall', 'Стены'], ['entity', 'Объекты'], ['decal', 'Декали'], ['all', 'Все'], ['favorites', '★ Избранное'], ['templates', 'Шаблоны']];
-const tools = [['pan', 'Перемещение · H'], ['select', 'Выбор · V'], ['brush', 'Кисть · B'], ['line', 'Линия · L'], ['rect', 'Прямоугольник · U'], ['erase', 'Ластик · E'], ['pick', 'Пипетка · I']];
+const tools = [['pan', 'Перемещение · 2'], ['brush', 'Кисть · B'], ['line', 'Линия · L'], ['pick', 'Пипетка · I']];
 const Sprite = ({ images = [], color }) => <>{images.map((image, index) => color ?
   <i key={index} className="GridEditor__tinted" style={{ backgroundColor: color, maskImage: `url("${image.url}")` }} /> :
   <img key={index} src={image.url} alt="" draggable={false} />)}</>;
 
 export const GridEditor = () => {
-  const { data, act } = useBackend();
+  const { data, act: sendAct } = useBackend();
+  const failureTitle = useRef('Действие не выполнено');
+  const act = (action, payload) => {
+    if (action === 'applyStart') failureTitle.current = payload?.purpose === 'template' ? 'Не удалось сохранить шаблон' : 'Не удалось применить изменения';
+    else if (action === 'download') failureTitle.current = payload?.scope === 'grid' ? 'Не удалось сохранить grid' : 'Не удалось сохранить карту';
+    else if (action === 'draftFileStart') failureTitle.current = 'Не удалось сохранить черновик grid';
+    else if (action === 'favorite') failureTitle.current = 'Не удалось сохранить избранное';
+    else if (action === 'deleteTemplate') failureTitle.current = 'Не удалось удалить шаблон';
+    sendAct(action, payload);
+  };
+  const [mirror, setMirror] = useState({ enabled: false, axis: 'x', center: (data.gridX || 0) + (data.gridWidth || data.width || 16) / 2 });
+  const mirrorPairs = useRef(new Map());
+  const [expansion, setExpansion] = useState({ left: 0, right: 0, bottom: 0, top: 0, tile: 'Plating' });
   const [draft, setDraft] = useState(data.items || []);
   const [undo, setUndo] = useState([]), [redo, setRedo] = useState([]);
   const [selected, setSelected] = useState([]);
   const [brush, setBrush] = useState(null), [tool, setTool] = useState('select');
   const [category, setCategory] = useState('tile'), [query, setQuery] = useState('');
   const [zoom, setZoom] = useState(1), [gridLines, setGridLines] = useState(true);
+  const requestedZoom = useRef(1), zoomCenter = useRef(null), settledCamera = useRef(null);
   const [layers, setLayers] = useState({ tile: true, entity: true, decal: true });
   const [rotation, setRotation] = useState(0), [color, setColor] = useState('#ffffff');
-  const [z, setZ] = useState(0), [cleanable, setCleanable] = useState(false), [replace, setReplace] = useState(true);
+  const [z, setZ] = useState(0), [cleanable, setCleanable] = useState(false);
   const [hover, setHover] = useState(null), [previewCells, setPreviewCells] = useState([]);
+  const [rubberband, setRubberband] = useState(null), [contextMenu, setContextMenu] = useState(null), [failure, setFailure] = useState(null);
   const [before, setBefore] = useState(false), [pending, setPending] = useState(false), [confirmClose, setConfirmClose] = useState(false);
   const [clipboard, setClipboard] = useState([]);
   const [templateBrush, setTemplateBrush] = useState(null), [templateName, setTemplateName] = useState('');
   const viewport = useRef(null), canvas = useRef(null), gesture = useRef(null), current = useRef(draft);
+  const root = useRef(null), dividerDrag = useRef(null);
+  const [panelWidths, setPanelWidths] = useState({ left: 245, right: 175 });
+  const startResize = (side, event) => {
+    if (event.button !== 0) return;
+    event.preventDefault(); event.stopPropagation();
+    dividerDrag.current = { side, x: event.clientX, width: panelWidths[side], previous: { ...panelWidths } };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moveResize = event => {
+    const active = dividerDrag.current; if (!active) return;
+    const other = active.side === 'left' ? 'right' : 'left';
+    const delta = (event.clientX - active.x) * (active.side === 'left' ? 1 : -1);
+    const maximum = Math.max(140, root.current.clientWidth - panelWidths[other] - 252);
+    setPanelWidths(previous => ({ ...previous, [active.side]: Math.max(140, Math.min(maximum, active.width + delta)) }));
+  };
+  const endResize = (event, cancel = false) => {
+    if (cancel && dividerDrag.current) setPanelWidths(dividerDrag.current.previous);
+    dividerDrag.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+  const divider = side => <div role="separator" aria-label={side === 'left' ? 'Ширина каталога' : 'Ширина свойств'} aria-orientation="vertical"
+    className="GridEditor__divider" tabIndex={0} onPointerDown={event => startResize(side, event)} onPointerMove={moveResize}
+    onPointerUp={event => endResize(event)} onPointerCancel={event => endResize(event, true)}
+    onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return; event.preventDefault();
+      const direction = (event.key === 'ArrowRight' ? 1 : -1) * (side === 'left' ? 1 : -1);
+      setPanelWidths(previous => ({ ...previous, [side]: Math.max(140, Math.min(root.current.clientWidth - previous[side === 'left' ? 'right' : 'left'] - 252, previous[side] + direction * 16)) })); }} />;
+  useEffect(() => {
+    const observer = new ResizeObserver(() => {
+      const available = Math.max(280, root.current.clientWidth - 252);
+      setPanelWidths(previous => {
+        const right = Math.min(previous.right, available - 140);
+        const left = Math.min(previous.left, available - right);
+        return left === previous.left && right === previous.right ? previous : { left, right };
+      });
+    });
+    observer.observe(root.current); return () => observer.disconnect();
+  }, []);
+  const [view, setView] = useState({ left: 0, top: 0, width: 1, height: 1 });
+  const measureView = () => {
+    const node = viewport.current; if (!node) return;
+    const bounds = node.getBoundingClientRect(), plan = canvas.current.getBoundingClientRect();
+    const left = bounds.left - plan.left, top = bounds.top - plan.top;
+    setView(previous => previous.left === left && previous.top === top && previous.width === node.clientWidth && previous.height === node.clientHeight ? previous :
+      { left, top, width: node.clientWidth, height: node.clientHeight });
+  };
+  useEffect(() => {
+    const observer = new ResizeObserver(measureView); observer.observe(viewport.current); measureView();
+    return () => observer.disconnect();
+  }, []);
   const counter = useRef(0), visualCache = useRef(new Map());
   const upload = useRef(null);
+  const draftFile = useRef(null);
+  const [exporting, setExporting] = useState(false);
   const space = useRef(false);
+  const deleteHold = useRef(false), [deleteHeld, setDeleteHeld] = useState(false);
+  const selectHold = useRef(false), [selectHeld, setSelectHeld] = useState(false);
+  const activeTool = selectHeld || gesture.current?.selectArea || gesture.current?.ids ? 'select' : tool;
+  const keyboardPan = useRef({ keys: new Set(), shift: false, frame: null, time: 0 });
+  const stopKeyboardPan = () => {
+    const pan = keyboardPan.current; pan.keys.clear();
+    if (pan.frame !== null) cancelAnimationFrame(pan.frame);
+    pan.frame = null; pan.time = 0;
+  };
+  const panFrame = time => {
+    const pan = keyboardPan.current; pan.frame = null;
+    if (!pan.keys.size || gesture.current || document.hidden || document.activeElement?.closest('input:not([type=checkbox]),textarea,select,[contenteditable=true],[role=separator]')) { stopKeyboardPan(); return; }
+    const dx = Number(pan.keys.has('ArrowRight')) - Number(pan.keys.has('ArrowLeft'));
+    const dy = Number(pan.keys.has('ArrowDown')) - Number(pan.keys.has('ArrowUp'));
+    const distance = Math.min(50, Math.max(0, time - pan.time)) / 1000 * 600 * (pan.shift ? 4 : 1);
+    pan.time = time;
+    const length = Math.hypot(dx, dy) || 1;
+    viewport.current.scrollLeft += dx / length * distance;
+    viewport.current.scrollTop += dy / length * distance;
+    pan.frame = requestAnimationFrame(panFrame);
+  };
+  useEffect(() => { stopKeyboardPan(); }, [data.token, failure, contextMenu, confirmClose]);
+  useEffect(() => () => stopKeyboardPan(), []);
   const shiftHeld = useRef(false), alphaMasks = useRef(new Map()), [pointer, setPointer] = useState(null);
   const [shift, setShift] = useState(false), [panning, setPanning] = useState(false);
   const [catalogRows, setCatalogRows] = useState([]), [catalogScroll, setCatalogScroll] = useState(0);
   const catalogView = useRef(null), requestedPages = useRef(new Set()), catalogRequest = useRef(null);
   const catalogStart = Math.max(0, Math.floor(catalogScroll / 64) - 2);
   const catalogEnd = Math.min(data.catalogCount || 0, catalogStart + 20);
-  const area = { x: data.x || 0, y: data.y || 0, width: data.width || 16, height: data.height || 16 };
+  const area = useMemo(() => ({ x: data.x || 0, y: data.y || 0, width: data.width || 16, height: data.height || 16 }), [data.x, data.y, data.width, data.height]);
+  const gridBounds = { x: data.gridX || 0, y: data.gridY || 0, width: data.gridWidth || 0, height: data.gridHeight || 0 };
+  const expanded = expansionCount(gridBounds, expansion);
   const cellSize = 32 * zoom;
-  const changes = changeCount(data.items || [], draft);
-  const errors = validateDraft(draft, area) || (changes > 2048 ? 'Примените не более 2048 изменений за один раз' : '');
-  const locked = before || pending || data.downloading;
+  const itemChanges = useMemo(() => changeCount(data.items || [], draft), [data.items, draft]);
+  const changes = itemChanges + (expanded ? 1 : 0);
+  const draftErrors = useMemo(() => validateDraft(draft, area), [draft, area]);
+  const errors = draftErrors || (itemChanges > 2048 ? 'Примените не более 2048 изменений за один раз' : expanded > 8192 ? 'Не более 8192 новых тайлов за одно расширение' : '');
+  const locked = before || pending || data.downloading || exporting;
+  const reference = useGridEditorReference({ data, act, area, viewport, canvas, cellSize, blocked: selectHeld || deleteHeld || panning || before || pending, onFailure: message => setFailure({ title: 'Не удалось вставить скриншот', message }) });
   const displayed = before ? data.items || [] : draft;
-  for (const entry of [...(data.visuals || []), ...(data.libraryVisuals || []), ...(data.catalog || [])])
-    visualCache.current.set(`${entry.kind}:${entry.id}`, { ...visualCache.current.get(`${entry.kind}:${entry.id}`), ...entry });
-  const visual = (item) => visualCache.current.get(`${item.kind}:${item.prototype}`);
+  const visuals = useMemo(() => {
+    for (const entry of [...(data.visuals || []), ...(data.libraryVisuals || []), ...(data.catalog || [])])
+      visualCache.current.set(`${entry.kind}:${entry.id}`, { ...visualCache.current.get(`${entry.kind}:${entry.id}`), ...entry });
+    return new Map(visualCache.current);
+  }, [data.visuals, data.libraryVisuals, data.catalog]);
+  const visual = (item) => visuals.get(`${item.kind}:${item.prototype}`);
+  const spatialIndex = useMemo(() => indexItems(displayed), [displayed]);
   useEffect(() => {
     for (const entry of visualCache.current.values()) for (const { url } of entry.images || []) {
       if (!url || alphaMasks.current.has(url)) continue;
@@ -63,18 +163,45 @@ export const GridEditor = () => {
     return x >= 0 && y >= 0 && x < mask.width && y < mask.height && mask.bytes[(Math.floor(y) * mask.width + Math.floor(x)) * 4 + 3] > 16;
   });
   const pointAt = event => { const rect = canvas.current.getBoundingClientRect(); return { x: area.x + (event.clientX - rect.left) / cellSize, y: area.y + area.height - (event.clientY - rect.top) / cellSize }; };
-  const underPointer = point => itemsAtPoint(current.current, point, layers, visual, opaque);
+  const underPointer = point => itemsAtPoint(nearbyItems(spatialIndex, point), point, layers, visual, opaque);
   const nextId = () => `new_${Date.now()}_${counter.current++}`;
-  const update = (next) => { current.current = next; setDraft(next); };
-  const remember = (previous = current.current) => { setUndo((history) => [...history.slice(-49), copyItems(previous)]); setRedo([]); };
+  const update = (next, restore = false) => {
+    if (restore) { current.current = next; setDraft(next); return; }
+    const baseline = gesture.current?.ids ? gesture.current.original : current.current;
+    if (!restore) next = mirrorChanges(baseline, next, mirror, area, nextId, mirrorPairs.current, id => !!visuals.get(`entity:${id}`)?.diagonal);
+    next = replaceConflicts(baseline, next, id => !!visuals.get(`entity:${id}`)?.exclusive || visuals.get(`entity:${id}`)?.category === 'wall');
+    const supported = ensureWallFloors(next, id => visuals.get(`entity:${id}`)?.category === 'wall', data.items || [], id => !!visuals.get(`entity:${id}`)?.diagonal);
+    current.current = supported; setDraft(supported);
+  };
+  const remember = (previous = current.current) => { setUndo((history) => [...history.slice(-49), { items: copyItems(previous), expansion: { ...expansion } }]); setRedo([]); };
   const change = (next) => { if (JSON.stringify(next) === JSON.stringify(current.current)) return; remember(); update(next); };
+  const changeExpansion = next => { remember(); setExpansion(next); };
   const search = (page = 0) => act('search', { category, query, page });
   useEffect(() => {
     setUndo([]); setRedo([]); setSelected([]);
-    update(copyItems(data.items || [])); setPending(false); setBefore(false);
-    gesture.current = null; setPreviewCells([]); upload.current = null;
+    setExpansion({ left: 0, right: 0, bottom: 0, top: 0, tile: 'Plating' });
+    mirrorPairs.current.clear(); update(copyItems(data.items || []), true); setPending(false); setBefore(false);
+    gesture.current = null; setPreviewCells([]); setRubberband(null); setContextMenu(null); setFailure(null); upload.current = null;
   }, [data.token]);
-  useEffect(() => { setPending(false); }, [data.resultVersion]);
+  useEffect(() => { setPending(false); if (data.success === false && data.status) setFailure({ title: failureTitle.current, message: data.status }); }, [data.resultVersion]);
+  useEffect(() => {
+    const transfer = draftFile.current;
+    if (transfer && data.draftFileId === transfer.id && data.draftFileNext < transfer.chunks.length)
+      act('draftFileChunk', { id: transfer.id, index: data.draftFileNext, text: transfer.chunks[data.draftFileNext] });
+  }, [data.draftFileId, data.draftFileNext]);
+  useEffect(() => {
+    if (draftFile.current?.id !== data.draftFileFinished) return;
+    draftFile.current = null; setExporting(false);
+  }, [data.draftFileFinished]);
+  const downloadDraft = () => {
+    if (draftFile.current || data.downloading) return;
+    try {
+      const yaml = exportGridDraft(current.current, gridBounds, expansion);
+      const id = `${Date.now()}_${counter.current++}`, chunks = draftFileChunks(yaml);
+      draftFile.current = { id, chunks }; setExporting(true);
+      act('draftFileStart', { id, length: yaml.length, chunks: chunks.length });
+    } catch (error) { setFailure({ title: 'Не удалось сохранить черновик grid', message: error.message }); }
+  };
   useEffect(() => {
     const transfer = upload.current;
     if (transfer && data.uploadId === transfer.id && data.uploadNext < transfer.chunks.length)
@@ -86,20 +213,26 @@ export const GridEditor = () => {
     for (let i = 0; i < items.length; i += 16) chunks.push(items.slice(i, i + 16));
     if (!chunks.length) chunks.push([]);
     upload.current = { id, chunks }; setPending(true);
-    act('applyStart', { id, count: items.length, chunks: chunks.length, purpose, name });
+    act('applyStart', { id, count: items.length, chunks: chunks.length, purpose, name, ...(purpose === 'apply' && expanded ? { expansion } : {}) });
   };
   const apply = () => {
     const baseline = new Set((data.items || []).map(i => i.id));
     const normalized = current.current.map(i => i.kind !== 'tile' && !baseline.has(i.id) && !i.id.startsWith('new_') ? { ...i, id: nextId() } : i);
     update(normalized);
-    startTransfer(makePatch(data.items || [], normalized));
+    startTransfer(makePatch(data.items || [], current.current));
   };
   useEffect(() => {
     requestedPages.current.clear(); catalogRequest.current = 0; setCatalogRows([]); setCatalogScroll(0);
     if (catalogView.current) catalogView.current.scrollTop = 0;
     const timer = setTimeout(() => { requestedPages.current.add(0); search(); }, 180);
     return () => clearTimeout(timer);
-  }, [category, query, JSON.stringify(data.favorites)]);
+  }, [category, query]);
+  useEffect(() => {
+    if (category !== 'favorites') return;
+    requestedPages.current.clear();
+    const page = Math.floor(catalogStart / 48);
+    requestedPages.current.add(page); catalogRequest.current = page; search(page);
+  }, [data.favorites]);
   useEffect(() => {
     if (data.catalogCategory !== category || data.catalogQuery !== query) return;
     if (catalogRequest.current === data.catalogPage) catalogRequest.current = null;
@@ -115,19 +248,34 @@ export const GridEditor = () => {
     return { x: area.x + Math.floor((event.clientX - rect.left) / cellSize),
       y: area.y + area.height - 1 - Math.floor((event.clientY - rect.top) / cellSize) };
   };
-  const layerKind = category === 'tile' ? 'tile' : category === 'decal' ? 'decal' : 'entity';
-  const topAt = (cell, anyLayer = false) => [...current.current].reverse().sort((a, b) =>
-    ({ entity: 3, decal: 2, tile: 1 }[b.kind] - { entity: 3, decal: 2, tile: 1 }[a.kind])).find((item) => layers[item.kind] &&
-    (anyLayer || ['all', 'templates', 'favorites'].includes(category) || item.kind === layerKind) && (anyLayer || category !== 'wall' || visual(item)?.category === 'wall') &&
-    Math.floor(item.x) === cell.x && Math.floor(item.y) === cell.y);
-  const options = { rotation, color, z, cleanable, replace, isWall: (id) => visualCache.current.get(`entity:${id}`)?.category === 'wall' };
+  const options = { rotation, color, z, cleanable, replace: true, isWall: (id) => visualCache.current.get(`entity:${id}`)?.category === 'wall' };
   const paint = (cells) => update(stamp(current.current, cells.filter((cell) => inside(cell, area)), brush, options, nextId));
-  const erase = (cell) => {
-    const item = topAt(cell);
-    if (item) update(current.current.filter((i) => i.id !== item.id));
-  };
   const down = (event) => {
-    if (event.button === 1 || event.button === 2 || event.button === 0 && (space.current || tool === 'pan')) {
+    const mode = selectHold.current ? 'select' : tool;
+    if (event.button === 2) {
+      event.preventDefault();
+      if (['brush', 'line'].includes(mode) && (brush || templateBrush)) {
+        if (gesture.current?.original) update(gesture.current.original);
+        gesture.current = null; setPreviewCells([]); setRubberband(null); setPanning(false); setContextMenu(null);
+        setBrush(null); setTemplateBrush(null); setSelected([]); setTool('select');
+        if (canvas.current.hasPointerCapture(event.pointerId)) canvas.current.releasePointerCapture(event.pointerId);
+        return;
+      }
+      if (['select', 'pan'].includes(mode)) {
+        if (!selectHold.current) { setBrush(null); setTemplateBrush(null); }
+        const cell = at(event); if (!inside(cell, area)) return;
+        const entries = (spatialIndex.get(`${cell.x}:${cell.y}`) || []).filter(item => layers[item.kind]).slice().reverse().sort((a, b) => drawOrder(b, visual(b)) - drawOrder(a, visual(a)));
+        setHover(cell); setPointer(pointAt(event));
+        const bounds = root.current.getBoundingClientRect();
+        setContextMenu({ cell, ids: entries.map(item => item.id), item: underPointer(pointAt(event))[0]?.id || entries[0]?.id,
+          x: Math.max(175, Math.min(root.current.clientWidth - 175, event.clientX - bounds.left)),
+          y: Math.max(150, Math.min(root.current.clientHeight - 155, event.clientY - bounds.top)) });
+        act('focus'); canvas.current.focus(); return;
+      }
+      return;
+    }
+    setContextMenu(null);
+    if (event.button === 1 || event.button === 0 && (space.current || mode === 'pan') && !deleteHold.current) {
       event.preventDefault(); act('focus'); canvas.current.focus(); setPanning(true);
       gesture.current = { pan: true, px: event.clientX, py: event.clientY, left: viewport.current.scrollLeft, top: viewport.current.scrollTop };
       canvas.current.setPointerCapture(event.pointerId); return;
@@ -136,13 +284,18 @@ export const GridEditor = () => {
     event.preventDefault(); act('focus'); canvas.current.focus();
     const cell = at(event); if (!inside(cell, area)) return;
     canvas.current.setPointerCapture(event.pointerId);
+    if (deleteHold.current) {
+      gesture.current = { start: cell, last: cell, original: copyItems(current.current), erasing: true, clicked: underPointer(pointAt(event))[0]?.id };
+      setRubberband(cellRectangle(cell, cell)); return;
+    }
     const heldShift = event.shiftKey || shiftHeld.current;
-    const item = underPointer(pointAt(event))[0];
-    if (heldShift) {
-      if (item) { setSelected(ids => ids.includes(item.id) ? ids.filter(id => id !== item.id) : [...ids, item.id]); setTool('select'); }
+    const pointed = underPointer(pointAt(event));
+    const item = mode === 'select' && !heldShift ? pointed.find(item => selected.includes(item.id)) || pointed[0] : pointed[0];
+    if (heldShift && item) {
+      if (item) { setSelected(ids => ids.includes(item.id) ? ids.filter(id => id !== item.id) : [...ids, item.id]); if (!selectHold.current) setTool('select'); }
       return;
     }
-    if (tool === 'pick') {
+    if (mode === 'pick') {
       if (item) {
         const definition = visual(item);
         setBrush({ ...definition, id: item.prototype, kind: item.kind, name: definition?.name || item.prototype,
@@ -152,17 +305,16 @@ export const GridEditor = () => {
       }
       return;
     }
-    if (tool === 'select') {
+    if (mode === 'select') {
       if (!item) {
-        const originalSelected = event.shiftKey ? selected : [];
+        const originalSelected = heldShift ? selected : [];
         setSelected(originalSelected); gesture.current = { selectArea: true, start: cell, originalSelected }; return;
       }
       const ids = event.shiftKey ? selected.includes(item.id) ? selected.filter((id) => id !== item.id) : [...selected, item.id] :
         selected.includes(item.id) ? selected : [item.id];
       setSelected(ids);
       if (item.kind === 'decal') { setColor(item.color.slice(0, 7)); setZ(item.z); setCleanable(item.cleanable); }
-      // Tiles are painted rather than dragged; entity/decal moves retain fractional offsets.
-      gesture.current = { start: cell, original: copyItems(current.current), ids: ids.filter((id) => current.current.find((i) => i.id === id)?.kind !== 'tile') };
+      gesture.current = { start: cell, original: copyItems(current.current), ids };
       return;
     }
     if (templateBrush && tool === 'brush') {
@@ -170,11 +322,10 @@ export const GridEditor = () => {
       if (projected.some((item) => !inside(item, area))) return;
       change(insertTemplate(current.current, templateBrush.items, cell, rotation / 90, nextId)); return;
     }
-    if (tool !== 'erase' && !brush) return;
+    if (!brush) return;
     gesture.current = { start: cell, last: cell, original: copyItems(current.current), drawing: true };
-    if (tool === 'brush') paint([cell]);
-    if (tool === 'erase') erase(cell);
-    if (tool === 'line' || tool === 'rect') setPreviewCells([cell]);
+    if (tool === 'brush') setRubberband(cellRectangle(cell, cell));
+    if (tool === 'line') setPreviewCells([cell]);
   };
   const move = (event) => {
     const active = gesture.current;
@@ -185,19 +336,20 @@ export const GridEditor = () => {
     const cell = at(event); setHover(inside(cell, area) ? cell : null); setPointer(pointAt(event));
     if (locked || !active) return;
     const bounded = { x: Math.max(area.x, Math.min(area.x + area.width - 1, cell.x)), y: Math.max(area.y, Math.min(area.y + area.height - 1, cell.y)) };
-    if (active.selectArea) {
-      const cells = cellsBetween(active.start, bounded, true);
-      const keys = new Set(cells.map((cell) => `${cell.x}:${cell.y}`));
-      setPreviewCells(cells);
+    if (active.erasing) {
+      active.last = bounded; setRubberband(cellRectangle(active.start, bounded));
+    } else if (active.selectArea) {
+      const rectangle = cellRectangle(active.start, bounded);
+      setRubberband(rectangle);
       setSelected([...new Set([...active.originalSelected, ...current.current.filter((item) => layers[item.kind] &&
-        (['all', 'templates', 'favorites'].includes(category) || item.kind === layerKind) && (category !== 'wall' || visual(item)?.category === 'wall') &&
-        keys.has(`${Math.floor(item.x)}:${Math.floor(item.y)}`)).map((item) => item.id)])]);
-    } else if (active.ids) update(active.original.map((item) => active.ids.includes(item.id) ?
-      { ...item, x: item.x + bounded.x - active.start.x, y: item.y + bounded.y - active.start.y } : item));
+        inside({ x: Math.floor(item.x), y: Math.floor(item.y) }, rectangle)).map((item) => item.id)])]);
+    } else if (active.ids) {
+      const moved = moveSelection(active.original, active.ids, bounded.x - active.start.x, bounded.y - active.start.y, area);
+      update(moved.items); setSelected(moved.ids);
+    }
     else if (active.drawing) {
-      if (tool === 'brush') paint(cellsBetween(active.last, bounded));
-      if (tool === 'erase') cellsBetween(active.last, bounded).forEach(erase);
-      if (tool === 'line' || tool === 'rect') setPreviewCells(cellsBetween(active.start, bounded, tool === 'rect'));
+      if (tool === 'brush') setRubberband(cellRectangle(active.start, bounded));
+      if (tool === 'line') setPreviewCells(cellsBetween(active.start, bounded));
       active.last = bounded;
     }
   };
@@ -206,29 +358,33 @@ export const GridEditor = () => {
     if (active.selectArea) {
       if (cancel) setSelected(active.originalSelected); else move(event);
     } else if (!active.pan) {
-      if (cancel) update(active.original);
+      if (cancel) { update(active.original, true); if (active.ids) setSelected(active.ids); }
       else {
         move(event);
-        if (active.drawing && (tool === 'line' || tool === 'rect')) paint(cellsBetween(active.start, active.last, tool === 'rect'));
+        if (active.erasing) update(active.start.x === active.last.x && active.start.y === active.last.y ? active.original.filter(item => item.id !== active.clicked) : eraseRectangle(active.original, cellRectangle(active.start, active.last), layers));
+        if (active.drawing && tool === 'brush') paint(cellsBetween(active.start, active.last, true));
+        if (active.drawing && tool === 'line') paint(cellsBetween(active.start, active.last));
         if (JSON.stringify(current.current) !== JSON.stringify(active.original)) remember(active.original);
       }
     }
-    gesture.current = null; setPreviewCells([]); setPanning(false);
+    gesture.current = null; setPreviewCells([]); setRubberband(null); setPanning(false);
     if (canvas.current.hasPointerCapture(event.pointerId)) canvas.current.releasePointerCapture(event.pointerId);
   };
   const step = (forward) => {
     const history = forward ? redo : undo; if (!history.length || locked) return;
-    const next = copyItems(history[history.length - 1]);
-    const previous = copyItems(current.current);
+    const snapshot = history[history.length - 1];
+    const next = copyItems(snapshot.items);
+    const previous = { items: copyItems(current.current), expansion: { ...expansion } };
     if (forward) { setUndo((h) => [...h, previous]); setRedo(history.slice(0, -1)); }
     else { setRedo((h) => [...h, previous]); setUndo(history.slice(0, -1)); }
-    update(next); setSelected([]);
+    update(next, true); setExpansion(snapshot.expansion); setSelected([]);
   };
   const remove = () => { change(current.current.filter((i) => !selected.includes(i.id))); setSelected([]); };
   const rotate = () => {
-    if (selected.length && tool === 'select') change(current.current.map((i) => selected.includes(i.id) && i.kind !== 'tile' ? { ...i, rotation: (i.rotation + 90) % 360 } : i));
+    if (selected.length && activeTool === 'select') change(current.current.map((i) => selected.includes(i.id) && i.kind !== 'tile' ? { ...i, rotation: (i.rotation + 90) % 360 } : i));
     else setRotation((r) => (r + 90) % 360);
   };
+  const copySelection = items => { if (!items.length) return; setClipboard(copyItems(items)); act('copySelection'); };
   const paste = () => {
     if (!clipboard.length) return;
     const origin = { x: Math.min(...clipboard.map((i) => Math.floor(i.x))), y: Math.min(...clipboard.map((i) => Math.floor(i.y))) };
@@ -237,41 +393,114 @@ export const GridEditor = () => {
     if (added.some((i) => !inside(i, area))) return;
     change(insertTemplate(current.current, clipboard, target, 0, nextId)); setSelected([]);
   };
+  const menuItems = contextMenu ? contextMenu.ids.map(id => current.current.find(item => item.id === id)).filter(Boolean) : [];
+  const menuItem = contextMenu ? menuItems.find(item => item.id === contextMenu.item) : null;
+  const menuTargets = menuItem ? selected.includes(menuItem.id) ? current.current.filter(item => selected.includes(item.id)) : [menuItem] : [];
+  const menuAction = action => {
+    if (locked || !contextMenu) return;
+    const targets = menuTargets;
+    if (action === 'select' && menuItem) { setSelected([menuItem.id]); setTool('select'); }
+    if (action === 'copy' && targets.length) { copySelection(targets); setSelected(targets.map(item => item.id)); setTool('select'); }
+    if (action === 'duplicate') {
+      const copied = targets.length ? targets : clipboard;
+      if (copied.length) {
+        const target = { x: contextMenu.cell.x + (targets.length ? 1 : 0), y: contextMenu.cell.y };
+        const template = makeTemplate(copied);
+        if (projectTemplate(template, target).some(item => !inside(item, area))) setFailure({ title: 'Не удалось вставить постройку', message: 'Постройка выходит за границы плана. Выберите другое место для вставки.' });
+        else change(insertTemplate(current.current, template, target, 0, nextId));
+      }
+    }
+    if (action === 'rotate') { const ids = new Set(targets.map(item => item.id)); change(current.current.map(item => ids.has(item.id) && item.kind !== 'tile' ? { ...item, rotation: (item.rotation + 90) % 360 } : item)); }
+    if (action === 'delete') { const ids = new Set(targets.map(item => item.id)); change(current.current.filter(item => !ids.has(item.id))); setSelected([]); }
+    if (action === 'pick' && menuItem) {
+      const definition = visual(menuItem);
+      setBrush({ ...definition, id: menuItem.prototype, kind: menuItem.kind, name: definition?.name || menuItem.prototype, category: definition?.category || menuItem.kind, anchored: menuItem.anchored });
+      setTemplateBrush(null); setRotation(menuItem.rotation); setColor(menuItem.color.slice(0, 7)); setZ(menuItem.z); setCleanable(menuItem.cleanable); setSelected([]); setTool('brush');
+    }
+    setContextMenu(null);
+  };
   useEffect(() => {
     const key = (event) => {
-      if (event.target?.closest('input:not([type=checkbox]),textarea,select,[contenteditable=true]')) return;
+      if (event.ctrlKey && event.code === 'KeyS') { event.preventDefault(); downloadDraft(); return; }
+      if (event.target?.closest('input:not([type=checkbox]),textarea,select,[contenteditable=true],[role=separator]')) return;
+      if (failure || contextMenu || confirmClose) {
+        if (editorKey(event) === 'escape') { event.preventDefault(); if (failure) setFailure(null); else if (contextMenu) setContextMenu(null); else setConfirmClose(false); }
+        return;
+      }
+      const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.code || event.key];
+      if (direction && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        if (!gesture.current) {
+          const pan = keyboardPan.current; pan.keys.add(event.code || event.key); pan.shift = !!event.shiftKey;
+          if (pan.frame === null) { pan.time = performance.now(); pan.frame = requestAnimationFrame(panFrame); }
+          setHover(null); setPointer(null);
+        }
+        return;
+      }
+      if (event.code === 'KeyD') { event.preventDefault(); if (!locked && !gesture.current) { deleteHold.current = true; setDeleteHeld(true); } return; }
+      if (event.code === 'KeyS' && !event.ctrlKey && !event.altKey && !event.metaKey) { event.preventDefault(); if (!locked && !gesture.current) { selectHold.current = true; setSelectHeld(true); } return; }
       if (event.code === 'Space') { event.preventDefault(); space.current = true; setPanning(true); return; }
-      if (editorKey(event) === 'shift') { shiftHeld.current = true; setShift(true); }
+      if (editorKey(event) === 'shift') { keyboardPan.current.shift = true; shiftHeld.current = true; setShift(true); }
       if (locked || gesture.current) return;
       const key = editorKey(event);
+      if (event.ctrlKey && key === 'v' && !event.nativeBridge) reference.imagePasteOnly.current = false;
       if (event.ctrlKey && key === 'z') { event.preventDefault(); step(event.shiftKey); }
       else if (event.ctrlKey && key === 'y') { event.preventDefault(); step(true); }
-      else if (event.ctrlKey && key === 'c') { event.preventDefault(); setClipboard(copyItems(current.current.filter((i) => selected.includes(i.id)))); }
-      else if (event.ctrlKey && key === 'v') { event.preventDefault(); paste(); }
+      else if (event.ctrlKey && key === 'c') { event.preventDefault(); copySelection(current.current.filter((i) => selected.includes(i.id))); }
+      else if (event.ctrlKey && key === 'v' && event.nativeBridge) { event.preventDefault(); paste(); }
       else if (key === 'delete') { event.preventDefault(); remove(); }
       else if (key === 'r') { event.preventDefault(); rotate(); }
-      else if (key === 'escape') { setSelected([]); setTool('select'); setBrush(null); setTemplateBrush(null); }
+      else if (key === 'escape') { setContextMenu(null); setSelected([]); setTool('select'); setBrush(null); setTemplateBrush(null); }
       else if (!event.ctrlKey && !event.altKey) {
-        const shortcuts = { h: 'pan', v: 'select', b: 'brush', l: 'line', u: 'rect', e: 'erase', i: 'pick' };
+        const shortcuts = { 2: 'pan', b: 'brush', l: 'line', u: 'brush', i: 'pick' };
         if (shortcuts[key]) { event.preventDefault(); setTool(shortcuts[key]); }
       }
     };
-    const release = event => { if (event.code === 'Space') { space.current = false; setPanning(false); } if (editorKey(event) === 'shift') { shiftHeld.current = false; setShift(false); } };
-    const blur = () => { space.current = false; shiftHeld.current = false; setPanning(false); setShift(false); };
-    const nativeKey = event => { const input = { ...event.detail, target: document.activeElement, preventDefault() {} }; if (input.down) key(input); else release(input); };
+    const release = event => { if (event.code === 'KeyS') { selectHold.current = false; setSelectHeld(false); } if (event.code === 'KeyD') { deleteHold.current = false; setDeleteHeld(false); } keyboardPan.current.keys.delete(event.code || event.key); if (!keyboardPan.current.keys.size) stopKeyboardPan(); if (event.code === 'Space') { space.current = false; setPanning(false); } if (editorKey(event) === 'shift') { keyboardPan.current.shift = false; shiftHeld.current = false; setShift(false); } };
+    const blur = () => { selectHold.current = false; setSelectHeld(false); deleteHold.current = false; setDeleteHeld(false); stopKeyboardPan(); keyboardPan.current.shift = false; space.current = false; shiftHeld.current = false; setPanning(false); setShift(false); };
+    const nativeKey = event => { const input = { ...event.detail, nativeBridge: true, target: document.activeElement, preventDefault() {} }; if (input.down) key(input); else release(input); };
     document.addEventListener('keydown', key, true); document.addEventListener('keyup', release, true); window.addEventListener('blur', blur); window.addEventListener('grid-editor-key', nativeKey);
     return () => { document.removeEventListener('keydown', key, true); document.removeEventListener('keyup', release, true); window.removeEventListener('blur', blur); window.removeEventListener('grid-editor-key', nativeKey); };
-  }, [draft, selected, locked, tool, undo, redo, hover, clipboard]);
-  const setScale = (value) => setZoom(Math.max(0.1, Math.min(4, value)));
-  const fit = () => setScale(Math.min((viewport.current.clientWidth - 32) / (area.width * 32), (viewport.current.clientHeight - 32) / (area.height * 32)));
+  }, [draft, selected, locked, tool, selectHeld, undo, redo, hover, clipboard, failure, contextMenu, confirmClose, mirror, area, zoom, layers,
+    exporting, data.downloading, expansion, data.gridX, data.gridY, data.gridWidth, data.gridHeight]);
+  const restoreZoomCenter = () => {
+    const center = zoomCenter.current; if (!center) return;
+    const node = viewport.current;
+    // Half a viewport of padding lets even the plan's edges stay at the camera center.
+    node.scrollLeft = center.x * cellSize;
+    node.scrollTop = center.y * cellSize;
+    // Keep the precise anchor across wheel events: integer scroll rounding at a
+    // tiny scale must not accumulate into a large jump when zooming back in.
+    settledCamera.current = { center, left: node.scrollLeft, top: node.scrollTop, width: node.clientWidth, height: node.clientHeight };
+    zoomCenter.current = null;
+  };
+  const setScale = (value, center) => {
+    const node = viewport.current, bounds = node.getBoundingClientRect(), plan = canvas.current.getBoundingClientRect();
+    const saved = settledCamera.current;
+    const unchanged = saved && saved.left === node.scrollLeft && saved.top === node.scrollTop && saved.width === node.clientWidth && saved.height === node.clientHeight;
+    // Capture the camera before the browser clamps scroll offsets to the smaller plan.
+    zoomCenter.current = center || zoomCenter.current || (unchanged ? saved.center : null) || {
+      x: (bounds.left + node.clientWidth / 2 - plan.left) / cellSize,
+      y: (bounds.top + node.clientHeight / 2 - plan.top) / cellSize,
+    };
+    const next = Math.max(0.001, Math.min(4, value));
+    requestedZoom.current = next;
+    if (next === zoom) {
+      restoreZoomCenter(); measureView();
+    }
+    setZoom(next); setHover(null); setPointer(null);
+  };
+  useLayoutEffect(() => {
+    restoreZoomCenter();
+    measureView();
+  }, [zoom, view.width, view.height]);
+  const fit = () => setScale(Math.min((viewport.current.clientWidth - 32) / (area.width * 32), (viewport.current.clientHeight - 32) / (area.height * 32)),
+    { x: area.width / 2, y: area.height / 2 });
   useEffect(() => { const frame = requestAnimationFrame(fit); return () => cancelAnimationFrame(frame); }, [data.grid, data.x, data.y, data.width, data.height]);
   const wheel = (event) => {
     event.preventDefault();
-    const rect = canvas.current.getBoundingClientRect();
-    const px = event.clientX - rect.left, py = event.clientY - rect.top;
-    const next = Math.max(0.1, Math.min(4, zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15)));
-    setZoom(next);
-    requestAnimationFrame(() => { viewport.current.scrollLeft += px * (next / zoom - 1); viewport.current.scrollTop += py * (next / zoom - 1); });
+    if (gesture.current) return;
+    setScale(requestedZoom.current * (event.deltaY < 0 ? 1.15 : 1 / 1.15));
   };
   useEffect(() => {
     const view = viewport.current;
@@ -279,18 +508,22 @@ export const GridEditor = () => {
     return () => view.removeEventListener('wheel', wheel);
   }, [zoom]);
   const pointedItems = pointer ? underPointer(pointer) : [];
-  const hoveredItem = (shift || ['pick', 'select'].includes(tool)) ? pointedItems[0] : null;
-  const one = draft.find((i) => selected.includes(i.id));
+  const hoveredItem = (shift || ['pick', 'select'].includes(activeTool)) ? pointedItems[0] : null;
+  const selectedItems = useMemo(() => { const ids = new Set(selected); return displayed.filter(item => ids.has(item.id)); }, [displayed, selected]);
+  const one = selectedItems[0];
   const patchSelected = (patch) => change(current.current.map((i) => selected.includes(i.id) && i.kind !== 'tile' ? { ...i, ...patch } : i));
   const favorite = (kind, id) => (data.favorites || []).some((f) => f.kind === kind && f.id === id);
-  const templatePreview = templateBrush && hover && tool === 'brush' ? projectTemplate(templateBrush.items, hover, rotation / 90) : [];
+  const templatePreview = templateBrush && hover && activeTool === 'brush' ? projectTemplate(templateBrush.items, hover, rotation / 90) : [];
   const close = () => changes ? setConfirmClose(true) : act('close');
-  const region = (dx, dy) => {
-    const target = { x: area.x + dx * Math.max(8, area.width - 8), y: area.y + dy * Math.max(8, area.height - 8) };
-    if (changes) setConfirmClose(target); else act('region', target);
-  };
   useEffect(() => { if (data.closeRequested) close(); }, [data.closeRequested]);
-  return <div className="GridEditor" onPointerDownCapture={() => act('focus')}
+  return <div ref={root} className="GridEditor" style={{ '--catalog-width': `${panelWidths.left}px`, '--properties-width': `${panelWidths.right}px` }} onPointerDownCapture={() => act('focus')}
+    onPasteCapture={event => {
+      if (event.target.closest('input,textarea,select,[contenteditable=true]')) return;
+      const imageOnly = reference.imagePasteOnly.current; reference.imagePasteOnly.current = false;
+      if (!reference.handlePaste(event)) { event.preventDefault(); if (imageOnly) setFailure({ title: 'Не удалось вставить скриншот', message: 'В буфере обмена нет изображения.' }); else paste(); }
+    }}
+    onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault(); }}
+    onDrop={event => { if (event.dataTransfer.files.length) { event.preventDefault(); reference.importFile(event.dataTransfer.files[0]); } }}
     onFocusCapture={e => act('editing', { active: !!e.target.closest('input:not([type=checkbox]),textarea,select,[contenteditable=true]') })}
     onBlurCapture={e => act('editing', { active: !!e.relatedTarget?.closest('input:not([type=checkbox]),textarea,select,[contenteditable=true]') })}>
     <header><strong>Редактор grid <small>#{data.grid} · область {area.x}, {area.y} / {area.width}×{area.height}</small></strong><span>{pending ? 'Применение к grid…' : before ? 'Исходный grid' : `${changes} изменений в черновике`}</span><button aria-label="Закрыть" onClick={close} disabled={pending}>×</button></header>
@@ -308,49 +541,77 @@ export const GridEditor = () => {
             onClick={() => act('favorite', { kind: entry.kind, id: entry.id })}>{favorite(entry.kind, entry.id) ? '★' : '☆'}</button></div> : <div key={index} style={{ position: 'absolute', top: index * 64 }}>Загрузка…</div>; })}</div>}</div>
         <div className="GridEditor__pages">{data.catalogCount || 0} элементов · прокрутите каталог</div>
       </aside>
+      {divider('left')}
       <main>
-        <div className="GridEditor__toolbar">{tools.map(([id, name]) => <button key={id} disabled={locked || !!templateBrush && ['line', 'rect'].includes(id)} className={tool === id ? 'active' : ''} onClick={() => setTool(id)}>{name}</button>)}</div>
+        <div className="GridEditor__toolbar">{tools.map(([id, name]) => <button key={id} disabled={locked || !!templateBrush && ['line'].includes(id)} className={activeTool === id ? 'active' : ''} onClick={() => setTool(id)}>{name}</button>)}</div>
         <div className="GridEditor__toolbar"><button disabled={!undo.length || locked} onClick={() => step(false)}>↶</button><button disabled={!redo.length || locked} onClick={() => step(true)}>↷</button>
           <button disabled={pending} className={before ? 'active' : ''} onClick={() => setBefore(!before)}>До / После</button>
-          <button onClick={() => setScale(zoom / 1.25)}>−</button><button onClick={() => setScale(1)}>{Math.round(zoom * 100)}%</button><button onClick={() => setScale(zoom * 1.25)}>+</button><button onClick={fit}>Вписать</button>
+          <button onClick={fit}>Вписать</button>
           <label><input type="checkbox" checked={gridLines} onChange={(e) => setGridLines(e.target.checked)} />Сетка</label>
         </div>
-        <div ref={viewport} className="GridEditor__viewport" onContextMenu={(e) => e.preventDefault()}>
-          <div ref={canvas} className={`GridEditor__canvas ${gridLines ? 'grid' : ''} ${panning ? 'panning' : ''} tool-${tool}`} tabIndex={0} aria-label="План grid"
-            style={{ width: area.width * cellSize, height: area.height * cellSize, '--cell': `${cellSize}px` }}
+        <div ref={viewport} className="GridEditor__viewport" onScroll={measureView} onContextMenu={(e) => e.preventDefault()}>
+          <div className="GridEditor__surface" style={{ width: area.width * cellSize + view.width, height: area.height * cellSize + view.height }}
             onPointerDown={down} onPointerMove={move} onPointerUp={(e) => up(e)} onPointerCancel={(e) => up(e, true)} onPointerLeave={() => { if (!gesture.current) setHover(null); }}>
-            {['tile', 'decal', 'entity'].flatMap((kind) => layers[kind] ? displayed.filter((item) => item.kind === kind).map((item) => {
-              const px = item.x - (kind === 'entity' ? .5 : 0), py = item.y - (kind === 'entity' ? .5 : 0);
-              return <div key={item.id} className={`GridEditor__item ${kind} ${selected.includes(item.id) ? 'selected' : ''} ${hoveredItem?.id === item.id ? 'hovered' : ''}`} title={`${item.prototype} (${item.x}, ${item.y})`}
-                style={{ left: (px - area.x) * cellSize, top: (area.y + area.height - 1 - py) * cellSize,
-                  width: cellSize, height: cellSize, zIndex: drawOrder(item, visual(item)) }}>
-                <span style={{ transform: `rotate(${-item.rotation}deg)`, opacity: kind === 'decal' ? 0.85 : 1 }}><Sprite images={visual(item)?.images} color={kind === 'decal' ? item.color : undefined} /></span>
-              </div>;
-            }) : [])}
-            {(previewCells.length ? previewCells : hover ? [hover] : []).map((cell) => <div key={`${cell.x}:${cell.y}`} className={`GridEditor__cursor ${tool === 'erase' ? 'erase' : ''}`}
+          <div ref={canvas} className={`GridEditor__canvas ${gridLines ? 'grid' : ''} ${panning ? 'panning' : ''} tool-${deleteHeld ? 'erase' : activeTool}`} tabIndex={0} aria-label="План grid"
+            style={{ left: view.width / 2, top: view.height / 2, width: area.width * cellSize, height: area.height * cellSize, '--cell': `${cellSize}px` }}>
+            {!before && layers.tile && expansionRects(gridBounds, expansion).map((rect, index) => {
+              const left = Math.max(rect.x, area.x), bottom = Math.max(rect.y, area.y);
+              const right = Math.min(rect.x + rect.width, area.x + area.width), top = Math.min(rect.y + rect.height, area.y + area.height);
+              if (right <= left || top <= bottom) return null;
+              const image = visuals.get(`tile:${expansion.tile}`)?.images?.[0]?.url;
+              return <div key={`expansion_${index}`} className="GridEditor__expansion" style={{
+                left: (left - area.x) * cellSize, top: (area.y + area.height - top) * cellSize,
+                width: (right - left) * cellSize, height: (top - bottom) * cellSize,
+                backgroundImage: image ? `url("${image}")` : undefined, backgroundSize: `${cellSize}px ${cellSize}px`,
+              }} />;
+            })}
+            <GridEditorScene index={spatialIndex} area={area} layers={layers} visuals={visuals} view={view} cellSize={cellSize} />
+            {mirror.enabled && <div className={`GridEditor__mirrorLine ${mirror.axis}`} style={mirror.axis === 'x' ? { left: (mirror.center - area.x) * cellSize, height: area.height * cellSize } : { top: (area.y + area.height - mirror.center) * cellSize, width: area.width * cellSize }} />}
+            {reference.overlay}
+            {rubberband && <div className={`GridEditor__rubberband ${(deleteHeld || gesture.current?.erasing) ? 'erase' : ''}`} style={{
+              left: (rubberband.x - area.x) * cellSize, top: (area.y + area.height - rubberband.y - rubberband.height) * cellSize,
+              width: rubberband.width * cellSize, height: rubberband.height * cellSize }} />}
+            {[...selectedItems.filter(item => layers[item.kind]), ...(hoveredItem && !selected.includes(hoveredItem.id) ? [hoveredItem] : [])].map(item => {
+              const offset = item.kind === 'entity' ? .5 : 0;
+              return <div key={item.id} className={`GridEditor__item ${selected.includes(item.id) ? 'selected' : ''} ${hoveredItem?.id === item.id ? 'hovered' : ''}`}
+                style={{ left: (item.x - offset - area.x) * cellSize, top: (area.y + area.height - 1 - item.y + offset) * cellSize, width: cellSize, height: cellSize }} />;
+            })}
+            {(previewCells.length ? previewCells : hover ? [hover] : []).map((cell) => <div key={`${cell.x}:${cell.y}`} className={`GridEditor__cursor ${(deleteHeld || gesture.current?.erasing) ? 'erase' : ''}`}
               style={{ left: (cell.x - area.x) * cellSize, top: (area.y + area.height - 1 - cell.y) * cellSize, width: cellSize, height: cellSize }}>
-              {brush && ['brush', 'line', 'rect'].includes(tool) && <span style={{ transform: `rotate(${-rotation}deg)` }}><Sprite images={brush.images} color={brush.kind === 'decal' ? color : undefined} /></span>}</div>)}
+              {brush && ['brush', 'line'].includes(activeTool) && <span style={{ transform: `rotate(${-rotation}deg)` }}><Sprite images={brush.images} color={brush.kind === 'decal' ? color : undefined} /></span>}</div>)}
             {templatePreview.map((item, index) => <div key={`template_${index}`} className="GridEditor__cursor"
               style={{ left: (item.x - (item.kind === 'entity' ? .5 : 0) - area.x) * cellSize,
                 top: (area.y + area.height - 1 - item.y + (item.kind === 'entity' ? .5 : 0)) * cellSize, width: cellSize, height: cellSize }}>
               <span style={{ transform: `rotate(${-item.rotation}deg)` }}><Sprite images={visual(item)?.images} color={item.kind === 'decal' ? item.color : undefined} /></span></div>)}
           </div>
+          </div>
         </div>
-        <div className="GridEditor__status">{hover ? `X ${hover.x} · Y ${hover.y}` : 'Координаты grid'} · Space + ЛКМ / СКМ: перемещение · Shift + ЛКМ: выбор · Колесо: масштаб</div>
+        <div className="GridEditor__status">{hover ? `X ${hover.x} · Y ${hover.y}` : 'Координаты grid'} · S + ЛКМ: выбор / перенос · D + ЛКМ: удалить объект / область · Стрелки: перемещение · Shift + стрелки: быстрее · Space + ЛКМ / СКМ: перемещение · ПКМ: меню клетки / сброс кисти · Shift + ЛКМ: выбор · Колесо: масштаб</div>
       </main>
+      {divider('right')}
       <aside className="GridEditor__properties">
         {!!pointedItems.length && <><strong>Под курсором</strong>{pointedItems.slice(0, 8).map(item => <button key={item.id} disabled={locked} onPointerDown={e => e.preventDefault()} onClick={() => {
           if (tool === 'pick') { const definition = visual(item); setBrush({ ...definition, id: item.prototype, kind: item.kind, anchored: item.anchored }); setRotation(item.rotation); setColor(item.color.slice(0, 7)); setZ(item.z); setCleanable(item.cleanable); setTemplateBrush(null); setTool('brush'); }
           else { setSelected([item.id]); setTool('select'); }
         }}>{visual(item)?.name || item.prototype}</button>)}</>}
+        <strong>Зеркальный маппинг</strong>
+        <label><input type="checkbox" checked={mirror.enabled} disabled={locked} onChange={event => { mirrorPairs.current.clear(); setMirror({ ...mirror, enabled: event.target.checked }); }} />Дублировать правки</label>
+        <select aria-label="Ось зеркальности" value={mirror.axis} disabled={locked} onChange={event => { const axis = event.target.value; mirrorPairs.current.clear(); setMirror({ ...mirror, axis, center: axis === 'x' ? gridBounds.x + gridBounds.width / 2 : gridBounds.y + gridBounds.height / 2 }); }}>
+          <option value="x">Вертикальная ось</option><option value="y">Горизонтальная ось</option>
+        </select>
+        <label>Координата оси <input aria-label="Координата оси зеркальности" type="number" step={.5} disabled={locked} value={mirror.center} onChange={event => { mirrorPairs.current.clear(); setMirror({ ...mirror, center: Math.round(Number(event.target.value) * 2) / 2 }); }} /></label>
+        <small>Добавление, перенос, поворот и удаление отражаются относительно оси. Применяются вместе с черновиком.</small>
+        {reference.controls}
         <strong>Слои</strong>{[['tile', 'Полы'], ['entity', 'Объекты и стены'], ['decal', 'Декали']].map(([id, name]) => <label key={id}><input type="checkbox" checked={layers[id]} onChange={(e) => setLayers({ ...layers, [id]: e.target.checked })} />{name}</label>)}
-        <strong>Область grid</strong><div className="GridEditor__regions">
-          {[[-1, 0, '←', 'Область левее'], [0, 1, '↑', 'Область выше'], [0, -1, '↓', 'Область ниже'], [1, 0, '→', 'Область правее']].map(([dx, dy, label, name]) =>
-            <button key={name} aria-label={name} disabled={pending} onClick={() => region(dx, dy)}>{label}</button>)}
-        </div>
+        <strong>Расширить grid · {gridBounds.width}×{gridBounds.height}</strong>
+        {[['left', 'Слева'], ['right', 'Справа'], ['bottom', 'Снизу'], ['top', 'Сверху']].map(([side, label]) => <label key={side}>{label}
+          <input aria-label={`Расширить ${label.toLowerCase()}`} type="number" min={0} max={32} step={1} value={expansion[side]} disabled={locked}
+            onChange={e => changeExpansion({ ...expansion, [side]: Math.max(0, Math.min(32, Math.trunc(Number(e.target.value)) || 0)) })} /></label>)}
+        <button disabled={locked || brush?.kind !== 'tile'} onClick={() => changeExpansion({ ...expansion, tile: brush.id })}>Пол: {expansion.tile}</button>
+        <small>Новые полосы пола: {expanded} тайлов. Размер после применения: {gridBounds.width + expansion.left + expansion.right}×{gridBounds.height + expansion.bottom + expansion.top}. Выберите пол в каталоге и нажмите «Пол», затем «Применить». Максимум 8192 новых тайла за раз.</small>
         <strong>{selected.length ? `Выбрано: ${selected.length}` : 'Кисть'}</strong><p>{one?.prototype || templateBrush?.name || brush?.name || 'Выберите элемент каталога'}</p>
-        <button disabled={locked} onClick={rotate}>Повернуть · R ({tool === 'select' && one ? one.rotation : rotation}°)</button>
-        <label><input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />Заменять стены</label>
+        <button disabled={locked} onClick={rotate}>Повернуть · R ({activeTool === 'select' && one ? one.rotation : rotation}°)</button>
+        <small>Стены, окна, столы и шкафы автоматически заменяют конструкции в целевой клетке.</small>
         {(brush?.kind === 'decal' || one?.kind === 'decal') && <>
           <label>Цвет <input aria-label="Цвет декали" type="color" value={color} disabled={locked} onChange={(e) => { setColor(e.target.value); if (one?.kind === 'decal') patchSelected({ color: e.target.value }); }} /></label>
           <label>Слой декали <input aria-label="Слой декали" type="number" min={-100} max={100} value={z} disabled={locked} onChange={(e) => { const value = Math.max(-100, Math.min(100, Number(e.target.value))); setZ(value); if (one?.kind === 'decal') patchSelected({ z: value }); }} /></label>
@@ -361,24 +622,38 @@ export const GridEditor = () => {
           <input type="number" aria-label={`Координата ${axis.toUpperCase()}`} step={0.125} value={one[axis]} disabled={locked}
             onChange={(e) => { const value = Number(e.target.value); if (Number.isFinite(value)) patchSelected({ [axis]: value }); }} /></label>)}
         <button disabled={locked || !selected.length} onClick={remove}>Удалить · Delete</button>
-        <button disabled={locked || !selected.length} onClick={() => setClipboard(copyItems(draft.filter((i) => selected.includes(i.id))))}>Копировать · Ctrl+C</button>
+        <button disabled={locked || !selected.length} onClick={() => copySelection(draft.filter((i) => selected.includes(i.id)))}>Копировать · Ctrl+C</button>
         <button disabled={locked || !clipboard.length} onClick={paste}>Вставить · Ctrl+V</button>
         <strong>Свой шаблон</strong><input aria-label="Имя шаблона" placeholder="Например: каюта 5×4" value={templateName} maxLength={64} onFocus={() => act('focus')} onChange={(e) => setTemplateName(e.target.value)} />
         <button disabled={locked || !selected.length || selected.length > 512 || !templateName.trim()} onClick={() =>
           startTransfer(makeTemplate(draft.filter((i) => selected.includes(i.id))), 'template', templateName.trim())}>Сохранить выделение</button>
         <small>Шаблоны и избранное сохраняются на этом компьютере.</small>
-        <small>Рамка с пустой клетки: выделение.<br />Shift + ЛКМ: объект под подсветкой.<br />Ctrl+Z / Ctrl+Shift+Z: история.<br />Esc: сброс инструмента.<br />Правки отправляются кнопкой «Применить».</small>
+        <small>Под стенами автоматически добавляется обшивка Plating. Существующий пол сохраняется.</small>
+        <small>Удерживайте S: выбор и перенос объектов.<br />S + рамка с пустой клетки: выделение области.<br />Shift + ЛКМ: объект под подсветкой.<br />Перетягивание выделенного: вся группа.<br />ПКМ: меню клетки или сброс кисти.<br />Кисть: растяните область добавления.<br />D + ЛКМ: удалить объект или область.<br />Ctrl+Z / Ctrl+Shift+Z: история.<br />Esc: сброс инструмента.<br />Правки отправляются кнопкой «Применить».</small>
       </aside>
     </div>
-    <footer><span className={errors || data.success === false ? 'error' : ''} role="status">{errors || (data.success === false && data.status) || (changes ? 'Черновик · нажмите «Применить», чтобы изменить grid' : data.status) || (data.initialized ? 'Карта инициализирована · для экспорта откройте исходник в mapping' : 'Изменения отправляются кнопкой «Применить»')}</span>
-      <button disabled={locked || !!changes || data.initialized} onClick={() => act('download', { scope: 'grid' })} title="Скачать весь grid, включая область за пределами плана">Скачать grid</button>
+    {errors && <div className="GridEditor__errorBanner" role="alert"><strong>Нельзя применить черновик</strong><span>{errors}</span></div>}
+    <footer><span className={errors || data.success === false ? 'error' : ''} role="status">{errors || (data.success === false && data.status) || (changes ? 'Черновик можно скачать без применения к grid' : data.status) || 'Изменения отправляются кнопкой «Применить»'}</span>
+      <button disabled={exporting || data.downloading} onClick={downloadDraft} title="Ctrl+S · Сохранить текущий план в .yml, включая все несохранённые изменения и расширение. Объекты создаются по прототипам; настройки компонентов из раунда не переносятся.">{exporting ? 'Сохранение…' : 'Скачать черновик grid'}</button>
+      <button disabled={locked || !!changes || data.initialized} onClick={() => act('download', { scope: 'grid' })} title="Сохранить серверный grid со всеми настройками компонентов. Сначала примените черновик.">Исходный grid</button>
       <button disabled={locked || !!changes || data.initialized} onClick={() => act('download', { scope: 'map' })} title="Скачать всю карту в .yml">Скачать карту</button>
       <button disabled={locked || !!changes} onClick={() => act('fixAtmos')} title="Восстановить стартовые газы после изменения площади grid">Атмосфера</button>
-      <button disabled={pending || !changes} onClick={() => { change(copyItems(data.items || [])); setSelected([]); }}>Сбросить</button>
-      <button className="primary" disabled={locked || !changes || !!errors || changes > 2048} onClick={apply}>{pending ? 'Применение…' : 'Применить'}</button></footer>
+      <button disabled={pending || !changes} onClick={() => { change(copyItems(data.items || [])); setSelected([]); setExpansion({ left: 0, right: 0, bottom: 0, top: 0, tile: 'Plating' }); }}>Сбросить</button>
+      <button className="primary" disabled={locked || !changes || !!errors || itemChanges > 2048} onClick={apply}>{pending ? 'Применение…' : 'Применить'}</button></footer>
+    {contextMenu && <div className="GridEditor__contextBackdrop" onPointerDown={event => { if (event.target === event.currentTarget) { event.preventDefault(); setContextMenu(null); } }} onContextMenu={event => event.preventDefault()}>
+      <div className="GridEditor__radial" role="dialog" aria-label="Меню клетки" style={{ left: contextMenu.x, top: contextMenu.y }}>
+        <div className="GridEditor__cellItems"><strong>Клетка {contextMenu.cell.x}, {contextMenu.cell.y}</strong>
+          <div>{menuItems.length ? menuItems.map(item => <button key={item.id} className={menuItem?.id === item.id ? 'active' : ''} title={`${item.prototype} · ${item.kind}`} onClick={() => setContextMenu(previous => ({ ...previous, item: item.id }))}>{visual(item)?.name || item.prototype}</button>) : <small>Пустая клетка</small>}</div>
+          <button disabled={locked || !menuItems.length} onClick={() => { setSelected(menuItems.map(item => item.id)); setTool('select'); setContextMenu(null); }}>Выбрать всё ({menuItems.length})</button>
+        </div>
+        {[['select', 'Выбрать'], ['copy', 'Копировать'], ['duplicate', menuItem ? 'Дублировать' : 'Вставить'], ['rotate', 'Повернуть'], ['delete', 'Удалить'], ['pick', 'Пипетка']].map(([action, label], index) => <button key={action} className={`GridEditor__radialAction action-${action}`} disabled={locked || (action === 'duplicate' ? !menuItem && !clipboard.length : !menuItem || action === 'rotate' && menuTargets.every(item => item.kind === 'tile'))}
+          style={{ left: `calc(50% + ${Math.cos((index * 60 - 90) * Math.PI / 180) * 132}px)`, top: `calc(50% + ${Math.sin((index * 60 - 90) * Math.PI / 180) * 132}px)` }} onClick={() => menuAction(action)}>{label}</button>)}
+      </div>
+    </div>}
     {confirmClose && <div className="GridEditor__veil"><div role="dialog" aria-label="Подтверждение редактора"><strong>{confirmClose.deleteTemplate ? `Удалить шаблон «${confirmClose.name}»?` : 'Отказаться от черновика?'}</strong><p>{confirmClose.deleteTemplate ? 'Постройки на карте сохранятся.' : `В черновике ${changes} изменений.`}</p><button onClick={() => setConfirmClose(false)}>Продолжить</button><button onClick={() => {
       if (confirmClose === true) act('close'); else if (confirmClose.deleteTemplate) { act('deleteTemplate', { id: confirmClose.deleteTemplate }); setConfirmClose(false); }
       else { act('region', confirmClose); setConfirmClose(false); }
     }}>{confirmClose.deleteTemplate ? 'Удалить шаблон' : confirmClose === true ? 'Отказаться и закрыть' : 'Отказаться и перейти'}</button></div></div>}
+    {failure && <div className="GridEditor__veil GridEditor__failure"><div role="alertdialog" aria-modal="true" aria-label="Ошибка редактора grid"><strong>{failure.title}</strong><p>{failure.message}</p><button className="primary" autoFocus onClick={() => setFailure(null)}>Понятно</button></div></div>}
   </div>;
 };

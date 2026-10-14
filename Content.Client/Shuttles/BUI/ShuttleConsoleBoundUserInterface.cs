@@ -8,6 +8,8 @@ using Robust.Shared.Map;
 
 // Mono
 using Content.Shared._Mono.Shuttles;
+using Content.Shared._Mono.FireControl;
+using System.Linq;
 
 namespace Content.Client.Shuttles.BUI;
 
@@ -33,6 +35,15 @@ public sealed partial class ShuttleConsoleBoundUserInterface : BoundUserInterfac
         _window.UndockRequest += OnUndockRequest;
         _window.UndockAllRequest += OnUndockAllRequest;
         _window.ToggleFTLLockRequest += OnToggleFTLLockRequest;
+        _window.CombatPanel.OnServerRefresh += () => SendMessage(new FireControlConsoleRefreshServerMessage());
+        _window.CombatPanel.OnWeaponSelectionChanged += UpdateSelectedWeapons;
+        _window.CombatRadar.OnRadarClick += coordinates =>
+        {
+            var selected = _window.CombatRadar.IsMouseDown()
+                ? _window.CombatPanel.WeaponsList.Where(entry => entry.Value.Pressed).Select(entry => entry.Key).ToList()
+                : new List<NetEntity>();
+            SendMessage(new FireControlConsoleFireMessage(selected, EntMan.GetNetCoordinates(coordinates)));
+        };
         NfOpen(); // Frontier
     }
 
@@ -40,6 +51,14 @@ public sealed partial class ShuttleConsoleBoundUserInterface : BoundUserInterfac
     {
         Logger.DebugS("shuttle", $"ShuttleConsoleBUI: Sending FTL lock request with enabled={enabled}, entities={string.Join(", ", dockEntities)}");
         SendMessage(new ToggleFTLLockRequestMessage(dockEntities, enabled));
+    }
+
+    private void UpdateSelectedWeapons()
+    {
+        if (_window == null)
+            return;
+        _window.CombatRadar.UpdateSelectedWeapons(_window.CombatPanel.WeaponsList
+            .Where(entry => entry.Value.Pressed).Select(entry => entry.Key).ToHashSet());
     }
 
     private void OnUndockAllRequest(List<NetEntity> dockEntities)
@@ -109,5 +128,6 @@ public sealed partial class ShuttleConsoleBoundUserInterface : BoundUserInterfac
             return;
 
         _window?.UpdateState(Owner, cState);
+        UpdateSelectedWeapons();
     }
 }

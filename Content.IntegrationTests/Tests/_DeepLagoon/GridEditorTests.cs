@@ -24,6 +24,209 @@ namespace Content.IntegrationTests.Tests._DeepLagoon;
 public sealed class GridEditorTests
 {
     [Test]
+    public async Task DiagonalFoundationRotatesAndIncomingConstructionReplacesOccupiedCell()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, Connected = true });
+        EntityUid grid = default;
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            entities.System<SharedMapSystem>().CreateMap(out var mapId, runMapInit: false);
+            var created = pair.Server.ResolveDependency<IMapManager>().CreateGridEntity(mapId); grid = created.Owner;
+            entities.System<SharedMapSystem>().SetTile(grid, created.Comp, new Vector2i(0, -1), new Tile(pair.Server.ResolveDependency<ITileDefinitionManager>()["Plating"].TileId));
+            pair.Server.ResolveDependency<IAdminManager>().PromoteHost(pair.Server.PlayerMan.Sessions.Single());
+        });
+        await PoolManager.WaitUntil(pair.Server, () => Task.FromResult(pair.Server.ResolveDependency<IAdminManager>().HasAdminFlag(pair.Server.PlayerMan.Sessions.Single(), AdminFlags.Mapping)));
+        await pair.Server.WaitAssertion(() => Assert.That(pair.Server.EntMan.System<ServerEditor>().Open(pair.Server.PlayerMan.Sessions.Single(), grid), Does.Contain("открыт")));
+        await pair.RunTicksSync(30);
+        var action = typeof(ClientEditor).GetMethod("Action", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        async Task Apply(string prototype, float rotation, bool replace = false)
+        {
+            await pair.Client.WaitAssertion(() =>
+            {
+                var editor = pair.Client.EntMan.System<ClientEditor>();
+                var existing = editor.State!.Items.FirstOrDefault(item => item.Kind == "entity");
+                var id = Guid.NewGuid().ToString();
+                action.Invoke(editor, new object[] { "applyStart", JsonSerializer.Serialize(new { id, count = 1, chunks = 1 }) });
+                action.Invoke(editor, new object[] { "applyChunk", JsonSerializer.Serialize(new { id, index = 0,
+                    items = new[] { new { id = replace || existing == null ? "new_" + id : existing.Id, kind = "entity", prototype,
+                        x = .5f, y = .5f, rotation, anchored = prototype != "ClosetSteelBase", color = "#FFFFFFFF", z = 0,
+                        cleanable = false, variant = 0, flags = 0, mirror = 0 } } }) });
+            });
+            await pair.RunTicksSync(30);
+        }
+        await Apply("WallPlastitaniumDiagonalOutpost", 0);
+        await pair.Server.WaitAssertion(() => Assert.That(pair.Server.EntMan.System<SharedMapSystem>()
+            .GetTileRef(grid, pair.Server.EntMan.GetComponent<MapGridComponent>(grid), new Vector2i(0, 0)).Tile.TypeId,
+            Is.EqualTo(pair.Server.ResolveDependency<ITileDefinitionManager>()[GridEditorPlacement.DiagonalFloor].TileId)));
+        await Apply("WallPlastitaniumDiagonalOutpost", 90);
+        await pair.Server.WaitAssertion(() => Assert.That(pair.Server.EntMan.System<SharedMapSystem>()
+            .GetTileRef(grid, pair.Server.EntMan.GetComponent<MapGridComponent>(grid), new Vector2i(0, 0)).Tile.RotationMirroring, Is.EqualTo(1)));
+        // The screenshot's inner corner has floors in the adjoining cells: keep a full square support.
+        await pair.Client.WaitAssertion(() =>
+        {
+            var editor = pair.Client.EntMan.System<ClientEditor>(); var id = Guid.NewGuid().ToString();
+            action.Invoke(editor, new object[] { "applyStart", JsonSerializer.Serialize(new { id, count = 3, chunks = 1 }) });
+            var positions = new[] { new Vector2i(-1, 0), new Vector2i(1, 0), new Vector2i(0, 1) };
+            action.Invoke(editor, new object[] { "applyChunk", JsonSerializer.Serialize(new { id, index = 0,
+                items = positions.Select(p => new { id = $"t:{p.X}:{p.Y}", kind = "tile", prototype = "Plating", x = p.X, y = p.Y,
+                    rotation = 0, color = "#FFFFFFFF", z = 0, cleanable = false, anchored = false, variant = 0, flags = 0, mirror = 0 }) }) });
+        });
+        await pair.RunTicksSync(30);
+        await pair.Server.WaitAssertion(() => Assert.That(pair.Server.EntMan.System<SharedMapSystem>()
+            .GetTileRef(grid, pair.Server.EntMan.GetComponent<MapGridComponent>(grid), new Vector2i(0, 0)).Tile.TypeId,
+            Is.EqualTo(pair.Server.ResolveDependency<ITileDefinitionManager>()["Plating"].TileId)));
+        foreach (var prototype in new[] { "WallSolid", "Window", "Table", "ClosetSteelBase" })
+        {
+            await Apply(prototype, 0, replace: true);
+            await pair.Client.WaitAssertion(() =>
+            {
+                var state = pair.Client.EntMan.System<ClientEditor>().State!;
+                Assert.That(state.Items.Where(item => item.Kind == "entity" && MathF.Floor(item.X) == 0 && MathF.Floor(item.Y) == 0)
+                    .Select(item => item.Prototype), Is.EqualTo(new[] { prototype }));
+            });
+        }
+        await pair.Client.WaitAssertion(() => action.Invoke(pair.Client.EntMan.System<ClientEditor>(), new object[] { "close", "{}" }));
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
+    public async Task FullGridBeyondOldSizeAndItemLimitsIsVisibleAndEditableAtItsFarEdge()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, Connected = true });
+        EntityUid grid = default, farChair = default, nearChair = default;
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            entities.System<SharedMapSystem>().CreateMap(out var mapId, runMapInit: false);
+            var created = pair.Server.ResolveDependency<IMapManager>().CreateGridEntity(mapId);
+            grid = created.Owner;
+            var tile = new Tile(pair.Server.ResolveDependency<ITileDefinitionManager>()["Plating"].TileId);
+            var tiles = new List<(Vector2i, Tile)>();
+            for (var x = -125; x < 125; x++) for (var y = -125; y < 125; y++) tiles.Add((new(x, y), tile));
+            entities.System<SharedMapSystem>().SetTiles(grid, created.Comp, tiles);
+            nearChair = entities.SpawnEntity("ChairWood", new EntityCoordinates(grid, new Vector2(-124.5f, -124.5f)));
+            farChair = entities.SpawnEntity("ChairWood", new EntityCoordinates(grid, new Vector2(124.5f, 124.5f)));
+            pair.Server.ResolveDependency<IAdminManager>().PromoteHost(pair.Server.PlayerMan.Sessions.Single());
+        });
+        await PoolManager.WaitUntil(pair.Server, () => Task.FromResult(pair.Server.ResolveDependency<IAdminManager>()
+            .HasAdminFlag(pair.Server.PlayerMan.Sessions.Single(), AdminFlags.Mapping)));
+        await pair.Server.WaitAssertion(() => Assert.That(pair.Server.EntMan.System<ServerEditor>()
+            .Open(pair.Server.PlayerMan.Sessions.Single(), grid), Does.Contain("открыт")));
+        await pair.RunTicksSync(60);
+        await pair.Client.WaitAssertion(() =>
+        {
+            var editor = pair.Client.EntMan.System<ClientEditor>();
+            var state = editor.State!;
+            Assert.That(state.Width, Is.GreaterThanOrEqualTo(250));
+            Assert.That(state.Height, Is.GreaterThanOrEqualTo(250));
+            Assert.That(state.Items.Count(i => i.Kind == "tile"), Is.EqualTo(62500));
+            Assert.That(state.Items.Any(i => i.Id == "t:124:124"), Is.True);
+            Assert.That(state.Items.Any(i => i.Id == "t:-125:-125"), Is.True);
+            var item = state.Items.Single(i => i.Kind == "entity" && i.X == 124.5f && i.Y == 124.5f);
+            var action = typeof(ClientEditor).GetMethod("Action", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            action.Invoke(editor, new object[] { "applyStart", "{\"id\":\"far-edge\",\"count\":1,\"chunks\":1}" });
+            action.Invoke(editor, new object[] { "applyChunk", JsonSerializer.Serialize(new { id = "far-edge", index = 0,
+                items = new[] { new { id = item.Id, kind = item.Kind, prototype = item.Prototype, x = 123.5f, y = item.Y, rotation = 90, anchored = item.Anchored } } }) });
+        });
+        await pair.RunTicksSync(60);
+        await pair.Server.WaitAssertion(() =>
+        {
+            Assert.That(pair.Server.EntMan.GetComponent<TransformComponent>(farChair).LocalPosition, Is.EqualTo(new Vector2(123.5f, 124.5f)));
+            Assert.That(pair.Server.EntMan.GetComponent<TransformComponent>(nearChair).LocalPosition, Is.EqualTo(new Vector2(-124.5f, -124.5f)));
+            Assert.That(pair.Server.EntMan.System<SharedMapSystem>().GetAllTiles(grid, pair.Server.EntMan.GetComponent<MapGridComponent>(grid)).Count(), Is.EqualTo(62500));
+        });
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
+    public async Task ExpansionFillsOnlyNewBordersAndRejectsOversizedStaleAndUnauthorizedRequests()
+    {
+        await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, Connected = true });
+        EntityUid grid = default;
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            entities.System<SharedMapSystem>().CreateMap(out var mapId, runMapInit: false);
+            var created = pair.Server.ResolveDependency<IMapManager>().CreateGridEntity(mapId);
+            grid = created.Owner;
+            var tile = new Tile(pair.Server.ResolveDependency<ITileDefinitionManager>()["Plating"].TileId);
+            // A 250x250 footprint with internal empty space that expansion must preserve.
+            var border = new List<(Vector2i, Tile)>();
+            for (var i = 0; i < 250; i++)
+            {
+                border.Add((new(i, 0), tile)); border.Add((new(i, 249), tile));
+                if (i is > 0 and < 249) { border.Add((new(0, i), tile)); border.Add((new(249, i), tile)); }
+            }
+            entities.System<SharedMapSystem>().SetTiles(grid, created.Comp, border);
+            pair.Server.ResolveDependency<IAdminManager>().PromoteHost(pair.Server.PlayerMan.Sessions.Single());
+        });
+        await PoolManager.WaitUntil(pair.Server, () => Task.FromResult(pair.Server.ResolveDependency<IAdminManager>()
+            .HasAdminFlag(pair.Server.PlayerMan.Sessions.Single(), AdminFlags.Mapping)));
+        await pair.Server.WaitAssertion(() => Assert.That(pair.Server.EntMan.System<ServerEditor>()
+            .Open(pair.Server.PlayerMan.Sessions.Single(), grid), Does.Contain("открыт")));
+        await pair.RunTicksSync(30);
+        var action = typeof(ClientEditor).GetMethod("Action", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        async Task Send(int left, int right, int bottom, int top, string tile = "Plating")
+        {
+            await pair.Client.WaitAssertion(() =>
+            {
+                var editor = pair.Client.EntMan.System<ClientEditor>();
+                var id = Guid.NewGuid().ToString();
+                action.Invoke(editor, new object[] { "applyStart", JsonSerializer.Serialize(new
+                    { id, count = 0, chunks = 1, expansion = new { left, right, bottom, top, tile } }) });
+                action.Invoke(editor, new object[] { "applyChunk", JsonSerializer.Serialize(new { id, index = 0, items = Array.Empty<object>() }) });
+            });
+            await pair.RunTicksSync(30);
+        }
+        await pair.Client.WaitAssertion(() =>
+        {
+            var state = pair.Client.EntMan.System<ClientEditor>().State!;
+            Assert.That(state.GridWidth, Is.EqualTo(250));
+            Assert.That(state.GridHeight, Is.EqualTo(250));
+            Assert.That(state.Width, Is.GreaterThanOrEqualTo(250));
+            Assert.That(state.Height, Is.GreaterThanOrEqualTo(250));
+            Assert.That(state.Items.Any(i => i.Id == "t:249:249"), Is.True);
+        });
+        await Send(1, 1, 1, 1);
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            var component = entities.GetComponent<MapGridComponent>(grid);
+            var map = entities.System<SharedMapSystem>();
+            Assert.That(map.GetAllTiles(grid, component).Count(), Is.EqualTo(2000));
+            Assert.That(map.GetTileRef(grid, component, new Vector2i(100, 100)).Tile.IsEmpty, Is.True);
+            foreach (var corner in new[] { new Vector2i(-1, -1), new Vector2i(250, 250), new Vector2i(-1, 250), new Vector2i(250, -1) })
+                Assert.That(map.GetTileRef(grid, component, corner).Tile.IsEmpty, Is.False);
+            Assert.That(component.CanSplit, Is.True);
+        });
+        await Send(32, 32, 32, 32); // More than 8192 new tiles.
+        await Send(-1, 0, 0, 0);
+        await Send(0, 1, 0, 0, "Space");
+        await pair.Server.WaitAssertion(() => Assert.That(pair.Server.EntMan.System<SharedMapSystem>()
+            .GetAllTiles(grid, pair.Server.EntMan.GetComponent<MapGridComponent>(grid)).Count(), Is.EqualTo(2000)));
+        // Bounds changed outside the captured region; the resize snapshot must still become stale.
+        await pair.Server.WaitAssertion(() =>
+        {
+            var entities = pair.Server.EntMan;
+            entities.System<SharedMapSystem>().SetTile(grid, entities.GetComponent<MapGridComponent>(grid), new Vector2i(251, 250),
+                new Tile(pair.Server.ResolveDependency<ITileDefinitionManager>()["Plating"].TileId));
+        });
+        await Send(0, 1, 0, 0);
+        await pair.Server.WaitAssertion(() =>
+        {
+            Assert.That(pair.Server.EntMan.System<SharedMapSystem>()
+                .GetAllTiles(grid, pair.Server.EntMan.GetComponent<MapGridComponent>(grid)).Count(), Is.EqualTo(2001));
+            pair.Server.ResolveDependency<IAdminManager>().DeAdmin(pair.Server.PlayerMan.Sessions.Single());
+        });
+        await Send(0, 1, 0, 0);
+        await pair.Server.WaitAssertion(() => Assert.That(pair.Server.EntMan.System<SharedMapSystem>()
+            .GetAllTiles(grid, pair.Server.EntMan.GetComponent<MapGridComponent>(grid)).Count(), Is.EqualTo(2001)));
+        await pair.Client.WaitAssertion(() => action.Invoke(pair.Client.EntMan.System<ClientEditor>(), new object[] { "close", "{}" }));
+        await pair.CleanReturnAsync();
+    }
+
+    [Test]
     public async Task DraftAppliesTilesEntitiesAndDecalsAndRejectsStaleOrUnauthorizedEdits()
     {
         await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, Connected = true });

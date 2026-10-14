@@ -15,7 +15,7 @@ public sealed class TattooPngTests
     [Test]
     public void ExportIsAReadablePngAndRoundTripPreservesBothChannelsExactly()
     {
-        var source = new Tattoo { NormalBitmap = TattooTests.Bitmap(), GlowBitmap = TattooTests.Bitmap(true), Mirrored = true, Scale = .3f };
+        var source = new Tattoo { NormalBitmap = TattooTests.Bitmap(), GlowBitmap = TattooTests.Bitmap(true), Mirrored = true, Scale = .3f, ArtworkProof = "server-proof-is-verified-after-import" };
         var file = TattooPng.Export(source);
         using var stream = new MemoryStream(file); using var visible = Image.Load<Rgba32>(stream);
         Assert.That(visible.Width, Is.EqualTo(256)); Assert.That(visible.Height, Is.EqualTo(256));
@@ -24,6 +24,7 @@ public sealed class TattooPngTests
         var imported = TattooPng.Import(file, target);
         Assert.That(imported.NormalBitmap, Is.EqualTo(source.NormalBitmap));
         Assert.That(imported.GlowBitmap, Is.EqualTo(source.GlowBitmap));
+        Assert.That(imported.ArtworkProof, Is.EqualTo(source.ArtworkProof));
         Assert.That(imported.Id, Is.EqualTo(target.Id)); Assert.That(imported.BodyPart, Is.EqualTo(target.BodyPart));
         Assert.That(imported.X, Is.EqualTo(target.X)); Assert.That(imported.Scale, Is.EqualTo(target.Scale));
         Assert.That(imported.Strokes, Is.Empty);
@@ -45,10 +46,10 @@ public sealed class TattooPngTests
     [Test]
     public void ExportPreservesAnAbsentGlowChannelAndConvertsLegacyStrokes()
     {
-        var source = new Tattoo { NormalBitmap = TattooTests.Bitmap() };
+        var source = new Tattoo { NormalBitmap = TattooTests.Bitmap(), ArtworkProof = "server-proof-is-verified-after-import" };
         Assert.That(TattooPng.Import(TattooPng.Export(source), new Tattoo()).GlowBitmap, Is.Empty);
         var legacy = TattooTests.Drawing();
-        var imported = TattooPng.Import(TattooPng.Export(legacy), new Tattoo());
+        var imported = TattooPng.Import(TattooPng.Export(legacy), new Tattoo(), allowExternalPng: true);
         Assert.That(imported.NormalBitmap, Is.Not.Empty); Assert.That(imported.Strokes, Is.Empty);
         Assert.That(legacy.Strokes, Has.Count.EqualTo(1));
     }
@@ -77,7 +78,9 @@ public sealed class TattooPngTests
         var template = new Tattoo { NormalBitmap = TattooTests.Bitmap() };
         if (allowed) Assert.That(TattooPng.Import(file, template, allowed).IsValid(), Is.True);
         else Assert.Throws<InvalidDataException>(() => TattooPng.Import(file, template, allowed));
-        // Native exports remain portable without any donor entitlement.
+        // Unsigned self-asserted native metadata must not bypass the importer gate.
+        Assert.Throws<InvalidDataException>(() => TattooPng.Import(TattooPng.Export(template), new Tattoo(), false));
+        template.ArtworkProof = "server-proof-is-verified-after-import";
         Assert.That(TattooPng.Import(TattooPng.Export(template), new Tattoo(), false).NormalBitmap, Is.EqualTo(template.NormalBitmap));
     }
 }

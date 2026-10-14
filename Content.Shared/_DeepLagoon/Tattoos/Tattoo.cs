@@ -35,6 +35,8 @@ public sealed partial class Tattoo
     [DataField] public string NormalBitmap { get; set; } = "";
     [DataField] public string GlowBitmap { get; set; } = "";
     [DataField] public bool Mirrored { get; set; }
+    /// <summary>Server-issued, account-bound proof for the two ink bitmaps. Never a client signing key.</summary>
+    [DataField] public string ArtworkProof { get; set; } = "";
 
     public bool IsValid() => Guid.TryParseExact(Id, "N", out _) && BodyParts.Contains(BodyPart)
         && Direction is >= 0 and < 4 && float.IsFinite(X) && X is >= -1 and <= 2
@@ -44,14 +46,15 @@ public sealed partial class Tattoo
         && Strokes.Count <= MaxStrokes && Strokes.All(s => s != null && s.IsValid())
         && Strokes.Sum(s => s.Points.Count) <= MaxPoints
         && TattooBitmap.ValidPng(NormalBitmap) && TattooBitmap.ValidPng(GlowBitmap)
-        && NormalBitmap.Length + GlowBitmap.Length <= MaxTattooBitmapChars;
+        && NormalBitmap.Length + GlowBitmap.Length <= MaxTattooBitmapChars
+        && ArtworkProof != null && ArtworkProof.Length <= 128;
 
     public Tattoo Clone() => new()
     {
         Id = Id, BodyPart = BodyPart, Direction = Direction, X = X, Y = Y,
         Scale = Scale, Rotation = Rotation, Opacity = Opacity,
         Strokes = Strokes.Select(s => s.Clone()).ToList(),
-        NormalBitmap = NormalBitmap, GlowBitmap = GlowBitmap, Mirrored = Mirrored,
+        NormalBitmap = NormalBitmap, GlowBitmap = GlowBitmap, Mirrored = Mirrored, ArtworkProof = ArtworkProof,
     };
 
     public static List<Tattoo> Sanitize(IEnumerable<Tattoo>? tattoos) => tattoos?.Take(MaxTattoos)
@@ -61,7 +64,7 @@ public sealed partial class Tattoo
         && Direction == other.Direction && X == other.X && Y == other.Y && Scale == other.Scale
         && Rotation == other.Rotation && Opacity == other.Opacity && Strokes.Count == other.Strokes.Count
         && Strokes.Zip(other.Strokes).All(pair => pair.First.ContentEquals(pair.Second))
-        && Mirrored == other.Mirrored && NormalBitmap == other.NormalBitmap && GlowBitmap == other.GlowBitmap;
+        && Mirrored == other.Mirrored && NormalBitmap == other.NormalBitmap && GlowBitmap == other.GlowBitmap && ArtworkProof == other.ArtworkProof;
 }
 
 public static class TattooBitmap

@@ -9,7 +9,7 @@ public sealed class GridEditorCommand : IConsoleCommand
 {
     public string Command => "grideditor";
     public string Description => "Открыть редактор grid для маппинга.";
-    public string Help => "grideditor [netGridId [x y]] — текущий grid или область 96×96 указанного grid.";
+    public string Help => "grideditor [netGridId [x y]] — полный текущий или указанный grid; x y дополнительно включаются в область просмотра.";
     public void Execute(IConsoleShell shell, string argStr, string[] args)
     {
         if (shell.Player is not { } player || args.Length is not (0 or 1 or 3)) { shell.WriteLine(Help); return; }

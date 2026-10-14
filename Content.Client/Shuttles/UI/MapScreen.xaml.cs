@@ -302,6 +302,7 @@ public sealed partial class MapScreen : BoxContainer
     /// </summary>
     private void ClearMapObjects()
     {
+        _tguiDestinations.Clear();
         _mapObjectControls.Clear();
         HyperspaceDestinations.DisposeAllChildren();
         _pendingMapObjects.Clear();
@@ -539,6 +540,7 @@ public sealed partial class MapScreen : BoxContainer
         {
             OnMapObjectPress(mapObj);
         };
+        _tguiDestinations[$"destination-{++_tguiDestinationId}"] = (gridButton, mapObj);
 
         if (gridContents.ChildCount > 1)
         {

@@ -1,0 +1,418 @@
+using System.Linq;
+using System.Numerics;
+using System.Text;
+using Content.Client._DeepLagoon.Tattoos;
+using Content.Client.Inventory;
+using Content.Shared._DeepLagoon.BodyCustomization;
+using Content.Shared.Clothing.Components;
+using Content.Shared.Humanoid;
+using Content.Shared.Inventory;
+using Content.Shared.Armor;
+using Robust.Client.GameObjects;
+using Robust.Client.Graphics;
+using Robust.Client.Utility;
+using Robust.Shared.Graphics.RSI;
+using Robust.Shared.Graphics;
+using Robust.Shared.Prototypes;
+using Robust.Shared.Utility;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+
+namespace Content.Client._DeepLagoon.BodyCustomization;
+
+/// <summary>
+/// Fits existing equipment layers to under-clothing anatomy. Geometry is cached and uploaded only on
+/// appearance/equipment changes; the original RSI still supplies animation, direction, lighting and tint.
+/// No RSI or texture shared with another character is modified.
+/// </summary>
+public sealed class ClothingBodyFitSystem : EntitySystem
+{
+    private const string ShaderId = "DeepLagoonClothingBodyFit";
+    private const int IdleCacheLimit = 128;
+    [Dependency] private SpriteSystem _sprites = default!;
+    [Dependency] private InventorySystem _inventory = default!;
+    [Dependency] private IPrototypeManager _prototypes = default!;
+    private readonly Dictionary<string, Map> _maps = new();
+    private readonly Dictionary<EntityUid, List<Fit>> _fits = new();
+    private long _lastUse;
+
+    private sealed class Map(OwnedTexture? texture, Vector2 scale)
+    {
+        public readonly OwnedTexture? Texture = texture;
+        public readonly Vector2 Scale = scale;
+        public int Users;
+        public long LastUse;
+    }
+
+    private sealed record Fit(string Slot, string Key, SpriteComponent.Layer Layer, Vector2 Scale,
+        ShaderInstance? OriginalShader, ProtoId<ShaderPrototype>? OriginalShaderId,
+        SpriteComponent.Layer? Displacement, bool DisplacementVisible, string Helper,
+        HashSet<string> Revealed, ShaderInstance Shader, Map Map);
+
+    private sealed record Part(string Kind, List<SpriteComponent.Layer> Layers, List<RSI.State> Anchors);
+
+    public override void Initialize()
+    {
+        // Component lifecycle subscriptions belong to their owning systems. Observe removal without
+        // competing with SpriteSystem or BodyCustomizationVisualizerSystem for an exclusive event.
+        EntityManager.ComponentRemoved += OnComponentRemoved;
+    }
+
+    private void OnComponentRemoved(RemovedComponentEventArgs args)
+    {
+        if (args.BaseArgs.Component is SpriteComponent or HumanoidAppearanceComponent)
+            Clear(args.BaseArgs.Owner);
+    }
+
+    public void Refresh(EntityUid uid, HumanoidAppearanceComponent humanoid, SpriteComponent sprite)
+    {
+        if (!TryComp<InventoryComponent>(uid, out var inventory) ||
+            !TryComp<InventorySlotsComponent>(uid, out var slots)) return;
+        var items = _inventory.GetSlotEnumerator((uid, inventory));
+        while (items.NextItem(out var item, out var slot))
+            if (TryComp<ClothingComponent>(item, out var clothing) &&
+                slots.VisualLayerKeys.TryGetValue(slot.Name, out var keys))
+                Apply(uid, item, slot.Name, sprite, clothing, keys, humanoid);
+    }
+
+    public void Apply(EntityUid uid, EntityUid item, string slot, SpriteComponent sprite,
+        ClothingComponent clothing, HashSet<string> keys, HumanoidAppearanceComponent? humanoid = null)
+    {
+        ClearSlot(uid, slot);
+        if (!Resolve(uid, ref humanoid, false) ||
+            humanoid.PermanentlyHidden.Contains(HumanoidVisualLayers.Chest) ||
+            !IsSoft(item, slot, clothing)) return;
+
+        var parts = new List<Part>();
+        foreach (var feature in BodyCustomizationCatalog.Sanitize(humanoid.BodyFeatures))
+        {
+            if (!feature.Enabled || feature.Visibility != 1 || feature.Part == "womb") continue;
+            var sizes = BodyCustomizationCatalog.Parts[feature.Part][feature.Shape];
+            var layers = new List<SpriteComponent.Layer>();
+            var anchors = new List<RSI.State>();
+            foreach (var side in sizes[feature.Size])
+            {
+                if (!sprite.LayerMapTryGet($"dl-body/{feature.Part}/{side}", out var index) ||
+                    sprite[index] is not SpriteComponent.Layer { ActualState: { } state } layer) continue;
+                // The smallest supported shape describes where the part attaches to the original body.
+                var smallest = sizes.First(s => s.Key != "0" && s.Value.Contains(side)).Key;
+                if (!state.RSI.TryGetState($"{feature.Part}_{feature.Shape}_{smallest}_0_{side}", out var anchor))
+                    continue;
+                layers.Add(layer);
+                anchors.Add(anchor);
+            }
+            if (layers.Count > 0) parts.Add(new Part(feature.Part, layers, anchors));
+        }
+        if (parts.Count == 0) return;
+        var body = new List<SpriteComponent.Layer>();
+        foreach (var part in new[] { HumanoidVisualLayers.Chest, HumanoidVisualLayers.LLeg, HumanoidVisualLayers.RLeg })
+            if (!humanoid.PermanentlyHidden.Contains(part) && sprite.LayerMapTryGet(part, out var index) &&
+                sprite[index] is SpriteComponent.Layer { ActualState: not null } layer) body.Add(layer);
+        if (body.Count == 0) return;
+        var hands = new List<SpriteComponent.Layer>();
+        foreach (var part in new[] { HumanoidVisualLayers.LHand, HumanoidVisualLayers.RHand })
+            if (!humanoid.PermanentlyHidden.Contains(part) && sprite.LayerMapTryGet(part, out var index) &&
+                sprite[index] is SpriteComponent.Layer { ActualState: not null } layer) hands.Add(layer);
+
+        var equipment = new List<(string Key, SpriteComponent.Layer Layer, SpriteComponent.Layer? Displacement)>();
+        foreach (var key in keys.ToArray())
+        {
+            if (!sprite.LayerMapTryGet(key, out var index) ||
+                sprite[index] is not SpriteComponent.Layer { ActualState: { } state } layer ||
+                layer.CopyToShaderParameters != null ||
+                state.RsiDirections is not (RsiDirectionType.Dir4 or RsiDirectionType.Dir8) ||
+                state.Size.X > 64 || state.Size.Y > 64 || state.DelayCount * state.Icons.Length > 64)
+                continue;
+            var shaderName = layer.ShaderPrototype?.Id;
+            if (shaderName is not (null or "StencilDraw" or "DisplacedStencilDraw")) continue;
+            SpriteComponent.Layer? displacement = null;
+            if (sprite.LayerMapTryGet(key + "-displacement", out var displacementIndex))
+                displacement = sprite[displacementIndex] as SpriteComponent.Layer;
+            if (displacement != null && (displacement.ActualState == null || displacement.ActualState.DelayCount != 1))
+                continue;
+            equipment.Add((key, layer, displacement));
+        }
+        // One garment can contain separate shirt, trousers, belt and insignia layers. They must use
+        // the same fabric silhouette, otherwise each computes a different warp and opens seams.
+        // Snapshot transforms before FitLayer scales any of the live layers for the padded quad.
+        var fabric = equipment.Select(e => new SpriteComponent.Layer(e.Layer, sprite)).ToList();
+        foreach (var (key, layer, displacement) in equipment)
+        {
+            try
+            {
+                FitLayer(uid, slot, key, sprite, layer, displacement, body, parts, fabric, hands, keys);
+            }
+            catch (Exception exception)
+            {
+                Log.Warning($"Could not fit clothing {key} on {ToPrettyString(uid)}: {exception.Message}");
+                ClearSlot(uid, slot);
+                break;
+            }
+        }
+        TrimCache();
+    }
+
+    private bool IsSoft(EntityUid item, string slot, ClothingComponent clothing)
+    {
+        if (slot is not ("jumpsuit" or "outerClothing" or "neck" or "neck2" or "neck3")) return false;
+        return clothing.BodyFit switch
+        {
+            ClothingBodyFit.Soft => true,
+            ClothingBodyFit.Rigid => false,
+            // Lab coats, winter coats and ordinary thick fabric also use Armor for minor protection.
+            // Substantial physical protection is treated as rigid unless the prototype explicitly opts in.
+            _ => !TryComp<ArmorComponent>(item, out var armor) ||
+                 !armor.Modifiers.Coefficients.Any(p => p.Key is "Blunt" or "Slash" or "Piercing" && p.Value < .8f) &&
+                 !armor.Modifiers.FlatReduction.Any(p => p.Key is "Blunt" or "Slash" or "Piercing" && p.Value > 0),
+        };
+    }
+
+    private void FitLayer(EntityUid uid, string slot, string key, SpriteComponent sprite,
+        SpriteComponent.Layer layer, SpriteComponent.Layer? displacement, List<SpriteComponent.Layer> body,
+        List<Part> parts, List<SpriteComponent.Layer> fabric, List<SpriteComponent.Layer> hands, HashSet<string> keys)
+    {
+        var signature = new StringBuilder().Append(sprite.NoRotation);
+        AppendKey(signature, layer);
+        if (displacement != null) AppendKey(signature, displacement);
+        signature.Append("|fabric|");
+        foreach (var f in fabric) AppendKey(signature, f);
+        signature.Append("|body|");
+        foreach (var b in body) AppendKey(signature, b);
+        signature.Append("|hands|");
+        foreach (var h in hands) AppendKey(signature, h);
+        foreach (var part in parts)
+        {
+            signature.Append("|part|");
+            foreach (var p in part.Layers) AppendKey(signature, p);
+        }
+        var mapKey = signature.ToString();
+        if (!_maps.TryGetValue(mapKey, out var map))
+        {
+            map = BuildMap(layer, displacement, body, parts, fabric, hands);
+            _maps.Add(mapKey, map);
+        }
+        map.LastUse = ++_lastUse;
+        if (map.Texture == null) return;
+        var shader = _prototypes.Index<ShaderPrototype>(ShaderId).InstanceUnique();
+        var helperKey = key + "-body-fit-source";
+        var fit = new Fit(slot, key, layer, layer.Scale, layer.Shader, layer.ShaderPrototype,
+            displacement, displacement?.Visible ?? false, helperKey, keys, shader, map);
+        if (!_fits.TryGetValue(uid, out var fits)) _fits[uid] = fits = new List<Fit>();
+        fits.Add(fit);
+        map.Users++;
+        if (layer.Shader != null) shader.Stencil = layer.Shader.Stencil;
+        shader.SetParameter("fitMap", map.Texture);
+        var state = layer.ActualState!;
+        shader.SetParameter("frameSize", (Vector2) state.Size);
+        shader.SetParameter("frameCount", state.DelayCount);
+        shader.SetParameter("directionCount", state.Icons.Length);
+        var min = new Vector2[64];
+        var max = new Vector2[64];
+        for (var direction = 0; direction < state.Icons.Length; direction++)
+        for (var frame = 0; frame < state.DelayCount; frame++)
+        {
+            var texture = state.GetFrame((RsiDirection) direction, frame);
+            var region = texture is AtlasTexture atlas ? atlas.SubRegion : new UIBox2(0, 0, texture.Width, texture.Height);
+            var backing = texture is AtlasTexture a ? a.SourceTexture : texture;
+            var i = direction * state.DelayCount + frame;
+            min[i] = new Vector2(region.Left / backing.Width, 1 - region.Bottom / backing.Height);
+            max[i] = new Vector2(region.Right / backing.Width, 1 - region.Top / backing.Height);
+        }
+        shader.SetParameter("directionMin", min);
+        shader.SetParameter("directionMax", max);
+        // A non-drawing copy supplies the current frame's exact atlas bounds and dirties uniforms before
+        // EVERY draw (also in multiple preview viewports). This avoids stale sampler bindings in Clyde.
+        var helper = new SpriteComponent.Layer(layer, sprite)
+        {
+            CopyToShaderParameters = new SpriteComponent.CopyToShaderParameters(key) { ParameterUV = "sourceUV" },
+        };
+        sprite.LayerMapTryGet(key, out var index);
+        var helperIndex = _sprites.AddLayer((uid, sprite), helper, index);
+        sprite.LayerMapSet(helperKey, helperIndex);
+        keys.Add(helperKey);
+        if (displacement != null) displacement.Visible = false;
+        sprite.LayerMapTryGet(key, out index);
+        sprite.LayerSetShader(index, shader, ShaderId);
+        sprite.LayerSetScale(index, fit.Scale * map.Scale);
+    }
+
+    private static void AppendKey(StringBuilder key, SpriteComponent.Layer layer)
+    {
+        key.Append('|').Append(layer.ActualState?.RSI.Path).Append(':').Append(layer.ActualState?.StateId)
+            .Append(':').Append(layer.Scale).Append(':').Append(layer.Offset).Append(':').Append(layer.Rotation)
+            .Append(':').Append(layer.DirOffset);
+    }
+
+    private static Map BuildMap(SpriteComponent.Layer garment, SpriteComponent.Layer? displacement,
+        List<SpriteComponent.Layer> body, List<Part> parts, List<SpriteComponent.Layer> fabric,
+        List<SpriteComponent.Layer> hands)
+    {
+        var state = garment.ActualState!;
+        var width = state.Size.X;
+        var height = state.Size.Y;
+        var padding = Math.Max(width, height) / 2;
+        var directions = state.Icons.Length;
+        using var atlas = new Image<Rgba32>(width + padding * 2, (height + padding * 2) * directions);
+        var frames = new Dictionary<(RSI.State, int, int), Image<Rgba32>>();
+        var changed = false;
+        try
+        {
+            for (var direction = 0; direction < directions; direction++)
+            {
+                var worldDirection = direction;
+                for (var d = 0; d < directions; d++)
+                    if ((int) ((RsiDirection) d).OffsetRsiDir(garment.DirOffset) == direction) worldDirection = d;
+                garment.GetLayerDrawMatrix((RsiDirection) worldDirection, out var garmentMatrix);
+                using var skin = new Image<Rgba32>(width, height);
+                foreach (var layer in body) Composite(skin, layer, layer.ActualState!, worldDirection, garmentMatrix);
+                using var handMask = new Image<Rgba32>(width, height);
+                foreach (var layer in hands) Composite(handMask, layer, layer.ActualState!, worldDirection, garmentMatrix);
+                using var coverage = new Image<Rgba32>(width, height);
+                foreach (var layer in fabric)
+                {
+                    var rsi = layer.ActualState!;
+                    for (var frame = 0; frame < rsi.DelayCount; frame++)
+                        Composite(coverage, layer, rsi, worldDirection, garmentMatrix, frame);
+                }
+                var shapes = new List<(Image<Rgba32> Shape, Image<Rgba32> Anchor)>();
+                var contours = new List<ClothingBodyFitMap.Contour>();
+                try
+                {
+                    foreach (var part in parts)
+                    {
+                        var shape = new Image<Rgba32>(width, height);
+                        var anchor = new Image<Rgba32>(width, height);
+                        shapes.Add((shape, anchor));
+                        if (part.Kind == "breasts" && worldDirection == (int) RsiDirection.South ||
+                            part.Kind == "butt" && worldDirection == (int) RsiDirection.North)
+                            contours.Add(new ClothingBodyFitMap.Contour(shape, BelowWaist: part.Kind == "butt"));
+                        for (var i = 0; i < part.Layers.Count; i++)
+                        {
+                            Composite(shape, part.Layers[i], part.Layers[i].ActualState!, worldDirection, garmentMatrix);
+                            Composite(anchor, part.Layers[i], part.Anchors[i], worldDirection, garmentMatrix);
+                        }
+                    }
+                    var displaced = displacement?.ActualState is { } displacementState
+                        ? Read(displacementState, DirectionFor(displacement!, displacementState, worldDirection), 0) : null;
+                    using var fitted = ClothingBodyFitMap.Build(skin, shapes, coverage, displaced, padding, hands: handMask, contours: contours);
+                    changed |= fitted != null;
+                    using var identity = fitted == null ? ClothingBodyFitMap.Build(skin, [], coverage, displaced, padding, true) : null;
+                    var map = fitted ?? identity;
+                    if (map == null) continue;
+                    var pixels = map.GetPixelSpan();
+                    var atlasPixels = atlas.GetPixelSpan();
+                    for (var y = 0; y < map.Height; y++)
+                    for (var x = 0; x < map.Width; x++)
+                        atlasPixels[(direction * map.Height + y) * atlas.Width + x] = pixels[y * map.Width + x];
+                }
+                finally
+                {
+                    foreach (var (shape, anchor) in shapes) { shape.Dispose(); anchor.Dispose(); }
+                }
+            }
+            if (!changed) return new Map(null, Vector2.One);
+            var texture = (OwnedTexture) Texture.LoadFromImage(atlas, "clothing-body-fit", new TextureLoadParameters
+            { Srgb = false, SampleParameters = new TextureSampleParameters { Filter = false } });
+            return new Map(texture, new Vector2((width + padding * 2f) / width, (height + padding * 2f) / height));
+        }
+        finally
+        {
+            foreach (var image in frames.Values) image.Dispose();
+        }
+
+        Image<Rgba32> Read(RSI.State rsi, int direction, int frame)
+        {
+            if (frames.TryGetValue((rsi, direction, frame), out var image)) return image;
+            image = TattooSpriteFrames.Read(rsi, direction, frame);
+            frames.Add((rsi, direction, frame), image);
+            return image;
+        }
+
+        void Composite(Image<Rgba32> output, SpriteComponent.Layer layer, RSI.State rsi, int worldDirection, Matrix3x2 targetMatrix, int frame = 0)
+        {
+            var direction = DirectionFor(layer, rsi, worldDirection);
+            var image = Read(rsi, direction, frame);
+            var matrixDirection = rsi.RsiDirections == RsiDirectionType.Dir1 ? RsiDirection.South :
+                rsi.RsiDirections == RsiDirectionType.Dir4 ? ((RsiDirection) worldDirection).RoundToCardinal() : (RsiDirection) worldDirection;
+            layer.GetLayerDrawMatrix(matrixDirection, out var matrix);
+            if (!Matrix3x2.Invert(matrix, out var inverse)) return;
+            var relative = targetMatrix * inverse;
+            var pixels = image.GetPixelSpan();
+            var outputPixels = output.GetPixelSpan();
+            for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+            {
+                var p = Vector2.Transform(new Vector2((x + .5f - width / 2f) / EyeManager.PixelsPerMeter,
+                    (height / 2f - y - .5f) / EyeManager.PixelsPerMeter), relative);
+                var sx = (int) MathF.Floor(p.X * EyeManager.PixelsPerMeter + image.Width / 2f);
+                var sy = (int) MathF.Floor(image.Height / 2f - p.Y * EyeManager.PixelsPerMeter);
+                if (sx >= 0 && sy >= 0 && sx < image.Width && sy < image.Height && pixels[sy * image.Width + sx].A >= 128)
+                    outputPixels[y * output.Width + x] = new Rgba32(255, 255, 255, 255);
+            }
+        }
+    }
+
+    private static int DirectionFor(SpriteComponent.Layer layer, RSI.State state, int worldDirection)
+    {
+        if (state.RsiDirections == RsiDirectionType.Dir1) return 0;
+        var direction = (RsiDirection) worldDirection;
+        if (state.RsiDirections == RsiDirectionType.Dir4) direction = DirExt.RoundToCardinal(direction);
+        return (int) direction.OffsetRsiDir(layer.DirOffset);
+    }
+
+    public void ClearSlot(EntityUid uid, string slot)
+    {
+        if (!_fits.TryGetValue(uid, out var fits)) return;
+        TryComp<SpriteComponent>(uid, out var sprite);
+        for (var i = fits.Count - 1; i >= 0; i--)
+        {
+            var fit = fits[i];
+            if (fit.Slot != slot) continue;
+            if (sprite != null)
+            {
+                if (sprite.LayerMapTryGet(fit.Helper, out var helper)) _sprites.RemoveLayer((uid, sprite), helper);
+                if (sprite.LayerMapTryGet(fit.Key, out var index) && ReferenceEquals(sprite[index], fit.Layer))
+                {
+                    sprite.LayerSetScale(index, fit.Scale);
+                    fit.Layer.Shader = fit.OriginalShader;
+                    fit.Layer.ShaderPrototype = fit.OriginalShaderId;
+                    if (fit.Displacement != null) fit.Displacement.Visible = fit.DisplacementVisible;
+                }
+            }
+            fit.Revealed.Remove(fit.Helper);
+            fit.Shader.Dispose();
+            fit.Map.Users--;
+            fit.Map.LastUse = ++_lastUse;
+            fits.RemoveAt(i);
+        }
+        if (fits.Count == 0) _fits.Remove(uid);
+        TrimCache();
+    }
+
+    private void Clear(EntityUid uid)
+    {
+        if (!_fits.TryGetValue(uid, out var fits)) return;
+        foreach (var slot in fits.Select(f => f.Slot).Distinct().ToArray()) ClearSlot(uid, slot);
+        TrimCache();
+    }
+
+    private void TrimCache()
+    {
+        if (_maps.Count <= IdleCacheLimit) return;
+        foreach (var pair in _maps.Where(p => p.Value.Users == 0).OrderBy(p => p.Value.LastUse)
+                     .Take(_maps.Count - IdleCacheLimit).ToArray())
+        {
+            pair.Value.Texture?.Dispose();
+            _maps.Remove(pair.Key);
+        }
+    }
+
+    public override void Shutdown()
+    {
+        EntityManager.ComponentRemoved -= OnComponentRemoved;
+        foreach (var uid in _fits.Keys.ToArray()) Clear(uid);
+        foreach (var map in _maps.Values) map.Texture?.Dispose();
+        _maps.Clear();
+        base.Shutdown();
+    }
+}

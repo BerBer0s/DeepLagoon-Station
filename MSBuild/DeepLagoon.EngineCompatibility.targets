@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <DeepLagoonPython Condition="'$(DeepLagoonPython)' == '' and '$(OS)' == 'Windows_NT'">python</DeepLagoonPython>
+    <DeepLagoonPython Condition="'$(DeepLagoonPython)' == ''">python3</DeepLagoonPython>
+    <_DeepLagoonStockCheck Condition="'$(DeepLagoonStockValidation)' == 'true'">--allow-stock</_DeepLagoonStockCheck>
+  </PropertyGroup>
+  <!-- Validate source ownership and stock API before compilation, including FullRelease.
+       No engine sources or compile items are replaced by this target. -->
+  <Target Name="DeepLagoonCheckEngineCompatibility" BeforeTargets="PrepareForBuild"
+          Condition="'$(MSBuildProjectName)' == 'Content.Client' or '$(MSBuildProjectName)' == 'Content.Server' or '$(MSBuildProjectName)' == 'Content.Packaging'">
+    <Exec Command="&quot;$(DeepLagoonPython)&quot; &quot;$(MSBuildThisFileDirectory)../Tools/check_engine_compatibility.py&quot; $(_DeepLagoonStockCheck)" />
+  </Target>
+</Project>

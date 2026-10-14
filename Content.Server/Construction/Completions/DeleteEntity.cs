@@ -19,6 +19,10 @@ namespace Content.Server.Construction.Completions
     {
         public void PerformAction(EntityUid uid, EntityUid? userUid, IEntityManager entityManager)
         {
+            if (entityManager.TryGetComponent<TransformComponent>(uid, out var transform) &&
+                entityManager.HasComponent<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(transform.GridUid))
+                return;
+
             var ev = new ConstructionBeforeDeleteEvent(userUid);
             entityManager.EventBus.RaiseLocalEvent(uid, ev);
 

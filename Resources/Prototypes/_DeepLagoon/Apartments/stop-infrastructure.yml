@@ -1,0 +1,10 @@
+- type: entity
+  id: DLApartmentStopGenerator
+  parent: BaseGenerator
+  name: residential utility generator
+  description: Supplies the residential district's electrical grid.
+  components:
+  - type: PowerSupplier
+    supplyRate: 300000
+    supplyRampRate: 50000
+    supplyRampTolerance: 500

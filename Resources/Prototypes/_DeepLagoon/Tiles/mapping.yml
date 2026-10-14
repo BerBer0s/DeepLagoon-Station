@@ -1,0 +1,6 @@
+- type: tile
+  id: DLPlatingDiagonal
+  parent: Plating
+  name: dl-tiles-plating-diagonal
+  sprite: /Textures/_DeepLagoon/Tiles/plating_diagonal.png
+  allowRotationMirror: true

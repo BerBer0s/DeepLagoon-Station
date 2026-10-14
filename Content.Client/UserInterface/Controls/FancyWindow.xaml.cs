@@ -55,6 +55,7 @@ namespace Content.Client.UserInterface.Controls
 
         protected override DragMode GetDragModeFor(Vector2 relativeMousePos)
         {
+            if (Content.Client._DeepLagoon.WebUI.TguiWindowControls.IsMaximized(this)) return DragMode.None;
             var mode = DragMode.Move;
 
             if (Resizable)

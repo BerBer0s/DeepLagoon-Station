@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 
 namespace Content.Client._DeepLagoon.WebUI;
 
@@ -18,4 +19,23 @@ public sealed class TguiData
         return this;
     }
     public override string ToString() => "{" + string.Join(',', _fields.Values) + "}";
+
+    public TguiData SelectFields(IReadOnlySet<string> keys)
+    {
+        var result = new TguiData();
+        foreach (var (key, value) in _fields)
+            if (keys.Contains(key)) result._fields[key] = value;
+        return result;
+    }
+
+    public TguiData ChangesFrom(TguiData previous)
+    {
+        var result = new TguiData();
+        foreach (var (key, value) in _fields)
+            if (!previous._fields.TryGetValue(key, out var old) || old != value) result._fields[key] = value;
+        return result;
+    }
+
+    public string RemovedSince(TguiData previous) => "[" + string.Join(',',
+        previous._fields.Keys.Where(key => !_fields.ContainsKey(key)).Select(GameWebView.Quote)) + "]";
 }

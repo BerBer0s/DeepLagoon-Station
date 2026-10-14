@@ -1,0 +1,32 @@
+uniform sampler2D fitMap;
+uniform highp vec4 sourceUV;
+uniform highp vec2 frameSize;
+uniform highp int frameCount;
+uniform highp int directionCount;
+uniform highp vec2[64] directionMin;
+uniform highp vec2[64] directionMax;
+varying highp vec2 fitUV;
+
+void vertex() {
+    fitUV = tCoord2;
+}
+
+void fragment() {
+    highp vec2 center = (sourceUV.xy + sourceUV.zw) * 0.5;
+    int direction = 0;
+    for (int i = 0; i < 64; i++) {
+        if (i >= frameCount * directionCount) break;
+        if (center.x >= directionMin[i].x && center.y >= directionMin[i].y &&
+            center.x <= directionMax[i].x && center.y <= directionMax[i].y) {
+            direction = i / frameCount;
+            break;
+        }
+    }
+    highp vec2 mapUV = vec2(fitUV.x, (fitUV.y + float(directionCount - 1 - direction)) / float(directionCount));
+    highp vec4 point = texture2D(fitMap, mapUV);
+    highp vec2 pixel = floor(point.rg * 255.0 + 0.5) + vec2(0.5);
+    highp vec2 uv = vec2(pixel.x / frameSize.x, 1.0 - pixel.y / frameSize.y);
+    COLOR = zTexture(mix(sourceUV.xy, sourceUV.zw, uv));
+    COLOR.rgb *= point.b * (255.0 / 128.0);
+    COLOR.a *= point.a;
+}

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Content.Server.Database;
 using Content.Server.Preferences.Managers;
 using Content.Shared._DeepLagoon.CharacterInfo;
@@ -27,6 +28,13 @@ public sealed partial class HeadshotSystem : EntitySystem
     private readonly Dictionary<NetUserId, Upload> _uploads = new();
     private readonly Dictionary<NetUserId, TimeSpan> _requests = new();
     private readonly Dictionary<NetUserId, TimeSpan> _reads = new();
+    private readonly Dictionary<NetUserId, TimeSpan> _galleryRequests = new();
+    private readonly HashSet<NetUserId> _imageBusy = new();
+    private readonly Dictionary<string, HeadshotImage.Clean> _images = new();
+    private long _imageRevision;
+    private int _imageWork;
+    private TimeSpan _imageBudgetAt;
+    private long _imageBytesSent;
     public override void Initialize()
     {
         SubscribeNetworkEvent<HeadshotBeginEvent>(Begin);
@@ -42,12 +50,20 @@ public sealed partial class HeadshotSystem : EntitySystem
     {
         if (!Guid.TryParse(id, out _)) return;
         var gallery = LoadGallery(id);
-        foreach (var image in gallery.Images) _resources.UserData.Delete(PathFor(image));
+        foreach (var image in gallery.Images) { InvalidateImage(image); _resources.UserData.Delete(PathFor(image)); }
+        InvalidateImage(id);
         _resources.UserData.Delete(PathFor(id));
         _resources.UserData.Delete(ManifestPath(id));
         _resources.UserData.Delete(new ResPath(ManifestPath(id) + ".bak"));
     }
     public static string Validate(byte[] bytes, bool extended = false)
+    {
+        var mime = ValidateHeader(bytes, extended);
+        using var decoded = Image.Load(bytes);
+        if (mime != "image/gif" && decoded.Frames.Count != 1) throw new InvalidDataException();
+        return mime;
+    }
+    public static string ValidateHeader(byte[] bytes, bool extended = false)
     {
         if (bytes.Length < 1 || bytes.Length > (extended ? HeadshotLimits.SponsorMaxBytes : HeadshotLimits.MaxBytes)) throw new InvalidDataException();
         var info = Image.Identify(bytes);
@@ -56,17 +72,18 @@ public sealed partial class HeadshotSystem : EntitySystem
         var frames = info.FrameMetadataCollection.Count;
         if (!(mime is "image/png" or "image/jpeg" || animated) || (long)info.Width * info.Height > HeadshotLimits.MaxPixels || info.Width > 4096 || info.Height > 4096 ||
             (!animated && frames > 1) || frames > HeadshotLimits.MaxFrames || animated && (long)info.Width * info.Height * Math.Max(1, frames) > HeadshotLimits.MaxAnimationPixels) throw new InvalidDataException();
-        using var decoded = Image.Load(bytes);
-        if (!animated && decoded.Frames.Count != 1) throw new InvalidDataException();
         return mime!;
     }
-    private void Error(ICommonSession session, Guid request, string text) => RaiseNetworkEvent(new HeadshotDataEvent(request, 0, 0, [], "", error:text), session.Channel);
+    private void Error(ICommonSession session, Guid request, string text)
+    {
+        if (session.Channel.IsConnected) RaiseNetworkEvent(new HeadshotDataEvent(request, 0, 0, [], "", error:text), session.Channel);
+    }
     private bool Extended(ICommonSession session) => EntityManager.System<SharedDiscordBoostSystem>().GetSupporterTier(session) >= 2;
     private void Begin(HeadshotBeginEvent ev, EntitySessionEventArgs args)
     {
         var session = args.SenderSession;
         var maxBytes = Extended(session) ? HeadshotLimits.SponsorMaxBytes : HeadshotLimits.MaxBytes;
-        if (ev.Length < 1 || ev.Length > maxBytes || Profile(session, ev.Slot) == null) { Error(session, ev.Request, $"Недопустимый профиль или размер: максимум {maxBytes / (1024 * 1024)} МБ."); return; }
+        if (ev.Length < 1 || ev.Length > maxBytes || Profile(session, ev.Slot) == null || _imageBusy.Contains(session.UserId)) { Error(session, ev.Request, $"Недопустимый профиль или размер, либо обработка занята: максимум {maxBytes / (1024 * 1024)} МБ."); return; }
         if (_requests.TryGetValue(session.UserId, out var until) && until > _timing.CurTime) { Error(session, ev.Request, "Подождите перед следующей загрузкой."); return; }
         foreach (var key in _uploads.Where(p=>p.Value.Expires < _timing.CurTime).Select(p=>p.Key).ToArray()) _uploads.Remove(key);
         if (_uploads.Count >= 16 && !_uploads.ContainsKey(session.UserId)) { Error(session, ev.Request, "Загрузка занята, попробуйте позже."); return; }
@@ -86,15 +103,22 @@ public sealed partial class HeadshotSystem : EntitySystem
         if (upload.Offset != upload.Buffer.Length) return;
         _uploads.Remove(session.UserId);
         var profile=Profile(session, upload.Slot); if (profile == null) return;
+        if (_imageWork >= 2 || !_imageBusy.Add(session.UserId)) { Error(session, ev.Request, "Обработка изображений занята. Повторите позже."); return; }
+        _imageWork++;
         try
         {
-            var mime=Validate(upload.Buffer, Extended(session));
+            var extended = Extended(session);
+            var clean = await Task.Run(() => HeadshotImage.Normalize(upload.Buffer, extended));
+            if (!session.Channel.IsConnected || !ReferenceEquals(Profile(session, upload.Slot), profile) || extended && !Extended(session))
+                throw new InvalidDataException("Profile or entitlement changed during upload.");
             var id=Guid.TryParse(profile.HeadshotId, out _) ? profile.HeadshotId : Guid.NewGuid().ToString("N");
             var gallery = LoadGallery(profile.HeadshotId);
             if (upload.Append && gallery.Images.Count >= Capacity(session)) throw new InvalidDataException();
             var imageId = upload.ImageId.Length > 0 ? upload.ImageId : upload.Append || gallery.Images.Count == 0 ? Guid.NewGuid().ToString("N") : gallery.Active.FirstOrDefault() ?? gallery.Images[0];
             if (upload.ImageId.Length > 0 && !gallery.Images.Contains(imageId)) throw new InvalidDataException();
-            using (var file=_resources.UserData.Open(PathFor(imageId), FileMode.Create)) file.Write(upload.Buffer);
+            using (var file=_resources.UserData.Open(PathFor(imageId), FileMode.Create)) file.Write(clean.Bytes);
+            InvalidateImage(imageId);
+            CacheImage(imageId, clean);
             if (!gallery.Images.Contains(imageId)) gallery.Images.Add(imageId);
             if (!gallery.Active.Contains(imageId) && gallery.Active.Count < ActiveCapacity(session)) gallery.Active.Add(imageId);
             gallery.Active = gallery.Active.Take(ActiveCapacity(session)).ToList();
@@ -103,14 +127,18 @@ public sealed partial class HeadshotSystem : EntitySystem
             profile.HeadshotId=id;
             if (ServerPreferencesManager.ShouldStorePrefs(session.Channel.AuthType))
                 await _db.SaveCharacterSlotAsync(session.UserId, profile, upload.Slot);
-            var primaryBytes = ImageBytes(id);
-            Send(session, ev.Request, primaryBytes, Validate(primaryBytes, extended: true), id);
+            var primary = _images.GetValueOrDefault(gallery.Active[0]);
+            if (primary == null) primary = await Task.Run(() => HeadshotImage.Normalize(ImageBytes(id), extended: true));
+            if (!session.Channel.IsConnected || !ReferenceEquals(Profile(session, upload.Slot), profile)) return;
+            CacheImage(id, primary);
+            Send(session, ev.Request, primary.Bytes, primary.Mime, id);
         }
         catch (Exception) { Error(session, ev.Request, Extended(session)
             ? "Не удалось сохранить изображение. Используйте PNG/JPEG/GIF до 5 МБ и 4096×4096 пикселей. GIF: до 300 кадров и 32 млн пикселей суммарно."
             : "Не удалось сохранить изображение. Используйте PNG/JPEG до 1 МБ, без анимации, до 4096×4096 пикселей."); }
+        finally { _imageWork--; _imageBusy.Remove(session.UserId); }
     }
-    private void Read(HeadshotRequestEvent ev, EntitySessionEventArgs args)
+    private async void Read(HeadshotRequestEvent ev, EntitySessionEventArgs args)
     {
         var session=args.SenderSession;
         if (_reads.TryGetValue(session.UserId, out var until) && until > _timing.CurTime) { Error(session, ev.Request, "Подождите перед повторным запросом изображения."); return; }
@@ -137,26 +165,68 @@ public sealed partial class HeadshotSystem : EntitySystem
             }
         }
         if (!Guid.TryParse(id, out _)) { Send(session, ev.Request, [], "", ""); return; }
+        if (_imageWork >= 2 || !_imageBusy.Add(session.UserId)) { Error(session, ev.Request, "Обработка изображений занята. Повторите позже."); return; }
+        _imageWork++;
         try
         {
-            using var file = _resources.UserData.Open(PathFor(id), FileMode.Open, FileAccess.Read, FileShare.Read);
-            using var buffer = new MemoryStream(); file.CopyTo(buffer); var bytes = buffer.ToArray();
-            if (ev.CachedHash.Length == 64 && ev.CachedHash == HeadshotLimits.ContentHash(bytes))
+            if (!_images.TryGetValue(id, out var clean))
+            {
+                var revision = _imageRevision;
+                clean = await Task.Run(() => HeadshotImage.Normalize(ImageBytes(id), extended: true));
+                if (!session.Channel.IsConnected) return;
+                if (_imageRevision != revision) { Error(session, ev.Request, "Изображение изменилось. Повторите запрос."); return; }
+                // Recheck ownership/visibility after decoding; a profile or viewed entity may have changed.
+                if (!MayRead(session, ev, id)) return;
+                CacheImage(id, clean);
+            }
+            if (ev.CachedHash.Length == 64 && ev.CachedHash == clean.Hash)
                 RaiseNetworkEvent(new HeadshotDataEvent(ev.Request, 0, 0, [], "", id, notModified: true), session.Channel);
-            else Send(session, ev.Request, bytes, Validate(bytes, extended: true), id);
+            else Send(session, ev.Request, clean.Bytes, clean.Mime, id);
         }
         catch (Exception) { Error(session, ev.Request, "Изображение недоступно."); }
+        finally { _imageWork--; _imageBusy.Remove(session.UserId); }
     }
     public override void Update(float frameTime)
     {
         foreach (var key in _uploads.Where(p=>p.Value.Expires < _timing.CurTime).Select(p=>p.Key).ToArray()) _uploads.Remove(key);
         foreach (var key in _requests.Where(p=>p.Value < _timing.CurTime).Select(p=>p.Key).ToArray()) _requests.Remove(key);
         foreach (var key in _reads.Where(p=>p.Value < _timing.CurTime).Select(p=>p.Key).ToArray()) _reads.Remove(key);
+        foreach (var key in _galleryRequests.Where(p=>p.Value < _timing.CurTime).Select(p=>p.Key).ToArray()) _galleryRequests.Remove(key);
     }
     private void Send(ICommonSession session, Guid request, byte[] bytes, string mime, string id)
     {
         if (bytes.Length==0) { RaiseNetworkEvent(new HeadshotDataEvent(request,0,0,[],mime,id),session.Channel); return; }
+        if (_timing.RealTime >= _imageBudgetAt) { _imageBudgetAt = _timing.RealTime + TimeSpan.FromSeconds(1); _imageBytesSent = 0; }
+        if (_imageBytesSent + bytes.Length > 20 * 1024 * 1024) { Error(session, request, "Передача изображений занята. Повторите позже."); return; }
+        _imageBytesSent += bytes.Length;
         for (var offset=0;offset<bytes.Length;offset+=HeadshotLimits.ChunkBytes)
             RaiseNetworkEvent(new HeadshotDataEvent(request,offset,bytes.Length,bytes[offset..Math.Min(bytes.Length,offset+HeadshotLimits.ChunkBytes)],mime,id),session.Channel);
+    }
+
+    private void CacheImage(string id, HeadshotImage.Clean image)
+    {
+        _images.Remove(id);
+        while (_images.Count > 0 && (_images.Count >= 128 || _images.Values.Sum(i => (long) i.Bytes.Length) + image.Bytes.Length > 32 * 1024 * 1024))
+            _images.Remove(_images.Keys.First());
+        _images[id] = image;
+    }
+
+    private void InvalidateImage(string id)
+    {
+        _images.Remove(id);
+        _imageRevision++;
+    }
+
+    private bool MayRead(ICommonSession session, HeadshotRequestEvent ev, string id)
+    {
+        if (ev.Target is { } target)
+        {
+            var entity = GetEntity(target);
+            return session.AttachedEntity is { } user && Exists(entity) && _examine.CanExamine(user, entity) &&
+                _examine.IsInDetailsRange(user, entity) && TryComp<DetailExaminableComponent>(entity, out var details) &&
+                Identity.Name(entity, EntityManager) == MetaData(entity).EntityName && (details.HeadshotId == id || details.HeadshotImages.Contains(id));
+        }
+        var profile = Profile(session, ev.Slot);
+        return profile != null && (profile.HeadshotId == id || LoadGallery(profile.HeadshotId).Images.Contains(id));
     }
 }

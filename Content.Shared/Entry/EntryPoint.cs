@@ -13,6 +13,7 @@ using Robust.Shared.Serialization.Markdown;
 using Robust.Shared.Serialization.Markdown.Sequence;
 using Robust.Shared.Serialization.Markdown.Value;
 using Robust.Shared.Utility;
+using Robust.Shared.Log;
 
 namespace Content.Shared.Entry
 {
@@ -21,6 +22,7 @@ namespace Content.Shared.Entry
         [Dependency] private IPrototypeManager _prototypeManager = default!;
         [Dependency] private ITileDefinitionManager _tileDefinitionManager = default!;
         [Dependency] private IResourceManager _resMan = default!;
+        [Dependency] private ILogManager _logManager = default!;
 
         private readonly ResPath _ignoreFileDirectory = new("/IgnoredPrototypes/");
 
@@ -89,18 +91,12 @@ namespace Content.Shared.Entry
 
         private void PrototypeReload(PrototypesReloadedEventArgs obj)
         {
-            /* I am leaving this here commented out to re-iterate
-             - our game is shitcode
-             - tiledefmanager no likey proto reloads and you must re-assign the tile ids.
-            if (!obj.WasModified<ContentTileDefinition>())
-                return;
-                */
-
-            // Need to re-allocate tiledefs due to how prototype reloads work
-            foreach (var def in _prototypeManager.EnumeratePrototypes<ContentTileDefinition>())
-            {
-                def.AssignTileId(_tileDefinitionManager[def.ID].TileId);
-            }
+            // All reloads recreate prototype objects, even when unrelated prototypes changed.
+            var missing = TilePrototypeReload.RestoreIds(_tileDefinitionManager,
+                _prototypeManager.EnumeratePrototypes<ContentTileDefinition>());
+            if (missing.Count > 0)
+                _logManager.GetSawmill("tiles").Warning(
+                    $"New tile prototypes are unavailable until client and server restart: {string.Join(", ", missing.OrderBy(id => id, System.StringComparer.Ordinal))}");
         }
 
         private void IgnorePrototypes()

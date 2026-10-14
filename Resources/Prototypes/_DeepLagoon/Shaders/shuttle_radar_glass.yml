@@ -1,0 +1,4 @@
+- type: shader
+  id: ShuttleRadarGlass
+  kind: source
+  path: /Textures/_DeepLagoon/Shaders/shuttle_radar_glass.swsl

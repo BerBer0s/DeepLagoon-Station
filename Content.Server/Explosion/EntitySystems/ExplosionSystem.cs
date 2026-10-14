@@ -432,6 +432,11 @@ public sealed partial class ExplosionSystem : SharedExplosionSystem
         if (TerminatingOrDeleted(entPos.EntityId))
             return null;
 
+        // Reject protected sources before calculating the explosion tile fill.
+        var sourceGrid = Transform(entPos.EntityId).GridUid ?? entPos.EntityId;
+        if (TryComp<ProtectedGridComponent>(sourceGrid, out var prot) && prot.PreventExplosions)
+            return null;
+
         var pos = _transformSystem.ToMapCoordinates(entPos);
         if (!_map.MapExists(pos.MapId))
             return null;
@@ -443,10 +448,10 @@ public sealed partial class ExplosionSystem : SharedExplosionSystem
 
         var (area, iterationIntensity, spaceData, gridData, spaceMatrix) = results.Value;
 
-        // Frontier - Block explosions on safe zone // Mono - make this actually work
-        if (TryComp<ProtectedGridComponent>(entPos.EntityId, out var prot) && prot.PreventExplosions)
-            return null;
-        // Frontier - Block explosions on safe zone
+        // Also protect grids reached by an explosion originating outside the safe zone.
+        foreach (var grid in gridData.Keys.ToArray())
+            if (TryComp<ProtectedGridComponent>(grid, out var protection) && protection.PreventExplosions)
+                gridData.Remove(grid);
 
         var visualEnt = CreateExplosionVisualEntity(pos, queued.Proto.ID, spaceMatrix, spaceData, gridData.Values, iterationIntensity);
 

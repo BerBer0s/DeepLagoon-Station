@@ -9,6 +9,7 @@ public sealed class ShuttleBoundUserInterfaceState : BoundUserInterfaceState
     public NavInterfaceState NavState;
     public ShuttleMapInterfaceState MapState;
     public DockingInterfaceState DockState;
+    public Content.Shared._Mono.FireControl.FireControlConsoleBoundInterfaceState? FireControlState;
 
     public ShuttleBoundUserInterfaceState(NavInterfaceState navState, ShuttleMapInterfaceState mapState, DockingInterfaceState dockState)
     {

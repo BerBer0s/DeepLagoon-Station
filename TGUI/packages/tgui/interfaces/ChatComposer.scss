@@ -1,12 +1,12 @@
 .ChatComposer__stage {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(8, 13, 22, .65);
+  background: transparent;
 }
 .ChatComposer {
   box-sizing: border-box; width: 440px; max-width: calc(100vw - 28px);
   padding: 20px; color: #e7edf7; background: #182333;
-  border: 1px solid #435a75; border-radius: 16px;
-  box-shadow: 0 16px 40px #0008;
+  border: 1px solid transparent; border-radius: 16px;
+  box-shadow: none;
   transition: width 180ms ease-out;
   header, footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   header strong { font-size: 18px; }
@@ -16,9 +16,9 @@
     display: block; box-sizing: border-box; width: 100%; height: 66px;
     max-height: calc(100vh - 230px); padding: 12px; resize: none;
     background: #101a28; color: #edf3fc; font: inherit; line-height: 1.5;
-    border: 1px solid #435a75; border-radius: 9px; outline: none;
+    border: 1px solid transparent; border-radius: 9px; outline: none;
     transition: height 180ms ease-out;
-    &:focus { border-color: #6ab5ef; }
+    &:focus { border-color: transparent; }
   }
   footer { margin-top: 14px; font-size: 11px; color: #a7bed9; }
   &--emote { width: 840px; textarea { height: 250px; } }

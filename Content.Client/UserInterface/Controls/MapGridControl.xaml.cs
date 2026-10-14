@@ -79,11 +79,13 @@ public partial class MapGridControl : LayoutContainer
 
     public Vector2 MaxRadarRangeVector => new Vector2(MaxRadarRange, MaxRadarRange);
 
-    protected Vector2 MidPointVector => new Vector2(MidPoint, MidPoint);
+    /// <summary>Opt-in for embedded radar viewports; standalone maps retain their fixed geometry.</summary>
+    public bool FitViewport { get; set; }
+    protected Vector2 MidPointVector => FitViewport ? (Vector2)PixelSize / 2 : new Vector2(MidPoint, MidPoint);
 
     protected int MidPoint => SizeFull / 2;
-    protected int SizeFull => (int)((UIDisplayRadius + MinimapMargin) * 2 * UIScale);
-    protected int ScaledMinimapRadius => (int)(UIDisplayRadius * UIScale);
+    protected int SizeFull => FitViewport ? Math.Max(1, Math.Min(PixelSize.X, PixelSize.Y)) : (int)((UIDisplayRadius + MinimapMargin) * 2 * UIScale);
+    protected int ScaledMinimapRadius => FitViewport ? Math.Max(1, SizeFull / 2 - (int)(MinimapMargin * UIScale)) : (int)(UIDisplayRadius * UIScale);
     protected float MinimapScale => WorldRange != 0 ? ScaledMinimapRadius / WorldRange : 0f;
 
     public event Action<float>? WorldRangeChanged;
@@ -231,7 +233,7 @@ public partial class MapGridControl : LayoutContainer
         return Offset == TargetOffset;
     }
 
-    protected void DrawBacking(DrawingHandleScreen handle)
+    protected virtual void DrawBacking(DrawingHandleScreen handle)
     {
         var backing = BackingColor;
         handle.DrawRect(PixelSizeBox, backing);

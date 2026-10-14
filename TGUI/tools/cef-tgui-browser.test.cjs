@@ -26,7 +26,8 @@ const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
     await page.addInitScript(({ png, transport }) => {
       window.__sent = [];
       window.__fetchBridgeRequests = 0;
-      window.__deeplagoonFetchBridge = transport === 'fetch';
+      window.__deeplagoonFetchBridge = transport === 'fetch' || transport === 'post';
+      window.__deeplagoonPostBridge = transport === 'post';
       const respond = message => {
         if (message.type === 'act/icons') {
           window.update(JSON.stringify({ type: 'update', payload: { data: { iconBatch: { icons:
@@ -35,9 +36,10 @@ const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
       };
       const nativeFetch = window.fetch.bind(window);
       window.fetch = async (url, options) => {
-        if (!url.startsWith('res://deeplagoon/Web/DeepLagoon/bridge?')) return nativeFetch(url, options);
-        const [type, payload] = url.split('?')[1].split('&');
-        const message = { type: decodeURIComponent(type), payload: JSON.parse(decodeURIComponent(payload)) };
+        if (!url.startsWith('res://deeplagoon/Web/DeepLagoon/bridge')) return nativeFetch(url, options);
+        const posted = options?.method === 'POST';
+        const [type, payload] = posted ? [options.body.slice(0, options.body.indexOf('\n')), options.body.slice(options.body.indexOf('\n') + 1)] : url.split('?')[1].split('&');
+        const message = { type: posted ? type : decodeURIComponent(type), payload: JSON.parse(posted ? payload : decodeURIComponent(payload)) };
         window.__fetchBridgeRequests++;
         window.__sent.push(message);
         queueMicrotask(() => respond(message));
@@ -65,8 +67,18 @@ const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
       appearance: {}, tabs: [], previewSlots: [], speciesOptions: [{ id: 'Human', name: 'Human' }],
       hairOptions: Array.from({ length: 100 }, (_, i) => ({ id: `Hair${i}`, name: `Hair ${i}`, iconId: `marking/Hair${i}` })),
       beardOptions: [] };
-    const publish = data => page.evaluate(data => window.update(JSON.stringify({ type: 'update', payload: {
-      replaceData: true, config: { interface: 'CharacterEditor', status: 2, window: { key: 'deeplagoon', fancy: false } }, data } })), data);
+    const publish = data => page.evaluate(data => {
+      const dynamic = { ...data };
+      const catalogue = {};
+      for (const key of ['hairOptions', 'beardOptions', 'speciesOptions', 'departments', 'traits', 'markingOptions']) {
+        catalogue[key] = dynamic[key];
+        delete dynamic[key];
+      }
+      window.update(JSON.stringify({ type: 'update', payload: {
+        replaceData: true, replaceStaticData: true, resetPartialData: true,
+        static_data: catalogue,
+        config: { interface: 'CharacterEditor', status: 2, window: { key: 'deeplagoon', fancy: false } }, data: dynamic } }));
+    }, data);
     await publish(state);
     await page.getByText('Выбор причёски', { exact: true }).waitFor();
     assert.equal(await page.evaluate(() => window.__sent.filter(m => m.type === 'act/icons').length), 0, 'Collapsed hair catalogue must not decode icons');
@@ -77,14 +89,25 @@ const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
     assert.ok(visibleIds.length > 0 && visibleIds.length <= 8, `Only visible hair icons requested: ${visibleIds.length}`);
     await page.locator('.HairCarousel__track').first().evaluate(track => { track.scrollLeft = track.clientWidth * 2; });
     await page.waitForFunction(count => window.__sent.filter(m => m.type === 'act/icons').flatMap(m => m.payload.ids.split(',')).length > count, visibleIds.length);
-    await publish({ ...state, hairColor: '#123456' });
+    await page.evaluate(() => window.update(JSON.stringify({ type: 'update', payload: { data: { hairColor: '#123456' } } })));
+    assert.equal(await page.locator('.HairCarousel').count(), 1, 'Incremental colour update must preserve the static catalogue');
     await page.evaluate(() => window.DeepLagoonHealth.ping());
     await page.waitForFunction(() => window.__sent.some(m => m.type === 'health/pong'));
+    await publish({ ...state, mode: 'jobs', departments: [{ id: 'med', name: 'Medical', jobs: [{ id: 'Doctor', name: 'Doctor', allowed: true, priority: 0 }] }], jobState: { Doctor: { allowed: true, priority: 3 } } });
+    await page.getByText('Высокий', { exact: true }).waitFor();
+    await page.evaluate(() => window.update(JSON.stringify({ type: 'update', payload: { data: { jobState: { Doctor: { allowed: true, priority: 0 } } } } })));
+    await page.getByText('Никогда', { exact: true }).waitFor();
+    await publish({ ...state, mode: 'traits', traits: [{ id: 'A', name: 'Trait A', category: 'Traits', cost: 1 }, { id: 'B', name: 'Trait B', category: 'Traits', cost: 1 }], traitState: { A: { visible: false, selected: false }, B: { visible: true, selected: false } } });
+    await page.getByText('Trait B (1)', { exact: true }).waitFor();
+    assert.equal(await page.getByText('Trait A (1)', { exact: true }).count(), 0);
+    await page.evaluate(() => window.update(JSON.stringify({ type: 'update', payload: { data: { traitState: { A: { visible: true, selected: true }, B: { visible: false, selected: false } } } } })));
+    await page.getByText('Trait A (1)', { exact: true }).waitFor();
+    assert.equal(await page.getByText('Trait B (1)', { exact: true }).count(), 0);
     await publish({ available: false, mode: 'appearance' });
     await page.getByText('Выберите персонажа.', { exact: false }).waitFor();
     assert.equal(await page.locator('.HairCarousel').count(), 0);
     assert.deepEqual(errors, []);
-    assert.equal(await page.evaluate(() => window.__fetchBridgeRequests > 0), transport === 'fetch');
+    assert.equal(await page.evaluate(() => window.__fetchBridgeRequests > 0), transport === 'fetch' || transport === 'post');
     console.log(`PASS: production boot, collapsed catalogue, ${visibleIds.length} visible icons, carousel lazy loading, colour update, health pong, empty profile, no JS errors`);
   } finally {
     await browser?.close();

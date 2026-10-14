@@ -19,6 +19,9 @@ namespace Content.Server.Engineering.EntitySystems
         }
         private void AddDisassembleVerb(EntityUid uid, DisassembleOnAltVerbComponent component, GetVerbsEvent<AlternativeVerb> args)
         {
+            if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(Transform(uid).GridUid))
+                return;
+
             if (!args.CanInteract || !args.CanAccess || args.Hands == null)
                 return;
 
@@ -37,6 +40,8 @@ namespace Content.Server.Engineering.EntitySystems
         public async void AttemptDisassemble(EntityUid uid, EntityUid user, EntityUid target, DisassembleOnAltVerbComponent? component = null)
         {
             if (!Resolve(uid, ref component))
+                return;
+            if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(Transform(uid).GridUid))
                 return;
             if (string.IsNullOrEmpty(component.Prototype))
                 return;
@@ -57,6 +62,8 @@ namespace Content.Server.Engineering.EntitySystems
                 return;
 
             if (!TryComp(uid, out TransformComponent? transformComp))
+                return;
+            if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(transformComp.GridUid))
                 return;
 
             var entity = EntityManager.SpawnEntity(component.Prototype, transformComp.Coordinates);

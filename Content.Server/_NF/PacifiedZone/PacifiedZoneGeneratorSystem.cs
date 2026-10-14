@@ -7,6 +7,7 @@ using Content.Shared.Humanoid;
 using Content.Shared.Mind;
 using Content.Shared.Roles.Jobs;
 using Content.Server.Players.PlayTimeTracking;
+using Robust.Shared.Map.Components;
 
 namespace Content.Server._NF.PacifiedZone
 {
@@ -20,6 +21,7 @@ namespace Content.Server._NF.PacifiedZone
         [Dependency] private IPlayerManager _playerManager = default!;
         [Dependency] private PlayTimeTrackingManager _playtimeTracking = default!;
         [Dependency] private AdminSystem _admin = default!;
+        [Dependency] private PacificationSystem _pacification = default!;
 
         private const string Alert = "PacifiedZone";
 
@@ -53,7 +55,7 @@ namespace Content.Server._NF.PacifiedZone
             while (genQuery.MoveNext(out var genUid, out var component))
             {
                 // Not yet update time, skip this 
-                if (_gameTiming.CurTime < component.NextUpdate)
+                if (MetaData(genUid).EntityPaused || _gameTiming.CurTime < component.NextUpdate)
                     continue;
 
                 UpdatePacifiedState(genUid, component);
@@ -63,7 +65,9 @@ namespace Content.Server._NF.PacifiedZone
         private void UpdatePacifiedState(EntityUid genUid, PacifiedZoneGeneratorComponent component)
         {
             List<EntityUid> newEntities = new List<EntityUid>();
-            var query = _lookup.GetEntitiesInRange<HumanoidAppearanceComponent>(Transform(genUid).Coordinates, component.Radius);
+            var query = component.WholeGrid && HasComp<MapGridComponent>(genUid)
+                ? GetGridOccupants(genUid)
+                : _lookup.GetEntitiesInRange<HumanoidAppearanceComponent>(Transform(genUid).Coordinates, component.Radius);
             foreach (var humanoidUid in query)
             {
                 // Check preconditions for an entity to be pacified at all.
@@ -88,6 +92,7 @@ namespace Content.Server._NF.PacifiedZone
                 // Existing entity, note it still exists.
                 if (component.TrackedEntities.Contains(humanoidUid))
                 {
+                    _pacification.SetDisallowAllCombat(humanoidUid, component.DisallowAllCombat);
                     // Entity still in zone.
                     newEntities.Add(humanoidUid);
                     component.TrackedEntities.Remove(humanoidUid);
@@ -99,7 +104,7 @@ namespace Content.Server._NF.PacifiedZone
                         continue;
 
                     // New entity in zone, needs the Pacified comp.
-                    var pacifiedComponent = AddComp<PacifiedComponent>(humanoidUid);
+                    var pacifiedComponent = _pacification.AddPacification(humanoidUid, component.DisallowAllCombat);
                     EnableAlert(humanoidUid, pacifiedComponent);
                     AddComp<PacifiedByZoneComponent>(humanoidUid);
                     newEntities.Add(humanoidUid);
@@ -119,6 +124,15 @@ namespace Content.Server._NF.PacifiedZone
         }
 
         // Overrides the default Pacified alert with one for the pacified zone.
+        private HashSet<Entity<HumanoidAppearanceComponent>> GetGridOccupants(EntityUid grid)
+        {
+            var result = new HashSet<Entity<HumanoidAppearanceComponent>>();
+            var query = AllEntityQuery<HumanoidAppearanceComponent, TransformComponent>();
+            while (query.MoveNext(out var uid, out var appearance, out var transform))
+                if (transform.GridUid == grid) result.Add((uid, appearance));
+            return result;
+        }
+
         private void EnableAlert(EntityUid entity, PacifiedComponent pacified)
         {
             _alerts.ClearAlert(entity, pacified.PacifiedAlert);

@@ -20,11 +20,13 @@ public sealed class WikiGuidebookWindow : FancyWindow
     private float _loadSeconds;
     private float _treeRefresh;
     private bool _ensureViewport;
+    private bool _shuttingDown;
     private readonly string _treeScript;
     public string? LastPage { get; private set; }
 
     public WikiGuidebookWindow()
     {
+        WebViewLifetime.Register(_web, () => _shuttingDown = true);
         using (var stream = IoCManager.Resolve<IResourceManager>().ContentFileRead(new ResPath("/Web/DeepLagoon/wiki-tree.js")))
         using (var reader = new StreamReader(stream)) _treeScript = reader.ReadToEnd();
         Title = Loc.GetString("wiki-window-title");
@@ -98,7 +100,7 @@ public sealed class WikiGuidebookWindow : FancyWindow
     protected override void FrameUpdate(Robust.Shared.Timing.FrameEventArgs args)
     {
         base.FrameUpdate(args);
-        if (_web.Visible)
+        if (!_shuttingDown && _web.Visible)
         {
             _loadSeconds += args.DeltaSeconds;
             if (!WebViewCapabilities.NativeLifecycle && _ensureViewport && !_web.IsLoading && _loadSeconds >= 1)

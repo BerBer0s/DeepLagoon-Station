@@ -192,6 +192,12 @@ public sealed partial class FloorTileSystem : EntitySystem
 
     public bool CanPlaceTile(EntityUid gridUid, MapGridComponent component, ContentTileDefinition? currentTileDefinition, [NotNullWhen(false)] out string? reason)
     {
+        if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(gridUid))
+        {
+            reason = Loc.GetString("invalid-floor-placement");
+            return false;
+        }
+
         var ev = new FloorTileAttemptEvent();
         RaiseLocalEvent(gridUid, ref ev);
 

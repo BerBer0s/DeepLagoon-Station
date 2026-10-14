@@ -30,6 +30,23 @@ public sealed partial class PacificationSystem : EntitySystem
         SubscribeLocalEvent<PacifismDangerousAttackComponent, AttemptPacifiedAttackEvent>(OnPacifiedDangerousAttack);
     }
 
+    /// <summary>Configure restrictions before startup so combat actions are disabled immediately.</summary>
+    public PacifiedComponent AddPacification(EntityUid uid, bool disallowAllCombat = false)
+    {
+        var component = new PacifiedComponent { DisallowAllCombat = disallowAllCombat };
+        AddComp(uid, component);
+        return component;
+    }
+
+    public void SetDisallowAllCombat(EntityUid uid, bool value)
+    {
+        if (!TryComp<PacifiedComponent>(uid, out var component) || component.DisallowAllCombat == value) return;
+        component.DisallowAllCombat = value;
+        if (!TryComp<CombatModeComponent>(uid, out var combat)) return;
+        if (value) _combatSystem.SetInCombatMode(uid, false, combat);
+        _actionsSystem.SetEnabled(combat.CombatToggleActionEntity, !value);
+    }
+
     private bool PacifiedCanAttack(EntityUid user, EntityUid target, [NotNullWhen(false)] out string? reason)
     {
         var ev = new AttemptPacifiedAttackEvent(user);

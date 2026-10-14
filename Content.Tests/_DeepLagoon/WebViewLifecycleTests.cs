@@ -9,6 +9,18 @@ namespace Content.Tests._DeepLagoon;
 public sealed class WebViewLifecycleTests
 {
     [Test]
+    public void EditorDeltaDoesNotResendUnchangedImagesAndExplicitlyRemovesOldFields()
+    {
+        var previous = new TguiData().String("name", "One").String("image", new string('a', 10000)).Bool("old", true);
+        var current = new TguiData().String("name", "Two").String("image", new string('a', 10000));
+        using var delta = JsonDocument.Parse(current.ChangesFrom(previous).ToString());
+        Assert.That(delta.RootElement.EnumerateObject().Count(), Is.EqualTo(1));
+        Assert.That(delta.RootElement.GetProperty("name").GetString(), Is.EqualTo("Two"));
+        Assert.That(current.RemovedSince(previous), Is.EqualTo("[\"old\"]"));
+        Assert.That(current.SelectFields(new System.Collections.Generic.HashSet<string> { "image" }).ToString(), Does.Not.Contain("name"));
+    }
+
+    [Test]
     public void RepeatedHeadshotUpdatesReplaceFieldsInsteadOfGrowingJson()
     {
         var data = new TguiData().String("name", "Test");

@@ -2,6 +2,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using Content.Client._Mono.Company;
+using Content.Client._DeepLagoon.WebUI;
 using Content.Client.Lobby;
 using Content.Client.Lobby.UI;
 using Content.Client.Players.PlayTimeTracking;
@@ -49,6 +50,30 @@ public sealed class CharacterHairChoicesTests
                 Assert.That(choices.Skip(1).All(choice => choice.GetProperty("iconId").GetString() == "marking/" + choice.GetProperty("id").GetString()), Is.True, key);
                 Assert.That(choices.All(choice => !choice.TryGetProperty("images", out _)), Is.True, "Catalogue must not resend PNGs on profile edits");
             }
+            using var dynamic = JsonDocument.Parse(editor.CreateTguiProfileState("appearance", includeCatalogs: false).ToString());
+            Assert.That(dynamic.RootElement.TryGetProperty("hairOptions", out _), Is.False);
+            Assert.That(dynamic.RootElement.TryGetProperty("speciesOptions", out _), Is.False);
+            Assert.That(dynamic.RootElement.GetProperty("name").GetString(), Is.EqualTo(editor.Profile!.Name));
+            using var jobCatalog = JsonDocument.Parse(editor.CreateTguiProfileState("jobs").ToString());
+            using var jobState = JsonDocument.Parse(editor.CreateTguiProfileState("jobs", includeCatalogs: false).ToString());
+            Assert.That(jobState.RootElement.TryGetProperty("departments", out _), Is.False);
+            foreach (var department in jobCatalog.RootElement.GetProperty("departments").EnumerateArray())
+                foreach (var job in department.GetProperty("jobs").EnumerateArray())
+                    Assert.That(jobState.RootElement.GetProperty("jobState").GetProperty(job.GetProperty("id").GetString()!).GetProperty("priority").GetInt32(), Is.EqualTo(job.GetProperty("priority").GetInt32()));
+            using var traitCatalog = JsonDocument.Parse(editor.CreateTguiProfileState("traits").ToString());
+            using var traitState = JsonDocument.Parse(editor.CreateTguiProfileState("traits", includeCatalogs: false).ToString());
+            Assert.That(traitState.RootElement.TryGetProperty("traits", out _), Is.False);
+            foreach (var trait in traitCatalog.RootElement.GetProperty("traits").EnumerateArray())
+            {
+                var live = traitState.RootElement.GetProperty("traitState").GetProperty(trait.GetProperty("id").GetString()!);
+                Assert.That(live.GetProperty("visible").GetBoolean(), Is.EqualTo(trait.GetProperty("visible").GetBoolean()));
+                Assert.That(live.GetProperty("selected").GetBoolean(), Is.EqualTo(trait.GetProperty("selected").GetBoolean()));
+            }
+            Assert.That(editor.HandleTguiProfileAction("name", "{\"value\":\"Optimized draft\"}"), Is.True);
+            var panel = (TguiPanel)typeof(HumanoidProfileEditor).GetField("_profileWeb", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(editor)!;
+            var catalog = typeof(TguiPanel).GetField("_staticData", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(panel);
+            Assert.That(editor.HandleTguiProfileAction("name", "{\"value\":\"Second draft\"}"), Is.True);
+            Assert.That(typeof(TguiPanel).GetField("_staticData", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(panel), Is.SameAs(catalog));
             var draft = editor.Profile;
             typeof(HumanoidProfileEditor).GetMethod("RestoreNativeEditor", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(editor, null);
             Assert.That(editor.Profile, Is.SameAs(draft), "Native recovery must preserve the current draft");

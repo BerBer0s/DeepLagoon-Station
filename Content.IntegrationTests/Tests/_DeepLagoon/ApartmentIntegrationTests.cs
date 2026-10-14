@@ -8,6 +8,8 @@ using Content.Shared.Light.Components;
 using Content.Server.Atmos.EntitySystems;
 using Content.Server.Atmos.Components;
 using Content.Shared.Atmos;
+using Content.Shared.Verbs;
+using Robust.Shared.Localization;
 using Content.Shared._CE.ZLevels.Core.Components;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Maths;
@@ -49,6 +51,16 @@ public sealed class ApartmentIntegrationTests
             Assert.That(entities.GetComponent<MetaDataComponent>(originalUniform).EntityPaused, Is.True);
             grid = system.Instances[session.UserId].Grid;
             originalSofa = entities.GetNetEntity(system.Instances[session.UserId].Furniture["base_sofa_01"]);
+            var terminals = entities.EntityQueryEnumerator<ApartmentTerminalComponent, TransformComponent>();
+            EntityUid terminal = default;
+            while (terminals.MoveNext(out var uid, out _, out var transform))
+                if (transform.GridUid == grid) { terminal = uid; break; }
+            Assert.That(terminal, Is.Not.EqualTo(default(EntityUid)));
+            var verbs = entities.System<Content.Server.Verbs.VerbSystem>()
+                .GetLocalVerbs(terminal, body, typeof(AlternativeVerb), force: true).Select(verb => verb.Text).ToArray();
+            Assert.That(verbs, Does.Contain(Loc.GetString("dl-apartment-exit")));
+            Assert.That(verbs, Does.Contain(Loc.GetString("dl-apartment-edit")));
+            Assert.That(verbs, Does.Contain(Loc.GetString("dl-apartment-travel-menu")));
         });
         await pair.RunTicksSync(35);
         await pair.Server.WaitAssertion(() =>

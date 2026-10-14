@@ -53,7 +53,8 @@ namespace Content.Server.Construction
         /// <returns>The result of this interaction with the entity.</returns>
         private HandleResult HandleEvent(EntityUid uid, object ev, bool validation, ConstructionComponent? construction = null)
         {
-            if (HasComp<NoDeconstructComponent>(uid))
+            if (HasComp<NoDeconstructComponent>(uid) ||
+                HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(Transform(uid).GridUid))
                 return HandleResult.False;
 
             if (!Resolve(uid, ref construction))

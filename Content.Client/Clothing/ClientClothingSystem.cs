@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using Content.Client.DisplacementMap;
+using Content.Client._DeepLagoon.BodyCustomization;
 using Content.Client.Inventory;
 using Content.Shared.Clothing;
 using Content.Shared.Clothing.Components;
@@ -54,6 +55,7 @@ public sealed partial class ClientClothingSystem : ClothingSystem
     [Dependency] private IResourceCache _cache = default!;
     [Dependency] private InventorySystem _inventorySystem = default!;
     [Dependency] private DisplacementMapSystem _displacement = default!;
+    [Dependency] private ClothingBodyFitSystem _bodyFit = default!;
 
     public override void Initialize()
     {
@@ -196,6 +198,7 @@ public sealed partial class ClientClothingSystem : ClothingSystem
 
     private void OnDidUnequip(EntityUid uid, SpriteComponent component, DidUnequipEvent args)
     {
+        _bodyFit.ClearSlot(uid, args.Slot);
         if (!TryComp(uid, out InventorySlotsComponent? inventorySlots))
             return;
 
@@ -242,6 +245,8 @@ public sealed partial class ClientClothingSystem : ClothingSystem
 
         if (!_inventorySystem.TryGetSlot(equipee, slot, out var slotDef, inventory))
             return;
+
+        _bodyFit.ClearSlot(equipee, slot);
 
         // Remove old layers. We could also just set them to invisible, but as items may add arbitrary layers, this
         // may eventually bloat the player with lots of invisible layers.
@@ -341,6 +346,7 @@ public sealed partial class ClientClothingSystem : ClothingSystem
             }
         }
 
+        _bodyFit.Apply(equipee, equipment, slot, sprite, clothingComponent, revealedLayers);
         RaiseLocalEvent(equipment, new EquipmentVisualsUpdatedEvent(equipee, slot, revealedLayers), true);
     }
 }

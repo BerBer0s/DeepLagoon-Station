@@ -14,6 +14,7 @@ public sealed class DiscordLinkStore : IDisposable
 {
     private readonly SqliteConnection _db;
     private readonly Func<long> _now;
+    private readonly Dictionary<Guid, (long BoostUntil, int Tier, long TierUntil)> _supporterCache = new();
 
     public DiscordLinkStore(string path, Func<long>? now = null)
     {
@@ -79,6 +80,9 @@ public sealed class DiscordLinkStore : IDisposable
     {
         using var command = Command(sql, parameters);
         command.ExecuteNonQuery();
+        // Every entitlement/link mutation passes through Execute (link transactions bump revision).
+        // Cache absolute deadlines, never a remaining duration: expiry needs no database query.
+        _supporterCache.Clear();
     }
 
     public Link? FindDiscord(string discordId)
@@ -100,10 +104,22 @@ public sealed class DiscordLinkStore : IDisposable
 
     public int BoostRemaining(Guid uid)
     {
-        using var command = Command("SELECT b.expires_at FROM discord_boosts b JOIN discord_links l ON l.discord_id=b.discord_id WHERE l.ss14_uid=$uid",
-            ("$uid", uid.ToString()));
-        var expires = Convert.ToInt64(command.ExecuteScalar() ?? 0L);
-        return (int) Math.Clamp(expires - _now(), 0, 900);
+        return (int) Math.Clamp(Supporter(uid).BoostUntil - _now(), 0, 900);
+    }
+
+    private (long BoostUntil, int Tier, long TierUntil) Supporter(Guid uid)
+    {
+        if (_supporterCache.TryGetValue(uid, out var cached)) return cached;
+        using var command = Command("""
+            SELECT COALESCE(b.expires_at,0),COALESCE(t.tier,0),COALESCE(t.expires_at,0)
+            FROM discord_links l LEFT JOIN discord_boosts b ON b.discord_id=l.discord_id
+            LEFT JOIN discord_boosty t ON t.discord_id=l.discord_id WHERE l.ss14_uid=$uid
+            """, ("$uid", uid.ToString()));
+        using var reader = command.ExecuteReader();
+        var status = reader.Read() ? (reader.GetInt64(0), reader.GetInt32(1), reader.GetInt64(2)) : (0L, 0, 0L);
+        // Bound negative lookups too; disconnected IDs must not retain memory indefinitely.
+        if (_supporterCache.Count >= 4096) _supporterCache.Clear();
+        return _supporterCache[uid] = status;
     }
 
     public void SetSupporter(string discordId, bool boostActive, int tier, int[] colors)
@@ -124,11 +140,9 @@ public sealed class DiscordLinkStore : IDisposable
 
     public (int Tier, int Remaining) BoostyStatus(Guid uid)
     {
-        using var command = Command("SELECT b.tier,b.expires_at FROM discord_boosty b JOIN discord_links l ON l.discord_id=b.discord_id WHERE l.ss14_uid=$uid", ("$uid", uid.ToString()));
-        using var reader = command.ExecuteReader();
-        if (!reader.Read()) return (0, 0);
-        var remaining = (int) Math.Clamp(reader.GetInt64(1) - _now(), 0, 900);
-        return remaining > 0 ? (reader.GetInt32(0), remaining) : (0, 0);
+        var status = Supporter(uid);
+        var remaining = (int) Math.Clamp(status.TierUntil - _now(), 0, 900);
+        return remaining > 0 ? (status.Tier, remaining) : (0, 0);
     }
 
     public int[]? SupporterColors()
@@ -181,6 +195,7 @@ public sealed class DiscordLinkStore : IDisposable
 
     public void Unlink(string discordId, Guid uid)
     {
+        if (MergePending(uid)) throw new LinkException("merge_pending");
         using var transaction = _db.BeginTransaction();
         using (var history = Command("INSERT OR IGNORE INTO discord_link_history VALUES($id,$uid)", ("$id", discordId), ("$uid", uid.ToString())))
         {
@@ -221,6 +236,7 @@ public sealed class DiscordLinkStore : IDisposable
 
     public Link ReassignDiscord(string source, string target, Guid expectedUid, long expectedLinkedAt, long? revision = null)
     {
+        if (MergePending(expectedUid)) throw new LinkException("merge_pending");
         using var transaction = _db.BeginTransaction();
         AssertCurrent(source, expectedUid, expectedLinkedAt, revision);
         var link = FindDiscord(source)!;
@@ -257,6 +273,7 @@ public sealed class DiscordLinkStore : IDisposable
 
     public Link RestoreDiscord(string discordId, Guid uid, string username)
     {
+        if (MergePending(uid)) throw new LinkException("merge_pending");
         using var transaction = _db.BeginTransaction();
         if (FindDiscord(discordId) != null || IsLinked(uid)) throw new LinkException("already_linked");
         var found = false;
@@ -288,6 +305,7 @@ public sealed class DiscordLinkStore : IDisposable
 
     public string Issue(Guid uid, string username)
     {
+        if (MergePending(uid)) throw new LinkException("merge_pending");
         if (IsLinked(uid))
             throw new LinkException("already_linked");
         var now = _now();
@@ -333,6 +351,7 @@ public sealed class DiscordLinkStore : IDisposable
                 throw new LinkException("invalid_code");
             link = new Link(Guid.Parse(reader.GetString(0)), reader.GetString(1));
         }
+        if (MergePending(link.Uid)) throw new LinkException("merge_pending");
         using (var history = Command("SELECT ss14_uid FROM discord_link_history WHERE discord_id=$id UNION ALL SELECT ss14_uid FROM discord_launcher_enrollments WHERE discord_id=$id", ("$id", discordId)))
         {
             history.Transaction = transaction;
@@ -375,6 +394,12 @@ public sealed class DiscordLinkStore : IDisposable
     }
 
     public sealed record MergePlan(Guid OfficialUid, Guid CanonicalUid, string Username);
+
+    public bool MergePending(Guid uid)
+    {
+        using var query = Command("SELECT 1 FROM discord_account_merge_pending p WHERE (p.official_uid=$uid OR p.canonical_uid=$uid) AND NOT EXISTS (SELECT 1 FROM discord_account_aliases a WHERE a.official_uid=p.official_uid AND a.canonical_uid=p.canonical_uid AND a.discord_id=p.discord_id)", ("$uid", uid.ToString()));
+        return query.ExecuteScalar() != null;
+    }
 
     public MergePlan PrepareMerge(string discordId, string code)
     {

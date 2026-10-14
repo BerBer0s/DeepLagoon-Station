@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using Content.Shared._DeepLagoon.Tattoos;
 using Robust.Client.Utility;
 using SixLabors.ImageSharp;
@@ -52,8 +53,10 @@ public static class TattooPng
         var preview = Convert.FromBase64String(TattooSpriteFrames.Png(normal).Split(',')[1]);
         using var chunk = new MemoryStream();
         // d: ancillary, l: private, T: reserved bit clear, G: unsafe to copy after external editing.
-        chunk.WriteByte(100); chunk.WriteByte(108); chunk.WriteByte(84); chunk.WriteByte(71); chunk.WriteByte(1);
+        chunk.WriteByte(100); chunk.WriteByte(108); chunk.WriteByte(84); chunk.WriteByte(71); chunk.WriteByte(2);
         WriteInt(chunk, normalBytes.Length); WriteInt(chunk, glowBytes.Length);
+        var proof = Encoding.ASCII.GetBytes(tattoo.Strokes.Count == 0 ? tattoo.ArtworkProof : "");
+        WriteInt(chunk, proof.Length); chunk.Write(proof);
         chunk.Write(normalBytes); chunk.Write(glowBytes);
         var chunkBytes = chunk.ToArray();
         using var result = new MemoryStream();
@@ -81,7 +84,7 @@ public static class TattooPng
         var width = ReadInt(bytes, 16); var height = ReadInt(bytes, 20);
         if (width is < 1 or > MaxDimension || height is < 1 or > MaxDimension)
             throw new InvalidDataException("Максимальный размер PNG — 2048×2048.");
-        var normal = ""; var glow = ""; var metadata = false; var end = false; var data = false;
+        var normal = ""; var glow = ""; var proof = ""; var metadata = false; var end = false; var data = false;
         using var clean = new MemoryStream(); clean.Write(bytes, 0, 8);
         for (var p = 8; p <= bytes.Length - 12;)
         {
@@ -96,11 +99,19 @@ public static class TattooPng
                 || Type(bytes, p, "IDAT") || Type(bytes, p, "IEND")) clean.Write(bytes, p, length + 12);
             if (Type(bytes, p, "dlTG"))
             {
-                if (metadata || length < 9 || bytes[p + 8] != 1) throw new InvalidDataException("Неизвестный формат татуировки.");
+                if (metadata || length < 9 || bytes[p + 8] is not (1 or 2)) throw new InvalidDataException("Неизвестный формат татуировки.");
                 metadata = true;
                 var n = ReadInt(bytes, p + 9); var g = ReadInt(bytes, p + 13);
-                if (n < 0 || g < 0 || n > length - 9 || g != length - 9 - n) throw new InvalidDataException("Повреждён канал чернил.");
-                normal = Convert.ToBase64String(bytes, p + 17, n); glow = Convert.ToBase64String(bytes, p + 17 + n, g);
+                var header = 9;
+                if (bytes[p + 8] == 2)
+                {
+                    if (length < 13) throw new InvalidDataException("Повреждена подпись.");
+                    var proofLength = ReadInt(bytes, p + 17);
+                    if (proofLength < 0 || proofLength > 128 || proofLength > length - 13) throw new InvalidDataException("Повреждена подпись.");
+                    proof = Encoding.ASCII.GetString(bytes, p + 21, proofLength); header = 13 + proofLength;
+                }
+                if (n < 0 || g < 0 || n > length - header || g != length - header - n) throw new InvalidDataException("Повреждён канал чернил.");
+                normal = Convert.ToBase64String(bytes, p + 8 + header, n); glow = Convert.ToBase64String(bytes, p + 8 + header + n, g);
             }
             if (Type(bytes, p, "IEND")) { end = data && length == 0 && p + 12 == bytes.Length; break; }
             p += length + 12;
@@ -121,7 +132,9 @@ public static class TattooPng
             for (var y = 0; y < h; y++) src.Slice(y * w, w).CopyTo(dst.Slice((top + y) * Tattoo.Resolution + left, w));
             normal = TattooSpriteFrames.Png(padded).Split(',')[1];
         }
-        result.NormalBitmap = normal; result.GlowBitmap = glow;
+        if (metadata && proof.Length == 0 && !allowExternalPng)
+            throw new InvalidDataException("Этот старый экспорт не подписан сервером. Откройте сохранённый рисунок в профиле и экспортируйте его заново.");
+        result.NormalBitmap = normal; result.GlowBitmap = glow; result.ArtworkProof = proof;
         if (!result.IsValid()) throw new InvalidDataException("Изображение превышает допустимый объём татуировки.");
         foreach (var png in new[] { normal, glow })
             if (png.Length > 0) { using var input = new MemoryStream(Convert.FromBase64String(png)); using var image = Image.Load<Rgba32>(input); }

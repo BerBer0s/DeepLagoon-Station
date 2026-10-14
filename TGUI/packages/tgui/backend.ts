@@ -71,19 +71,21 @@ export const backendReducer = (state = initialState, action) => {
     // Merge data
     const newInterface = payload.config?.interface && payload.config.interface !== state.config?.interface;
     const staticData = {
-      ...(newInterface ? {} : state.staticData),
+      ...(newInterface || payload.replaceStaticData ? {} : state.staticData),
       ...payload.static_data,
     };
     const partialData = {
-      ...(newInterface ? {} : state.partialData),
+      ...(newInterface || payload.resetPartialData ? {} : state.partialData),
       ...(!payload.replaceData ? payload.data : {}),
     };
+    for (const key of payload.removedData || []) delete partialData[key];
     const data = {
       ...(payload.replaceData || newInterface ? {} : state.data),
       ...(payload.replaceData ? staticData : payload.static_data),
       ...(payload.replaceData ? partialData : {}),
       ...payload.data,
     };
+    for (const key of payload.removedData || []) delete data[key];
     // Merge shared states
     const shared = { ...state.shared };
     if (payload.shared) {

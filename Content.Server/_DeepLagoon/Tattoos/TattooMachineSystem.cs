@@ -71,6 +71,18 @@ public sealed class TattooMachineSystem : EntitySystem
         && _hands.IsHolding(artist, machine, out _) && _interaction.InRangeUnobstructed(artist, target)
         && HasComp<HumanoidAppearanceComponent>(target) && TattoosAllowed(artist) && TattoosAllowed(target);
 
+    public bool CanEditStoredInk(ICommonSession session, Tattoo basis)
+    {
+        if (session.AttachedEntity is not { } artist) return false;
+        var machines = EntityQueryEnumerator<TattooMachineComponent>();
+        while (machines.MoveNext(out var uid, out var machine))
+            if (machine.Artist == artist && machine.Target is { } target && CanUse(uid, artist, target)
+                && Comp<HumanoidAppearanceComponent>(target).Tattoos.Any(t => t.Id == basis.Id
+                    && t.NormalBitmap == basis.NormalBitmap && t.GlowBitmap == basis.GlowBitmap
+                    && t.Strokes.Count == basis.Strokes.Count && t.Strokes.Zip(basis.Strokes).All(p => p.First.ContentEquals(p.Second)))) return true;
+        return false;
+    }
+
     private void OnInteract(EntityUid uid, TattooMachineComponent component, AfterInteractEvent args)
     {
         if (args.Handled || !args.CanReach || args.Target is not { } target || !CanUse(uid, args.User, target))
@@ -97,6 +109,12 @@ public sealed class TattooMachineSystem : EntitySystem
             || args.Tattoos.Any(t => t == null || !t.IsValid()) || args.Tattoos.Select(t => t.Id).Distinct().Count() != args.Tattoos.Count)
         {
             Publish(uid, component, "Рисунок изменился или превышен лимит. Повторите действие.");
+            return;
+        }
+        if (!_players.TryGetSessionByEntity(args.Actor, out var artistSession)
+            || args.Tattoos.Any(t => !EntityManager.System<TattooArtworkSystem>().Accept(artistSession.UserId, t, humanoid.Tattoos)))
+        {
+            Publish(uid, component, "Сервер не подтвердил происхождение рисунка. Завершите рисование или импорт повторно.");
             return;
         }
         // Check every changed AND removed tattoo. Covered/missing skin cannot be tattooed or erased.

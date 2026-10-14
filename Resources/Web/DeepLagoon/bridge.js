@@ -8,9 +8,11 @@
   const page = Date.now().toString(36) + Math.random().toString(36).slice(2);
   let sending = Promise.resolve();
   const transmit = (type, payload, attempt = 0) => new Promise((resolve, reject) => {
-    const url = root + 'bridge?' + encodeURIComponent(type) + '&' + encodeURIComponent(payload);
+    const posted = window.__deeplagoonPostBridge;
+    const url = root + 'bridge' + (posted ? '' : '?' + encodeURIComponent(type) + '&' + encodeURIComponent(payload));
     if (window.__deeplagoonFetchBridge && typeof window.fetch === 'function') {
-      window.fetch(url, { mode: 'same-origin', credentials: 'omit', cache: 'no-store' }).then(async response => {
+      window.fetch(url, { mode: 'same-origin', credentials: 'omit', cache: 'no-store',
+        ...(posted ? { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: type + '\n' + payload } : {}) }).then(async response => {
         if (!response.ok) throw new Error('Bridge response: ' + response.status);
         await response.arrayBuffer();
         resolve();
@@ -20,7 +22,8 @@
         } else {
           // A mismatched native module must not leave the UI without its bridge.
           window.__deeplagoonFetchBridge = false;
-          transmit(type, payload).then(resolve, reject);
+          window.__deeplagoonPostBridge = false;
+          legacyTransmit(type, payload).then(resolve, reject);
         }
       });
       return;
@@ -33,6 +36,14 @@
     };
     image.src = url;
   });
+  const legacyTransmit = async (type, payload) => {
+    if (payload.length <= 6000) { await transmit(type, payload); return; }
+    const count = Math.ceil(payload.length / 2000);
+    for (let index = 0; index < count; index++) {
+      await transmit('bridge/chunk', JSON.stringify({ messageType: type, index, count,
+        text: payload.slice(index * 2000, (index + 1) * 2000) }));
+    }
+  };
   const send = message => {
     const payload = JSON.stringify({ ...message.payload, _sequence: sequence++, _page: page });
     if (payload.length > (message.type === 'panel/state_set' ? 32768 : 8192)) {
@@ -43,9 +54,9 @@
     // The native module supports fetch without creating/decoding an image for each
     // message. Keep the image transport for official modules and dev documents.
     sending = sending.catch(error => console.error(error)).then(async () => {
-      const nativeRequestFits = window.__deeplagoonFetchBridge && typeof window.fetch === 'function' &&
+      const nativeRequestFits = !window.__deeplagoonPostBridge && window.__deeplagoonFetchBridge && typeof window.fetch === 'function' &&
         encodeURIComponent(message.type).length + 1 + encodeURIComponent(payload).length <= 65535;
-      if (payload.length <= 6000 || nativeRequestFits) {
+      if (window.__deeplagoonPostBridge || payload.length <= 6000 || nativeRequestFits) {
         await transmit(message.type, payload);
         return;
       }

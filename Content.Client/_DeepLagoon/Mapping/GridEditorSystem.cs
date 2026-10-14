@@ -41,6 +41,7 @@ public sealed partial class GridEditorSystem : EntitySystem
     private string? _uploadId;
     private int _uploadCount, _uploadChunks, _uploadNext;
     private readonly List<GridEditorItem> _upload = new();
+    private GridEditorExpansion? _uploadExpansion;
 
     public override void Initialize()
     {
@@ -62,16 +63,23 @@ public sealed partial class GridEditorSystem : EntitySystem
         var code = args.Key switch
         {
             Keyboard.Key.Z => "KeyZ", Keyboard.Key.Y => "KeyY", Keyboard.Key.C => "KeyC",
-            Keyboard.Key.V => "KeyV", Keyboard.Key.H => "KeyH", Keyboard.Key.B => "KeyB",
+            Keyboard.Key.V => "KeyV", Keyboard.Key.B => "KeyB",
+            Keyboard.Key.S => "KeyS", Keyboard.Key.Num2 => "Digit2",
             Keyboard.Key.L => "KeyL", Keyboard.Key.U => "KeyU", Keyboard.Key.E => "KeyE",
             Keyboard.Key.I => "KeyI", Keyboard.Key.R => "KeyR", Keyboard.Key.Space => "Space",
             Keyboard.Key.Shift => "ShiftLeft", Keyboard.Key.Delete => "Delete", Keyboard.Key.Escape => "Escape",
+            Keyboard.Key.Left => "ArrowLeft", Keyboard.Key.Right => "ArrowRight",
+            Keyboard.Key.D => "KeyD",
+            Keyboard.Key.Up => "ArrowUp", Keyboard.Key.Down => "ArrowDown",
             _ => null
         };
-        if (code == null || args.Alt || args.Control && code is not ("KeyZ" or "KeyY" or "KeyC" or "KeyV")) return;
+        if (code == null || args.Alt || args.Control && code is not ("KeyZ" or "KeyY" or "KeyC" or "KeyV" or "KeyS")) return;
+        // Native CEF paste carries clipboard images. The editor handles its paste event,
+        // falling back to its internal building clipboard if no image is present.
+        if (args.Control && code == "KeyV") return;
         args.Handle();
-        if (type == KeyEventType.Repeat) return;
-        window.Panel.Web.SendGridEditorKey(code, type == KeyEventType.Down, args.Control, args.Shift, args.Alt);
+        if (type == KeyEventType.Repeat && !code.StartsWith("Arrow", StringComparison.Ordinal)) return;
+        window.Panel.Web.SendGridEditorKey(code, type != KeyEventType.Up, args.Control, args.Shift, args.Alt);
     }
 
     private void Open(GridEditorStateEvent ev)
@@ -94,9 +102,10 @@ public sealed partial class GridEditorSystem : EntitySystem
             _window.OpenCentered();
             _window.Panel.Web.FocusInput();
         }
-        var visuals = ev.Items.Select(i => (i.Kind, i.Prototype)).Distinct().Select(i => Visual(i.Kind, i.Prototype));
+        var visuals = ev.Items.Select(i => (i.Kind, i.Prototype)).Append(("tile", "Plating")).Distinct().Select(i => Visual(i.Item1, i.Item2));
         _window.Panel.SetState("GridEditor", new TguiData().String("grid", ev.Grid.ToString()).String("token", ev.Token.ToString())
             .Number("x", ev.X).Number("y", ev.Y).Number("width", ev.Width).Number("height", ev.Height)
+            .Number("gridX", ev.GridX).Number("gridY", ev.GridY).Number("gridWidth", ev.GridWidth).Number("gridHeight", ev.GridHeight)
             .Bool("initialized", ev.Initialized).Array("items", ev.Items.Select(ItemData)).Array("visuals", visuals).ToString(), "Редактор grid");
         LoadLibrary(); PublishLibrary();
         Search(_searchQuery, _searchCategory, _searchPage);
@@ -110,11 +119,13 @@ public sealed partial class GridEditorSystem : EntitySystem
             var proto = _prototypes.Index<EntityPrototype>(id);
             return data.Array("images", _images.Item(id)).String("name", proto.Name)
                 .Number("drawDepth", proto.TryGetComponent<SpriteComponent>(out var sprite) ? sprite.DrawDepth : 0)
-                .String("category", proto.TryGetComponent<TagComponent>(out var tag) && _tags.HasTag(tag, "Wall") ? "wall" : "entity");
+                .Bool("exclusive", GridEditorPlacement.IsExclusive(proto, _tags)).Bool("diagonal", GridEditorPlacement.HasTag(proto, "Diagonal", _tags))
+                .String("category", GridEditorPlacement.IsWall(proto, _tags) ? "wall" : "entity");
         }
         var spec = kind == "decal" ? _prototypes.Index<DecalPrototype>(id).Sprite :
             _prototypes.Index<ContentTileDefinition>(id).Sprite is { } path ? new SpriteSpecifier.Texture(path) : null;
-        return data.Array("images", spec == null ? Array.Empty<TguiData>() :
+        return data.Bool("allowRotationMirror", kind == "tile" && _prototypes.Index<ContentTileDefinition>(id).AllowRotationMirror)
+            .Array("images", spec == null ? Array.Empty<TguiData>() :
             new[] { new TguiData().String("url", kind == "tile" && spec is SpriteSpecifier.Texture texture ?
                 _images.TileFrame(texture.TexturePath) : _images.Frame(spec)).String("color", "#ffffff") });
     }
@@ -146,15 +157,19 @@ public sealed partial class GridEditorSystem : EntitySystem
 
     private void Action(string action, string payload)
     {
+        if (action == "copySelection") { IoCManager.Resolve<Robust.Client.UserInterface.IClipboardManager>().SetText("DeepLagoon grid editor selection"); return; }
+        if (action == "referenceImport") { ImportReference(); return; }
         if (action == "close") { Close(); return; }
         if (action == "focus") { _window?.Panel.Web.FocusTextInput(); return; }
         if (action == "fixAtmos" && _state != null) { IoCManager.Resolve<IConsoleHost>().ExecuteCommand($"fixgridatmos {_state.Grid}"); return; }
-        if (_state == null || payload.Length > 4_000_000) return;
+        if ((_state == null && action is not ("draftFileStart" or "draftFileChunk")) || payload.Length > 4_000_000) return;
         try
         {
             using var reader = new StringReader(payload);
             var yaml = new YamlStream(); yaml.Load(reader);
             if (yaml.Documents.Count != 1 || yaml.Documents[0].RootNode.ToDataNode() is not MappingDataNode root) return;
+            if (DraftFileAction(action, root)) return;
+            if (_state == null) return;
             static string Field(MappingDataNode node, string key, string fallback = "") =>
                 node.TryGet<ValueDataNode>(key, out var value) ? value.Value : fallback;
             if (action == "editing") { _editingText = Field(root, "active") == "true"; return; }
@@ -180,6 +195,13 @@ public sealed partial class GridEditorSystem : EntitySystem
                 if (id.Length is < 1 or > 64 || !int.TryParse(Field(root, "count"), out var count) || count is < 0 or > 12000 ||
                     !int.TryParse(Field(root, "chunks"), out var chunks) || chunks != Math.Max(1, (count + 15) / 16)) return;
                 _uploadPurpose = Field(root, "purpose", "apply"); _uploadName = Field(root, "name");
+                _uploadExpansion = null;
+                if (_uploadPurpose == "apply" && root.TryGet<MappingDataNode>("expansion", out var expansion))
+                {
+                    int Side(string key) => int.Parse(Field(expansion, key, "0"), CultureInfo.InvariantCulture);
+                    _uploadExpansion = new GridEditorExpansion { Left = Side("left"), Right = Side("right"),
+                        Bottom = Side("bottom"), Top = Side("top"), Tile = Field(expansion, "tile", "Plating") };
+                }
                 if (_uploadPurpose is not ("apply" or "template") || _uploadPurpose == "template" &&
                     (count is < 1 or > 512 || _uploadName.Length is < 1 or > 64)) return;
                 _uploadId = id; _uploadCount = count; _uploadChunks = chunks; _uploadNext = 0; _upload.Clear();
@@ -212,7 +234,7 @@ public sealed partial class GridEditorSystem : EntitySystem
                 foreach (var item in _upload)
                     if (item.Kind == "remove") final.Remove(item.Id);
                     else final[item.Id] = item;
-                RaiseNetworkEvent(new GridEditorApplyEvent(_state.Token, final.Values.ToList()));
+                RaiseNetworkEvent(new GridEditorApplyEvent(_state.Token, final.Values.ToList(), _uploadExpansion));
             }
             _uploadId = null; _upload.Clear();
         }

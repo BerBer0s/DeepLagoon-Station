@@ -1,10 +1,72 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cellsBetween, stamp, copyItems, validateDraft, changeCount, makeTemplate, projectTemplate, insertTemplate, makePatch, itemsAtPoint, editorKey } from '../packages/tgui/interfaces/gridEditorModel.mjs';
+import { cellsBetween, stamp, copyItems, validateDraft, changeCount, makeTemplate, projectTemplate, insertTemplate, makePatch, itemsAtPoint, editorKey, indexItems, nearbyItems, itemsInRect, expansionCount, expansionRects, ensureWallFloors, cellRectangle, eraseRectangle, moveSelection, replaceConflicts, mirrorChanges, reflectedItem } from '../packages/tgui/interfaces/gridEditorModel.mjs';
 const options = { rotation: 90, color: '#ffffff', z: 0, cleanable: false, replace: true, isWall: (id) => id === 'Wall' };
 let id = 0;
 const nextId = () => `new_${id++}`;
 const area = { x: -4, y: -4, width: 16, height: 16 };
+
+test('wall foundations fill missing cells once and preserve existing floors and their variants', () => {
+  const wall = { id: 'w', kind: 'entity', prototype: 'Wall', x: -1.5, y: .5, anchored: true };
+  const supported = ensureWallFloors([wall, { ...wall, id: 'second' }], id => id === 'Wall');
+  assert.equal(supported.filter(i => i.kind === 'tile').length, 1);
+  assert.equal(supported.find(i => i.kind === 'tile').prototype, 'Plating');
+  assert.equal(validateDraft(supported, area), '');
+  const original = { id: 't:-2:0', kind: 'tile', prototype: 'FloorSteel', x: -2, y: 0, variant: 3, flags: 2, mirror: 4 };
+  assert.deepEqual(ensureWallFloors([wall], id => id === 'Wall', [original]).find(i => i.kind === 'tile'), original);
+  assert.deepEqual(ensureWallFloors([wall, original], id => id === 'Wall'), [wall, original]);
+  assert.deepEqual(ensureWallFloors([{ ...wall, prototype: 'Chair' }], id => id === 'Wall'), [{ ...wall, prototype: 'Chair' }]);
+});
+
+test('group movement translates all layers, replaces destination tiles, and retains entity IDs and offsets', () => {
+  const items = [{ id: 't:0:0', kind: 'tile', prototype: 'Steel', x: 0, y: 0, variant: 2 },
+    { id: 'wall', kind: 'entity', prototype: 'Wall', x: .5, y: .5, anchored: true },
+    { id: 'decal', kind: 'decal', x: .125, y: .75, rotation: 90 },
+    { id: 't:2:1', kind: 'tile', prototype: 'OldFloor', x: 2, y: 1 },
+    { id: 'untouched', kind: 'entity', x: 4.5, y: 4.5 }];
+  const moved = moveSelection(items, ['t:0:0', 'wall', 'decal'], 2, 1, area);
+  assert.deepEqual(moved.ids, ['t:2:1', 'wall', 'decal']);
+  assert.equal(moved.items.filter(i => i.id === 't:2:1').length, 1);
+  assert.equal(moved.items.find(i => i.id === 't:2:1').variant, 2);
+  assert.equal(moved.items.find(i => i.id === 'wall').x, 2.5);
+  assert.equal(moved.items.find(i => i.id === 'decal').x, 2.125);
+  assert.equal(moved.items.find(i => i.id === 'decal').y, 1.75);
+  assert.deepEqual(moved.items.find(i => i.id === 'untouched'), items[4]);
+  assert.deepEqual(items[0], { id: 't:0:0', kind: 'tile', prototype: 'Steel', x: 0, y: 0, variant: 2 });
+});
+
+test('group bounds clamp the whole selection and never separate its members', () => {
+  const items = [{ id: 'a', kind: 'entity', x: 10.5, y: 1.5 }, { id: 'b', kind: 'entity', x: 11.5, y: 2.5 }];
+  const moved = moveSelection(items, ['a', 'b'], 20, 0, area);
+  assert.equal(moved.items[0].x, 10.5); assert.equal(moved.items[1].x, 11.5);
+});
+
+test('rubber-band erasing works backwards, includes boundary cells, and protects hidden layers', () => {
+  const rect = cellRectangle({ x: 2, y: 2 }, { x: 0, y: 0 });
+  assert.deepEqual(rect, { x: 0, y: 0, width: 3, height: 3 });
+  const items = [{ id: 'floor', kind: 'tile', x: 0, y: 0 }, { id: 'wall', kind: 'entity', x: 2.5, y: 2.5 },
+    { id: 'decal', kind: 'decal', x: 1, y: 1 }, { id: 'outside', kind: 'tile', x: 3, y: 2 }];
+  assert.deepEqual(eraseRectangle(items, rect, { tile: true, entity: true, decal: false }).map(i => i.id), ['decal', 'outside']);
+  assert.equal(items.length, 4);
+});
+
+test('a complete 250x250 grid remains valid beyond the former 12000 item limit', () => {
+  const items = [];
+  for (let x = -125; x < 125; x++) for (let y = -125; y < 125; y++)
+    items.push({ id: `t:${x}:${y}`, kind: 'tile', prototype: 'Plating', x, y });
+  assert.equal(validateDraft(items, { x: -129, y: -129, width: 258, height: 258 }), '');
+  const visible = itemsInRect(indexItems(items), { x: 120, y: 120, width: 5, height: 5 });
+  assert.ok(visible.some(i => i.id === 't:124:124'));
+  assert.ok(!visible.some(i => i.id === 't:-125:-125'));
+  assert.ok(visible.length < 100);
+});
+
+test('viewport lookup preserves draw order and handles sparse grids with distant islands', () => {
+  const items = [{ id: 'a', x: -10000, y: -10000 }, { id: 'b', x: 10000, y: 10000 }, { id: 'c', x: -9999.5, y: -9999.5 }];
+  const index = indexItems(items);
+  assert.deepEqual(itemsInRect(index, { x: -10001, y: -10001, width: 3, height: 3 }).map(i => i.id), ['a', 'c']);
+  assert.deepEqual(itemsInRect(index, { x: -11000, y: -11000, width: 22000, height: 22000 }).map(i => i.id), ['a', 'b', 'c']);
+});
 
 test('picker hits the opaque sprite above a floor and passes through transparent table items', () => {
   const items = [{ id: 'floor', kind: 'tile', x: 0, y: 0 }, { id: 'table', kind: 'entity', x: .5, y: .5, rotation: 0 }, { id: 'cup', kind: 'entity', x: .5, y: .5, rotation: 0 }];
@@ -29,6 +91,8 @@ test('picker respects fractional sprite positions and rotation', () => {
 test('shortcuts use physical keys with Russian and native CEF key events', () => {
   assert.equal(editorKey({ key: 'я', code: 'KeyZ', ctrlKey: true }), 'z');
   assert.equal(editorKey({ code: 'KeyI' }), 'i');
+  assert.equal(editorKey({ code: 'Digit1' }), '1');
+  assert.equal(editorKey({ code: 'Digit2', key: '"', shiftKey: true }), '2');
   assert.equal(editorKey({ code: 'Escape' }), 'escape');
   assert.equal(editorKey({ code: 'ShiftLeft' }), 'shift');
 });
@@ -118,4 +182,93 @@ test('editing one element sends only its change, while deletions produce explici
   const rebuilt = new Map(original.map(i => [i.id, i]));
   for (const item of patch) item.kind === 'remove' ? rebuilt.delete(item.id) : rebuilt.set(item.id, item);
   assert.deepEqual([...rebuilt.values()], draft);
+});
+
+
+test('large-grid picking scans local buckets and preserves rotated overlap order', () => {
+  const items = [];
+  for (let x = 0; x < 250; x++) for (let y = 0; y < 250; y++)
+    items.push({ id: `t:${x}:${y}`, kind: 'tile', x, y, rotation: 0 });
+  items.push({ id: 'rotated', kind: 'decal', x: 100.2, y: 100.4, rotation: 45 });
+  items.push({ id: 'later', kind: 'decal', x: 99.8, y: 100.1, rotation: -45 });
+  items.push({ id: 'fractional-edge', kind: 'decal', x: 99.9, y: 100.9, rotation: 45 });
+  const index = indexItems(items), layers = { tile: true, decal: true }, visual = () => ({});
+  for (const point of [{ x: 100.4, y: 100.8 }, { x: 100, y: 100 }, { x: 101.05, y: 101.4 }, { x: 249.9, y: 249.9 }]) {
+    const local = nearbyItems(index, point);
+    assert.ok(local.length <= 28, 'Pointer work must be independent of total grid size');
+    assert.deepEqual(itemsAtPoint(local, point, layers, visual), itemsAtPoint(items, point, layers, visual));
+  }
+});
+
+test('expansion counts only new borders, including corners, on a 250 by 250 grid', () => {
+  const bounds = { width: 250, height: 250 };
+  assert.equal(expansionCount(bounds, { left: 0, right: 2, bottom: 0, top: 2 }), 1004);
+  assert.equal(expansionCount(bounds, { left: 1, right: 1, bottom: 1, top: 1 }), 1004);
+  assert.equal(expansionCount(bounds, { left: 0, right: 0, bottom: 0, top: 0 }), 0);
+});
+
+
+test('expansion preview rectangles cover borders exactly once at negative coordinates', () => {
+  const bounds = { x: -10, y: -15, width: 20, height: 30 };
+  const expansion = { left: 2, right: 3, bottom: 1, top: 4 };
+  const seen = new Set();
+  for (const rect of expansionRects(bounds, expansion)) {
+    for (let x = rect.x; x < rect.x + rect.width; x++) for (let y = rect.y; y < rect.y + rect.height; y++) {
+      assert.ok(!insideCell(x, y), 'Do not fill old interior holes');
+      const key = `${x}:${y}`; assert.ok(!seen.has(key), 'Corners must appear only once'); seen.add(key);
+    }
+  }
+  function insideCell(x, y) { return x >= bounds.x && x < bounds.x + bounds.width && y >= bounds.y && y < bounds.y + bounds.height; }
+  assert.equal(seen.size, expansionCount(bounds, expansion));
+});
+
+
+const testTile = (x, y, prototype = 'Plating') => ({ id: tileIdForTest(x,y), kind: 'tile', prototype, x, y, rotation:0, color:'#FFFFFFFF',z:0,cleanable:false,anchored:false,variant:0,flags:0,mirror:0 });
+const tileIdForTest = (x,y) => `t:${x}:${y}`;
+const testWall = (id, x, y, rotation=0, prototype='Diagonal') => ({id,kind:'entity',prototype,x:x+.5,y:y+.5,rotation,anchored:true});
+const wallPrototype = id => ['Wall','Diagonal'].includes(id);
+
+test('diagonal supports rotate with walls, become square inside corners, and preserve authored floors', () => {
+  const wall = testWall('w',0,0);
+  let items = ensureWallFloors([wall], wallPrototype, [], id => id === 'Diagonal');
+  assert.equal(items.find(i=>i.kind==='tile').prototype,'DLPlatingDiagonal');
+  for(const rotation of [90,180,270,0]) {
+    items=ensureWallFloors(items.map(i=>i.id==='w'?{...i,rotation}:i),wallPrototype,[],id=>id==='Diagonal');
+    assert.equal(items.find(i=>i.kind==='tile').mirror,rotation/90);
+  }
+  const inner = ensureWallFloors([wall,testTile(0,1),testTile(1,0),testTile(0,-1),testTile(-1,0)],wallPrototype,[],id=>id==='Diagonal');
+  assert.equal(inner.find(i=>i.id==='t:0:0').prototype,'Plating');
+  const plating=testTile(0,0);
+  assert.equal(ensureWallFloors([wall,plating],wallPrototype,[plating],id=>id==='Diagonal').find(i=>i.id===plating.id).prototype,'DLPlatingDiagonal');
+  const authored=testTile(0,0,'FloorSteel');
+  assert.strictEqual(ensureWallFloors([wall,authored],wallPrototype,[authored],id=>id==='Diagonal').find(i=>i.id===authored.id),authored);
+});
+
+test('incoming walls, windows, tables and closets replace cell occupancy and preserve loose items and decals', () => {
+  const exclusive=id=>['Wall','Window','Table','Closet'].includes(id);
+  for(const prototype of ['Wall','Window','Table','Closet']) {
+    const old=testWall('old',2,2,0,'Wall'), loose={...old,id:'loose',prototype:'Cup'}, decal={...old,id:'decal',kind:'decal'};
+    const incoming=testWall('incoming',2,2,0,prototype);
+    const result=replaceConflicts([old,loose,decal],[old,loose,decal,incoming],exclusive);
+    assert.deepEqual(result.map(i=>i.id),['loose','decal','incoming']);
+  }
+});
+
+test('mirroring retains pairs while moving, deleting and rotating and does not duplicate the axis', () => {
+  const bounds={x:-10,y:-10,width:20,height:20}, settings={enabled:true,axis:'x',center:0}, pairs=new Map();
+  const wall=testWall('source',-3,0,0,'Wall');
+  const added=mirrorChanges([], [wall],settings,bounds,nextId,pairs);
+  const clone=added.find(i=>i.id!=='source'); assert.equal(clone.x,2.5);
+  const moved=mirrorChanges(added,added.map(i=>i.id==='source'?{...i,x:-1.5,rotation:90}:i),settings,bounds,nextId,pairs);
+  assert.equal(moved.length,2);assert.equal(moved.find(i=>i.id===clone.id).x,1.5);assert.equal(moved.find(i=>i.id===clone.id).rotation,270);
+  assert.equal(mirrorChanges(moved,moved.filter(i=>i.id!=='source'),settings,bounds,nextId,pairs).length,0);
+  const onAxis={...wall,x:0};assert.equal(mirrorChanges([],[onAxis],settings,bounds,nextId).length,1);
+  const tile=testTile(-2,0);const reflected=reflectedItem(tile,settings);assert.equal(reflected.x,1);
+  assert.equal(reflectedItem(reflected,settings).mirror,tile.mirror);
+});
+
+test('large rectangle stamping avoids duplicate tiles and supports 250 by 250 fills', () => {
+  const cells=cellsBetween({x:0,y:0},{x:249,y:249},true);
+  const result=stamp([testTile(0,0)],cells,{kind:'tile',id:'Plating'},options,nextId);
+  assert.equal(result.length,62500);assert.equal(new Set(result.map(i=>i.id)).size,62500);
 });

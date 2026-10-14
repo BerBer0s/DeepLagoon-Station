@@ -1,0 +1,4 @@
+- files: ["plating_diagonal.png"]
+  license: "CC-BY-SA-3.0"
+  copyright: "Triangular mask of Tiles/plating.png, originally from CEV-Eris commit 8e74e4370f4d5885f15c3f834973b1223ddb8b1b, modified by Flareguy. Mask added for DeepLagoon grid editor."
+  source: "https://github.com/discordia-space/CEV-Eris/"

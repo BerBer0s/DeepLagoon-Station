@@ -84,10 +84,30 @@ public sealed class TattooMachineBoundUserInterface(EntityUid owner, Enum uiKey)
             return;
         }
         if (_pending) return;
+        if (action == "tattoo-bake") { HandleBake(args!); return; }
         if (!TattooEditorData.TryApply(action, args!, _state.Tattoos, out var next, out _status)) { Push(); return; }
         _pending = true;
         SendMessage(new TattooMachineApplyMessage(next, _state.Revision));
         Push();
+    }
+
+    private async void HandleBake(TguiActionData args)
+    {
+        if (_window == null || _state == null || args.String("recipe") is not { } recipe
+            || !TattooEditorData.TryApply("tattoo-transform", args, _state.Tattoos, out var next, out _status)
+            || next.FirstOrDefault(t => t.Id == args.String("id")) is not { } basis) return;
+        var window = _window; var target = _state.Target; var revision = _state.Revision;
+        _fileBusy = true; _status = "Сервер подтверждает рисунок…"; Push();
+        try
+        {
+            var result = await EntMan.System<TattooArtworkSystem>().Authorize(basis, recipe);
+            if (_window != window || !window.IsOpen || _state?.Target != target || _state.Revision != revision
+                || !IoCManager.Resolve<IConfigurationManager>().GetCVar(TattooCVars.Enabled)) return;
+            next[next.FindIndex(t => t.Id == basis.Id)] = result;
+            _pending = true; _status = ""; SendMessage(new TattooMachineApplyMessage(next, revision));
+        }
+        catch (Exception e) { _status = e.Message; }
+        finally { _fileBusy = false; if (_window == window && window.IsOpen) Push(); }
     }
 
     private async void HandleFileAction(string action, Tattoo template)

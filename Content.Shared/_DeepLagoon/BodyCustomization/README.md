@@ -30,7 +30,94 @@ Back layers remain behind the chest; a removed/hidden chest hides its anatomy.
 Ordinary and luminous tattoo layers draw above anatomy, including anatomy set to
 draw above clothing. Tattoo cache order is rechecked after anatomy changes.
 Source overlays use the standard 32px biped torso; unusual species may require
-additional art. Clothing retains its original shape and is not deformed.
+additional art.
+
+## Soft clothing fit
+
+`ClothingBodyFitSystem` fits equipped fabric to parts whose visibility is **under
+clothing**. It works on the ordinary character sprite, including equipment in the
+character preview. Hidden parts and parts explicitly exposed above clothing do
+not stretch fabric. Tattoo layers retain their existing order underneath clothing.
+
+Each direction uses the actual torso/leg and anatomy silhouettes; tails are not
+part of the fitting mask. A small shape supplies each part's attachment area.
+A garment must cover at least half of that area or its attaching body edges.
+The edge check accommodates side-view hand cut-outs without discarding the part.
+Pants remain independent of breasts. Separate visual layers of one garment use
+their combined fabric silhouette so shirts, trousers and belts deform together.
+
+The inverse warp stretches contiguous fabric from the relevant body edge and
+stretches hanging parts vertically from their attachment. Sleeves outside the
+expanded torso remain at their original position. It samples the original
+garment's pixels, preserving cut-outs over skin. Where a hanging part covers the
+gap between the native legs, it samples adjacent trouser fabric instead of
+extending the leg gap into that part. Multiple parts compose in drawing order.
+
+Native hand silhouettes provide a separate fixed mask, never extra body volume.
+If a warped hand opening would reveal originally clothed skin below the hand,
+the map restores the original fabric there. This prevents holes below gloves
+without closing intentional cut-outs elsewhere. The hand geometry is part of
+the cache key, while gloves and tails do not enlarge the fitting silhouette.
+
+Front-facing breasts and rear-facing buttocks also give the cloth a subtle volume
+hint. A softened silhouette distance field, with a shallow valley between paired
+volumes, bends the original fabric pattern by at most one source pixel and adds
+gentle overhead shading. Skin colors and anatomical surface details never transfer
+to clothing. The effect stays inside the selected part, preserves combined fabric
+coverage and avoids fixed hands. Side views retain the ordinary fit. Rear contours
+start below the upper third of the minimum attachment: this keeps
+the waist and lower back free of shading even when larger buttocks extend upward.
+Both shading and pattern bending use this boundary. The lighting factor occupies
+the inverse map's B channel (128 is neutral), so this uses the same
+cached texture and shader sample, with no additional per-frame image processing.
+
+Species/sex displacement is composed into the inverse map first. The original
+RSI still controls animation and facing; layer tint, lighting and stencil rules
+are retained. The padded drawing area accommodates expanded fabric without
+clipping at the original frame's edge. Generated maps are shared by geometry (color changes
+do not create new maps), with an idle cache limit of 128. There is no per-frame CPU
+image processing or texture upload. Each fitted layer adds a non-drawing frame-UV
+helper and one extra texture sample in its shader. Unequip, appearance changes
+and entity removal restore the original layer and release shader instances.
+
+`Clothing.bodyFit` accepts:
+
+- `Auto` (default): fit uniforms, outer clothing and neck garments. Minor fabric
+  protection (lab coats and winter coats) is allowed. Physical armor with more
+  than 20% resistance or a flat physical damage reduction is treated as rigid;
+  this is a default heuristic, overridable per item. Hardsuit and EVA bases
+  explicitly use `Rigid`.
+- `Soft`: also fit protective fabric, such as a particular padded armored coat.
+- `Rigid`: keep the original sprite, for plates, frames and rigid accessories.
+
+Example for a soft protective coat:
+
+```yaml
+- type: Clothing
+  bodyFit: Soft
+```
+
+The general fitter supports four/eight-direction RSI layers up to 64x64, with at
+most 64 direction/frame combinations and static species displacement maps. Layers
+with custom shaders or unsupported formats keep their original renderer. This is
+a pixel-art deformation, not a cloth physics simulation; unusually cut garments
+may need a dedicated sprite or an explicit `Rigid` override.
+
+Validation: `ClothingBodyFitTests` checks source texture/cut-out preservation,
+species displacement and large anatomy against the real engineering uniform in
+four directions for both sexes. A combined Vulpkanin regression uses butt size 4,
+breast size J and all five mercenary medic uniform layers, checking coverage and
+excess sleeve width. It also checks for skin between fabric and combat gloves,
+including inside the native body silhouette, and preserves shoulder/buckle details.
+Front/rear contour checks compare coverage with the plain fit, keep pixels outside
+the selected part unchanged, and verify that recoloring skin cannot change fabric.
+`ClothingBodyFitIntegrationTests` exercises both uniforms with gloves,
+equipping, appearance refresh, exposed anatomy, rigid suits and cleanup.
+`Tools/body-customization/clothing-fit-shader.test.cjs` uses Playwright/Edge WebGL
+to compile the shader and verify every output pixel for four directions and two
+animation frames, including neutral and shaded map values (32,768 pixels).
+It complements, rather than replaces, an in-game
+visual check with representative garments and species.
 
 ## Imported assets
 

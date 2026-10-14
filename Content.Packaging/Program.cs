@@ -9,6 +9,11 @@ if (!CommandLineArgs.TryParse(args, out var parsed))
     return;
 }
 
+// Reject incompatible sources before deleting any existing build outputs.
+await EngineCompatibility.Validate();
+if (parsed.SkipBuild)
+    throw new InvalidOperationException("--skip-build cannot verify the engine provenance of existing content DLLs. Rebuild the release without --skip-build.");
+
 if (parsed.WipeRelease)
     WipeRelease();
 else
@@ -19,6 +24,8 @@ else
 
 if (!parsed.SkipBuild)
     WipeBin();
+
+await EngineCompatibility.Validate(writeMetadata: true);
 
 if (parsed.Client)
 {

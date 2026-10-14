@@ -29,12 +29,18 @@ public sealed class GameWebView : Control
     private int _chunkCount;
     private bool _ready;
     private bool _disposed;
+    private bool _shuttingDown;
     private bool _messageDispatchPending;
     private bool _explicitTextInput;
     private float _healthWait;
     private float _pingWait;
     private bool _healthFailed;
     private bool _recovering;
+    private bool _warmSuspended;
+    private bool _warmTimerPending;
+    private TimeSpan _warmUntil;
+    private readonly System.Threading.CancellationTokenSource _warmCancellation = new();
+    private bool CanKeepWarm => _suspendWhenHidden && WebViewCapabilities.NativeLifecycle;
     private readonly bool _suspendWhenHidden;
     private readonly bool _captureKeyboard;
     private readonly NativeChatBackground _background;
@@ -43,6 +49,7 @@ public sealed class GameWebView : Control
     public event Action<string, string>? Message;
     public event Action? Ready;
     public event Action? Failed;
+    public event Action? Resumed;
 
     public void FocusInput() => _view.GrabKeyboardFocus();
     public void SyncInputFocus()
@@ -94,8 +101,11 @@ public sealed class GameWebView : Control
 
     public void PrepareForShutdown()
     {
-        // CEF has already stopped when entity systems shut down. UI teardown
-        // (including ending a window drag) must not execute more JavaScript.
+        if (_disposed || _shuttingDown) return;
+        _shuttingDown = true;
+        _warmCancellation.Cancel();
+        // EntryPoint calls this while CEF is still alive. Later entity/UI
+        // teardown (including window dragging) must not execute JavaScript.
         ReleaseTextInput();
         _ready = false;
         _outgoing.Clear();
@@ -133,6 +143,7 @@ public sealed class GameWebView : Control
         };
         view.AddBeforeBrowseHandler(BeforeBrowse);
         view.AddResourceRequestHandler(ResourceRequest);
+        WebViewLifetime.Register(view, PrepareForShutdown);
         return view;
     }
 
@@ -171,15 +182,18 @@ public sealed class GameWebView : Control
             context.DoCancel();
             return;
         }
+        // Official 277 exposes no POST body API. The bounded GET/chunk bridge
+        // works with its signed module and keeps content independent of forks.
         _incoming.Enqueue(uri.Query.TrimStart('?'));
         context.DoRespondStream(new MemoryStream(BridgeAck, writable: false), "image/gif");
     }
 
     public void Send(string type, string payloadJson)
     {
-        if (_disposed) return;
+        if (_disposed || _shuttingDown) return;
+        if (CanKeepWarm && !VisibleInTree && type == "chat/message") return;
         var json = "{\"type\":" + Quote(type) + ",\"payload\":" + payloadJson + "}";
-        if (!_ready)
+        if (!_ready || CanKeepWarm && !VisibleInTree)
         {
             if (_outgoing.Count < 256)
                 _outgoing.Enqueue(json);
@@ -190,7 +204,7 @@ public sealed class GameWebView : Control
 
     public void Reload()
     {
-        if (_disposed || !BrowserActive) return;
+        if (_disposed || _shuttingDown || !BrowserActive) return;
         _ready = false;
         _healthWait = _pingWait = 0;
         _healthFailed = false;
@@ -222,9 +236,27 @@ public sealed class GameWebView : Control
     protected override void FrameUpdate(FrameEventArgs args)
     {
         base.FrameUpdate(args);
+        if (_disposed || _shuttingDown) return;
         // Attach only once the visible viewport is laid out. Hidden editors do
         // not create background CEF browsers, even while their UI stays in tree.
-        if (_suspendWhenHidden && VisibleInTree && _view.Parent == null) AddChild(_view);
+        if (_suspendWhenHidden && VisibleInTree && _view.Parent == null)
+        {
+            AddChild(_view);
+            if (CanKeepWarm) _view.AlwaysActive = true;
+        }
+        if (_warmSuspended && VisibleInTree)
+        {
+            _warmSuspended = false;
+            _healthWait = _pingWait = 0;
+            if (_ready)
+            {
+                while (_outgoing.TryDequeue(out var queued)) Dispatch(queued);
+                UserInterfaceManager.DeferAction(() =>
+                {
+                    if (!_disposed && VisibleInTree && _ready) Resumed?.Invoke();
+                });
+            }
+        }
         if (!_disposed && BrowserActive && VisibleInTree && !_healthFailed)
         {
             _healthWait += args.DeltaSeconds;
@@ -368,6 +400,11 @@ public sealed class GameWebView : Control
     protected override void ExitedTree()
     {
         base.ExitedTree();
+        if (CanKeepWarm && !_disposed && _view.AlwaysActive)
+        {
+            KeepWarm();
+            return;
+        }
         if (_suspendWhenHidden && !_disposed) SuspendBrowser();
         _ready = false;
         _background?.Reset();
@@ -379,10 +416,45 @@ public sealed class GameWebView : Control
     {
         base.VisibilityChanged(newVisible);
         if (!_suspendWhenHidden || VisibleInTree || _view.Parent == null) return;
+        if (CanKeepWarm && _view.AlwaysActive)
+        {
+            KeepWarm();
+            return;
+        }
         SuspendBrowser();
         _ready = false;
         _background?.Reset();
         _outgoing.Clear();
+        while (_incoming.TryDequeue(out _)) { }
+    }
+
+    private void KeepWarm()
+    {
+        ReleaseTextInput();
+        _view.ReleaseKeyboardFocus();
+        _warmSuspended = true;
+        _warmUntil = IoCManager.Resolve<IGameTiming>().RealTime + TimeSpan.FromSeconds(30);
+        if (_warmTimerPending) return;
+        ScheduleWarmClose();
+    }
+
+    private void ScheduleWarmClose()
+    {
+        _warmTimerPending = true;
+        var delay = Math.Max(1, (int)Math.Ceiling((_warmUntil - IoCManager.Resolve<IGameTiming>().RealTime).TotalMilliseconds));
+        Timer.Spawn(delay, () => UserInterfaceManager.DeferAction(CheckWarmExpiry), _warmCancellation.Token);
+    }
+
+    private void CheckWarmExpiry()
+    {
+        _warmTimerPending = false;
+        if (_disposed || VisibleInTree || !_warmSuspended) return;
+        if (IoCManager.Resolve<IGameTiming>().RealTime < _warmUntil) { ScheduleWarmClose(); return; }
+        SuspendBrowser();
+        _ready = false;
+        _background.Reset();
+        _outgoing.Clear();
+        _chunkPayload.Clear();
         while (_incoming.TryDequeue(out _)) { }
     }
 
@@ -398,7 +470,7 @@ public sealed class GameWebView : Control
         _healthWait = _pingWait = 0;
         _healthFailed = _recovering = false;
         // Older modules need a fresh layout to replace their initial 1x1 texture.
-        if (!WebViewCapabilities.NativeLifecycle)
+        if (!WebViewCapabilities.NativeLifecycle && !_shuttingDown)
             _view = CreateView();
     }
 
@@ -406,6 +478,8 @@ public sealed class GameWebView : Control
     {
         ReleaseTextInput();
         _disposed = true;
+        _warmCancellation.Cancel();
+        _warmCancellation.Dispose();
         _view.RemoveBeforeBrowseHandler(BeforeBrowse);
         _view.RemoveResourceRequestHandler(ResourceRequest);
         WebViewLifetime.Close(_view);

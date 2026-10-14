@@ -188,9 +188,11 @@ public sealed class TattooIntegrationTests
             var tool = entities.GetComponent<TattooMachineComponent>(machine);
             Assert.That(tool.Target, Is.EqualTo(target));
             var humanoid = entities.GetComponent<HumanoidAppearanceComponent>(target);
-            var drawing = Drawing();
+            var drawing = Content.Tests._DeepLagoon.TattooTests.Drawing();
             void Apply(Tattoo tattoo, int revision, EntityUid actor) => entities.EventBus.RaiseLocalEvent(machine,
                 new TattooMachineApplyMessage([tattoo], revision) { Actor = actor, UiKey = TattooMachineUiKey.Key });
+            Apply(Drawing(), 1, artist);
+            Assert.That(humanoid.Tattoos, Is.Empty, "Possessing the tool does not authorize arbitrary bitmap imports");
             Apply(drawing, 1, artist);
             Assert.That(humanoid.Tattoos.Single().ContentEquals(drawing), Is.True);
             var changed = drawing.Clone(); changed.X = .6f;
@@ -255,7 +257,7 @@ public sealed class TattooIntegrationTests
             interaction = new AfterInteractEvent(artist, machine, target, map.GridCoords, true);
             entities.EventBus.RaiseLocalEvent(machine, interaction);
             Assert.That(interaction.Handled, Is.True);
-            entities.EventBus.RaiseLocalEvent(machine, new TattooMachineApplyMessage([Drawing()], 2) { Actor = artist, UiKey = TattooMachineUiKey.Key });
+            entities.EventBus.RaiseLocalEvent(machine, new TattooMachineApplyMessage([Content.Tests._DeepLagoon.TattooTests.Drawing()], 2) { Actor = artist, UiKey = TattooMachineUiKey.Key });
             Assert.That(entities.GetComponent<HumanoidAppearanceComponent>(target).Tattoos, Has.Count.EqualTo(1));
             entities.DeleteEntity(machine); entities.DeleteEntity(target); entities.DeleteEntity(artist);
         });
@@ -323,13 +325,15 @@ public sealed class TattooIntegrationTests
     public async Task ProfileTguiDrawingSurvivesAppearanceEditsAndPublishesBodyMasks()
     {
         await using var pair = await PoolManager.GetServerClient(new PoolSettings { Destructive = true, InLobby = true });
+        HumanoidProfileEditor editor = null;
+        CharacterEditorWindow window = null;
         await pair.Client.WaitAssertion(() =>
         {
             var ui = pair.Client.ResolveDependency<IUserInterfaceManager>();
             var lobby = ui.GetUIController<LobbyUIController>();
             lobby.OpenCharacterEditor();
-            var window = ui.WindowRoot.Children.OfType<CharacterEditorWindow>().Single();
-            var editor = (HumanoidProfileEditor) typeof(LobbyUIController).GetField("_profileEditor", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lobby)!;
+            window = ui.WindowRoot.Children.OfType<CharacterEditorWindow>().Single();
+            editor = (HumanoidProfileEditor) typeof(LobbyUIController).GetField("_profileEditor", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(lobby)!;
             editor.SetProfile(HumanoidCharacterProfile.DefaultWithSpecies("Human"), editor.CharacterSlot);
             pair.Client.CfgMan.SetCVar(TattooCVars.Enabled, false);
             Assert.That(editor.HandleTguiProfileAction("tattoo-add", "{\"part\":\"Chest\",\"direction\":0}"), Is.False);
@@ -338,10 +342,15 @@ public sealed class TattooIntegrationTests
             var tattoo = editor.Profile!.Appearance.Tattoos.Single();
             Assert.That(editor.HandleTguiProfileAction("tattoo-stroke", JsonSerializer.Serialize(new
             { id = tattoo.Id, points = ".4,.4;.6,.6", width = .02f, color = "#44FFAAFF", glow = true, erase = false })), Is.True);
-            var baked = JsonSerializer.Serialize(new { id = tattoo.Id, normal = "", glow = Content.Tests._DeepLagoon.TattooTests.Bitmap(true) });
+            var baked = JsonSerializer.Serialize(new { id = tattoo.Id, recipe = "[{\"useBase\":true}]", x = .5f, y = .5f, scale = 1f, rotation = 0f, opacity = 1f });
             for (var offset = 0; offset < baked.Length; offset += 1000)
                 Assert.That(editor.HandleTguiProfileAction("tattoo-bake-chunk", JsonSerializer.Serialize(new
                 { id = tattoo.Id, index = offset / 1000, count = (baked.Length + 999) / 1000, text = baked.Substring(offset, System.Math.Min(1000, baked.Length - offset)) })), Is.True);
+        });
+        await pair.RunTicksSync(200);
+        await pair.Client.WaitAssertion(() =>
+        {
+            Assert.That(editor.Profile.Appearance.Tattoos.Single().ArtworkProof, Is.Not.Empty, "The game channel must return a server-authorized bitmap");
             Assert.That(editor.HandleTguiProfileAction("width", "{\"value\":0.95}"), Is.True);
             Assert.That(editor.Profile.Appearance.Tattoos.Single().Strokes, Is.Empty);
             Assert.That(editor.Profile.Appearance.Tattoos.Single().GlowBitmap, Is.Not.Empty);

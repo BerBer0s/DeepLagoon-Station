@@ -112,7 +112,10 @@ public sealed partial class GridEditorSystem
             if (kind is not ("entity" or "tile" or "decal") || id.Length is < 1 or > 200) return true;
             var key = kind + ":" + id;
             if (!_favorites.Remove(key)) { if (_favorites.Count >= 512) throw new InvalidDataException("Не более 512 избранных элементов."); _favorites[key] = (kind, id); }
-            PersistLibrary(); PublishLibrary(); return true;
+            PersistLibrary();
+            _window?.Panel.Web.Send("update", new TguiData().Object("data", new TguiData()
+                .Array("favorites", _favorites.Values.Select(f => new TguiData().String("kind", f.Kind).String("id", f.Prototype)))).ToString());
+            return true;
         }
         if (action == "deleteTemplate")
         {

@@ -34,6 +34,7 @@ namespace Content.Client.IoC
         public static void Register()
         {
             var collection = IoCManager.Instance!;
+            collection.Register<Content.Client._DeepLagoon.WebUI.WebViewLifetimeRegistry>();
 
             collection.Register<IParallaxManager, ParallaxManager>();
             collection.Register<GeneratedParallaxCache>();

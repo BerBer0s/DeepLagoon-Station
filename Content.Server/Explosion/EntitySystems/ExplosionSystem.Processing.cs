@@ -12,6 +12,7 @@ using Content.Shared.Maps;
 using Content.Shared.Physics;
 using Content.Shared.Projectiles;
 using Content.Shared.Tag;
+using Content.Shared.Tiles;
 using Robust.Shared.Map;
 using Robust.Shared.Map.Components;
 using Robust.Shared.Physics;
@@ -931,7 +932,8 @@ sealed class Explosion
 
         foreach (var (grid, list) in _tileUpdateDict)
         {
-            if (list.Count > 0 && _entMan.EntityExists(grid.Owner))
+            if (list.Count > 0 && _entMan.EntityExists(grid.Owner) &&
+                !(_entMan.TryGetComponent<ProtectedGridComponent>(grid.Owner, out var protection) && protection.PreventExplosions))
             {
                 _mapSystem.SetTiles(grid.Owner, grid, list);
             }

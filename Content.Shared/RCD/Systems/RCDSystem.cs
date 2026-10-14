@@ -324,6 +324,13 @@ public partial class RCDSystem : EntitySystem
 
     public bool IsRCDOperationStillValid(EntityUid uid, RCDComponent component, MapGridData mapGridData, EntityUid? target, EntityUid user, bool popMsgs = true)
     {
+        if (HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentProtectedGridComponent>(mapGridData.GridUid) ||
+            TryComp<ProtectedGridComponent>(mapGridData.GridUid, out var protection) && protection.PreventRCDUse)
+        {
+            if (popMsgs) _popup.PopupClient(Loc.GetString("dl-apartment-protected-rcd"), uid, user);
+            return false;
+        }
+
         // Update cached prototype if required
         UpdateCachedPrototype(uid, component);
 
@@ -522,7 +529,7 @@ public partial class RCDSystem : EntitySystem
             }
 
             // The object is not in the whitelist
-            if (!deconstructible.Deconstructable)
+            if (!deconstructible.Deconstructable || HasComp<Content.Shared._DeepLagoon.Apartments.ApartmentEntranceComponent>(target))
             {
                 if (popMsgs)
                     _popup.PopupClient(Loc.GetString("rcd-component-deconstruct-target-not-on-whitelist-message"), uid, user);

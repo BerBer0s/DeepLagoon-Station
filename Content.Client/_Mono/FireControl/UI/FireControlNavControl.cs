@@ -22,7 +22,7 @@ using Robust.Shared.Timing;
 
 namespace Content.Client._Mono.FireControl.UI;
 
-public sealed class FireControlNavControl : ShuttleNavControl
+public class FireControlNavControl : ShuttleNavControl
 {
     private readonly SharedTransformSystem _transform;
     private readonly SharedPhysicsSystem _physics;

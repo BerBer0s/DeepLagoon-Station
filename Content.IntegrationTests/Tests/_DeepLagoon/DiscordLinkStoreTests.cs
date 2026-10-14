@@ -97,6 +97,24 @@ public sealed class DiscordLinkStoreTests
     }
 
     [Test]
+    public void WarmSupporterLookupAndExpiryNeedNoDatabaseRead()
+    {
+        using var store = new DiscordLinkStore(_path, () => _now);
+        const string discord = "1554565156657299597";
+        var uid = store.EnrollLauncher(discord).Uid; var unknown = Guid.NewGuid();
+        store.SetSupporter(discord, true, 3, [1, 2, 3, 4]);
+        Assert.That(store.BoostyStatus(uid), Is.EqualTo((3, 900)));
+        Assert.That(store.BoostyStatus(unknown), Is.EqualTo((0, 0)));
+        // Fail any accidental synchronous SQL query during hot-path lookups, including negative cache hits.
+        var db = (SqliteConnection) typeof(DiscordLinkStore).GetField("_db", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(store)!;
+        db.Close();
+        for (var i = 0; i < 1000; i++) Assert.That(store.BoostRemaining(uid), Is.EqualTo(900));
+        _now += 899; Assert.That(store.BoostyStatus(uid), Is.EqualTo((3, 1)));
+        _now++; Assert.That(store.BoostyStatus(uid), Is.EqualTo((0, 0)));
+        Assert.That(store.BoostRemaining(uid), Is.Zero); Assert.That(store.BoostyStatus(unknown), Is.EqualTo((0, 0)));
+    }
+
+    [Test]
     public void BoostLeaseFollowsDiscordLinkAndExpiresWithoutRenewal()
     {
         const string discord = "1554565156657299597";
@@ -159,9 +177,17 @@ public sealed class DiscordLinkStoreTests
         var plan = store.PrepareMerge(discord, code);
         Assert.That(plan.CanonicalUid, Is.EqualTo(canonical.Uid));
         Assert.That(plan.OfficialUid, Is.EqualTo(official));
+        Assert.That(store.MergePending(official), Is.True);
+        Assert.That(store.MergePending(canonical.Uid), Is.True);
+        Assert.That(() => store.Unlink(discord, canonical.Uid), Throws.TypeOf<DiscordLinkStore.LinkException>().With.Message.EqualTo("merge_pending"));
+        Assert.That(() => store.ReassignDiscord(discord, "1554565156657299598", canonical.Uid, _now), Throws.TypeOf<DiscordLinkStore.LinkException>().With.Message.EqualTo("merge_pending"));
+        store.SetSupporter(discord, true, 3, [1, 2, 3, 4]);
+        Assert.That(store.BoostyStatus(canonical.Uid).Tier, Is.EqualTo(3), "Supporter leases continue while merging");
         Assert.That(() => store.PrepareMerge("1554565156657299598", code), Throws.TypeOf<DiscordLinkStore.LinkException>());
         var merged = store.CompleteMerge(discord, code, plan);
         Assert.That(merged.Uid, Is.EqualTo(canonical.Uid));
+        Assert.That(store.MergePending(official), Is.False);
+        Assert.That(store.MergePending(canonical.Uid), Is.False);
         Assert.That(store.EnrollLauncher(discord).Username, Is.EqualTo("OfficialPlayer"));
         Assert.That(store.PrepareMerge(discord, code), Is.EqualTo(plan));
     }
